@@ -80,10 +80,15 @@ runs:
       id: sentinel
       shell: bash
       env:
-        INPUTS_FAILON: ${{ inputs.fail-on }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_HEAD: ${{ inputs.head }}
+        INPUT_FAILON: ${{ inputs.fail-on }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
+        INPUT_ALLOW_REMOTE: ${{ inputs.allow-remote }}
       run: |
         set +e
-        ARGS=(compare "$INPUT_BASE" "$INPUT_HEAD" --fail-on "$INPUTS_FAILON" \
+        ARGS=(compare "$INPUT_BASE" "$INPUT_HEAD" --fail-on "$INPUT_FAILON" \
               --json "$INPUT_REPORT_DIR/api-diff.json" \
               --markdown "$INPUT_REPORT_DIR/api-diff.md" \
               --html "$INPUT_REPORT_DIR/api-diff.html" \
@@ -123,9 +128,9 @@ runs:
             if shown >= 20:
                 print("::notice::Additional findings omitted — see the full report artifact.")
                 break
-            if f["compatibility"] not in ("Breaking", "PotentiallyBreaking"):
+            if f.get("compatibility", "").replace("_", "").lower() not in ("breaking", "potentiallybreaking"):
                 continue
-            loc = f.get("location") or f["path"] or "(document)"
+            loc = f.get("location") or f.get("path") or "(document)"
             print(f"::error title={f['ruleId']} {f['title']}::{loc}: {f['explanation']}")
             shown += 1
         PYEOF
@@ -136,9 +141,3 @@ runs:
         fi
 
         exit $CODE
-      env:
-        INPUT_BASE: ${{ inputs.base }}
-        INPUT_HEAD: ${{ inputs.head }}
-        INPUT_CONFIG: ${{ inputs.config }}
-        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
-        INPUT_ALLOW_REMOTE: ${{ inputs.allow-remote }}

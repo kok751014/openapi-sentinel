@@ -1165,3 +1165,50 @@ Refreshed to verified current state:
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 10) — COMPOSITE ACTION: TWO REAL DEFECTS FOUND & FIXED + CI GUARD
+
+Discovered that remote CI exercises the CLI directly but NEVER the composite action
+(action/action.yml) — the §26 flagship deliverable had zero automated coverage. Local
+simulation of its sentinel step (stubbed GITHUB_OUTPUT/GITHUB_STEP_SUMMARY/RUNNER_TEMP,
+real packed tool) immediately exposed two release-blocking defects:
+
+1. **Duplicate `env:` key on the sentinel step** — YAML last-key-wins silently dropped the
+   first block, so `$INPUTS_FAILON` was empty in every real invocation → `--fail-on ""` →
+   usage error → the action would have failed ALL runs on GitHub regardless of inputs.
+   Fixed: single merged env block (`INPUT_FAILON` unified naming), leftover trailing block removed.
+2. **Annotation filter casing mismatch** — compared compatibility against `"Breaking"/"PotentiallyBreaking"`
+   but the JSON contract emits lowercase values, so **zero `::error` annotations would ever
+   have been emitted**. Fixed case-insensitively.
+
+### Verification via local action simulation (actual)
+- Breaking pair: exit 1; outputs.txt = exit-code=1 / breaking-count=7 / high-count=6 /
+  medium-count=9 / recommended-version=MAJOR / report-path ✓; step summary appended ✓;
+  **16 ::error annotations** emitted ✓.
+- Safe pair: exit 0; breaking-count=0; recommended-version=MINOR; 0 annotations ✓.
+
+### Permanent regression guard
+tests/OpenApiSentinel.Cli.Tests/ActionYamlTests.cs (3): parses action/action.yml and pins —
+single sentinel step with a COMPLETE env block incl. INPUT_FAILON (no legacy misspelling);
+annotation filter matches JSON-contract casing (.lower() present, no PascalCase literals);
+every declared output is written by the script. Mutation-checked: re-adding the duplicate key
+fails the guard as designed.
+
+### Files changed
+- action/action.yml (env merge + annotation fix)
+- tests/OpenApiSentinel.Cli.Tests/ActionYamlTests.cs (NEW, 3)
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362**.
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state; the action is now structurally guarded by CI even though runners can't execute
+it. Next iteration: gate re-runs unless new information arrives.
