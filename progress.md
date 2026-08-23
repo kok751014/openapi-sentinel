@@ -671,3 +671,26 @@ validation (GitHub + Stripe incl. cross-version), input surfaces, packaging, and
 full multi-RID release script all re-confirmed post-refactor. Publication awaits only
 user-side credentials (NUGET_API_KEY secret; Docker daemon). Next iteration: gate re-run
 only unless new information arrives.
+
+---
+
+## 2026-08-23 ~15:50 UTC — §60 ENGINEERING REPORT ADDED IN-REPO — commit 175af3c
+
+Delivered the MASTER_PROMPT §60 deliverable as a durable artifact:
+`docs/engineering-report.md` — consolidated verified snapshot with the exact §60
+structure (completed work, architecture, commands, real test results, demo path,
+release artifact locations, remaining risks, commercial-readiness ratings, next
+improvements). Linked from the README doc index; duplicated DECISIONS line removed.
+
+**Doc inconsistency fixed while gathering data:** rule-count references were stale after
+CG5022 landed (77 → **78 rules + 3 engine checks** = registry total 81) in README,
+product-positioning.md and docs/rules.md.
+
+### Verification (actual)
+- Build 0/0; suite **257/257**; CI run 32649257816 **success** on the report commit.
+- main @ 175af3c pushed; tree clean except this entry.
+
+### Exact next recommended action
+Steady state reached: defect queue empty, CI green (3 OSes), packaging & release flow
+verified, real-world validation covers GitHub + Stripe pairs. Future iterations: gate
+re-runs unless new information arrives. Publication awaits user-side credentials only.
