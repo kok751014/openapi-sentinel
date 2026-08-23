@@ -47,7 +47,9 @@ public class CollectionFormatTests
     public void ExplicitCsv_Versus_Absent_IsSilent()
     {
         // Absent collectionFormat defaults to csv per the 2.0 spec — no semantic change.
-        var csvSpec = Base.Replace("collectionFormat: multi", "collectionFormat: csv");
+        // Newlines normalized: raw strings carry the checkout's line endings.
+        var csvSpec = Base.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("collectionFormat: multi", "collectionFormat: csv");
         var changes = TestSpecHelper.Compare(csvSpec, csvSpec.Replace("          collectionFormat: csv\n", ""));
         Assert.Empty(changes);
     }

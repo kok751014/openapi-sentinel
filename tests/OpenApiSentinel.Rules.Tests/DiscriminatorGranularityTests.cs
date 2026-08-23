@@ -79,7 +79,10 @@ public class DiscriminatorGranularityTests
     [Fact]
     public void Mapping_Removal_IsPotentiallyBreaking_Medium()
     {
-        var newSpec = Base.Replace("          cat: '#/components/schemas/Cat'\n", "");
+        // Normalize newlines first: raw-string literals carry the checkout's line
+        // endings (CRLF on Windows), which would make a "\n"-terminated Replace no-op.
+        var normalized = Base.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var newSpec = normalized.Replace("          cat: '#/components/schemas/Cat'\n", "");
 
         var findings = Evaluate(Base, newSpec);
         var f = Assert.Single(findings, x => x.RuleId == "CG5011");
