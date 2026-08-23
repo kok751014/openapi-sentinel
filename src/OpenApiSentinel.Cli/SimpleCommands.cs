@@ -147,8 +147,17 @@ suppressions:
 
 # reportUnknownKinds: false   # flag changes no rule evaluates (CG9003)
 
-headerEnv: {}
-  # Authorization: SENTINEL_SWAGGER_TOKEN   # header value read from env var
+# Processing safety budgets (rarely needed). When one trips during $ref
+# resolution the run degrades to Verify findings (CG5022) instead of failing;
+# raise these only for very large, reference-heavy specifications. Defaults:
+# limits:
+#   maxDocumentBytes: 20971520
+#   maxDepth: 128
+#   maxNodes: 2000000
+#   maxResolvedRefs: 200000
+#   maxRefChainDepth: 64
+
+headerEnv: {}   # Authorization: SENTINEL_SWAGGER_TOKEN
 
 output: {}
   # markdown: artifacts/api-diff.md

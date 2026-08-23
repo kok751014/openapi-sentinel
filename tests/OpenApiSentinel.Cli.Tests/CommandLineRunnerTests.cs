@@ -197,6 +197,15 @@ components:
                 Assert.True(File.Exists(Path.Combine(dir, "openapi-sentinel.yml")));
                 Assert.Contains("failOn", File.ReadAllText(Path.Combine(dir, "openapi-sentinel.yml")), StringComparison.Ordinal);
 
+                // The generated template must stay in sync with the loader: every
+                // documented key (incl. the limits budgets) must load without warnings.
+                var templateWarnings = new List<string>();
+                var loaded = SentinelConfigLoader.Load(
+                    Path.Combine(dir, "openapi-sentinel.yml"),
+                    warn: templateWarnings.Add);
+                Assert.Empty(templateWarnings);
+                Assert.Null(loaded.Limits); // commented defaults → built-in budgets
+
                 var second = new RecordingConsole();
                 Assert.Equal(ExitCodes.InvalidConfiguration, CommandLineRunner.Run(["init"], second));
 
