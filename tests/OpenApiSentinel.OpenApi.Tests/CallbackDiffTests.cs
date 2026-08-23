@@ -412,6 +412,78 @@ public class CallbackDiffTests
     }
 
     [Fact]
+    public void Expression_Rename_Still_Diffs_Inner_Operations()
+    {
+        // Regression: a 1:1 expression rename used to skip the inner operation diff,
+        // silently hiding payload changes (e.g. a property becoming required).
+        const string oldSpec = """
+        openapi: 3.0.3
+        info:
+          title: Subscriptions API
+          version: "1.0"
+        paths:
+          /subscribe:
+            post:
+              operationId: subscribe
+              responses:
+                '200':
+                  description: ok
+              callbacks:
+                orderEvent:
+                  '{$request.body#/callbackUrl}':
+                    post:
+                      requestBody:
+                        content:
+                          application/json:
+                            schema:
+                              type: object
+                              properties:
+                                signature:
+                                  type: string
+                      responses:
+                        '200':
+                          description: received
+        """;
+        const string newSpec = """
+        openapi: 3.0.3
+        info:
+          title: Subscriptions API
+          version: "1.0"
+        paths:
+          /subscribe:
+            post:
+              operationId: subscribe
+              responses:
+                '200':
+                  description: ok
+              callbacks:
+                orderEvent:
+                  '{$request.body#/notificationUrl}':
+                    post:
+                      requestBody:
+                        content:
+                          application/json:
+                            schema:
+                              type: object
+                              required:
+                                - signature
+                              properties:
+                                signature:
+                                  type: string
+                      responses:
+                        '200':
+                          description: received
+        """;
+
+        var changes = TestSpecHelper.Compare(oldSpec, newSpec);
+        Assert.Equal(2, changes.Count);
+        Assert.Contains(changes, c => c.Kind == ChangeKinds.CallbackExpressionChanged);
+        var req = changes.Single(c => c.Kind == ChangeKinds.RequiredPropertyChanged);
+        Assert.Equal("<callback:POST /subscribe:orderEvent>", req.Path);
+        Assert.Equal("true", req.Details["becameRequired"]);
+    }
+
+    [Fact]
     public void ExtensionKeys_Malformed_And_EmptyCallbacks_DoNotCrashOrPhantomReport()
     {
         const string oldSpec = """

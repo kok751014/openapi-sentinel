@@ -342,7 +342,8 @@ public sealed class ComparisonEngine
         var newExprs = newCb.Expressions;
 
         // Common case: exactly one expression on each side that differs → one precise
-        // rename-style event instead of remove+add noise.
+        // rename-style event instead of remove+add noise. The sides are known to
+        // correspond, so their inner operations MUST still be diffed.
         if (oldExprs.Count == 1 && newExprs.Count == 1 &&
             !string.Equals(oldExprs.Keys.Single(), newExprs.Keys.Single(), StringComparison.Ordinal))
         {
@@ -357,44 +358,46 @@ public sealed class ComparisonEngine
                 NewValue = newExprs.Keys.Single(),
                 Details = new FrozenMap(new Dictionary<string, string> { ["callback"] = name }),
             });
-        }
-        else
-        {
-            foreach (var expr in oldExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
-            {
-                if (newExprs.ContainsKey(expr)) continue;
-                changes.Add(new SemanticChange
-                {
-                    Kind = ChangeKinds.CallbackExpressionChanged,
-                    Category = FindingCategory.Endpoint,
-                    Path = parentPath,
-                    HttpMethod = parentMethod,
-                    Location = $"{locPrefix} callbacks.{name}",
-                    OldValue = expr,
-                    Details = new FrozenMap(new Dictionary<string, string>
-                    {
-                        ["callback"] = name, ["change"] = "removed",
-                    }),
-                });
-            }
 
-            foreach (var expr in newExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            DiffCallbackMethods(oldExprs.Values.Single(), newExprs.Values.Single(),
+                oldGlobalSecurity, newGlobalSecurity, changes);
+            return;
+        }
+
+        foreach (var expr in oldExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (newExprs.ContainsKey(expr)) continue;
+            changes.Add(new SemanticChange
             {
-                if (oldExprs.ContainsKey(expr)) continue;
-                changes.Add(new SemanticChange
+                Kind = ChangeKinds.CallbackExpressionChanged,
+                Category = FindingCategory.Endpoint,
+                Path = parentPath,
+                HttpMethod = parentMethod,
+                Location = $"{locPrefix} callbacks.{name}",
+                OldValue = expr,
+                Details = new FrozenMap(new Dictionary<string, string>
                 {
-                    Kind = ChangeKinds.CallbackExpressionChanged,
-                    Category = FindingCategory.Endpoint,
-                    Path = parentPath,
-                    HttpMethod = parentMethod,
-                    Location = $"{locPrefix} callbacks.{name}",
-                    NewValue = expr,
-                    Details = new FrozenMap(new Dictionary<string, string>
-                    {
-                        ["callback"] = name, ["change"] = "added",
-                    }),
-                });
-            }
+                    ["callback"] = name, ["change"] = "removed",
+                }),
+            });
+        }
+
+        foreach (var expr in newExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (oldExprs.ContainsKey(expr)) continue;
+            changes.Add(new SemanticChange
+            {
+                Kind = ChangeKinds.CallbackExpressionChanged,
+                Category = FindingCategory.Endpoint,
+                Path = parentPath,
+                HttpMethod = parentMethod,
+                Location = $"{locPrefix} callbacks.{name}",
+                NewValue = expr,
+                Details = new FrozenMap(new Dictionary<string, string>
+                {
+                    ["callback"] = name, ["change"] = "added",
+                }),
+            });
         }
 
         // Diff the operations inside matched expressions. Inner operations carry the
@@ -402,33 +405,41 @@ public sealed class ComparisonEngine
         foreach (var expr in oldExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
         {
             if (!newExprs.TryGetValue(expr, out var newOps)) continue;
-            var oldOps = oldExprs[expr];
+            DiffCallbackMethods(oldExprs[expr], newOps, oldGlobalSecurity, newGlobalSecurity, changes);
+        }
+    }
 
-            foreach (var method in MethodOrder)
-            {
-                var hasOld = oldOps.TryGetValue(method, out var oldOp);
-                var hasNew = newOps.TryGetValue(method, out var newOp);
-                if (hasOld && hasNew)
-                    CompareOperations(oldOp!, newOp!, oldGlobalSecurity, newGlobalSecurity, changes);
-                else if (hasOld)
-                    changes.Add(new SemanticChange
-                    {
-                        Kind = ChangeKinds.OperationRemoved,
-                        Category = FindingCategory.Endpoint,
-                        Path = oldOp!.Path,
-                        HttpMethod = method,
-                        Location = $"{method.ToHttpString()} {oldOp.Path}",
-                    });
-                else if (hasNew)
-                    changes.Add(new SemanticChange
-                    {
-                        Kind = ChangeKinds.OperationAdded,
-                        Category = FindingCategory.Endpoint,
-                        Path = newOp!.Path,
-                        HttpMethod = method,
-                        Location = $"{method.ToHttpString()} {newOp.Path}",
-                    });
-            }
+    private void DiffCallbackMethods(
+        IReadOnlyDictionary<HttpMethodKind, Operation> oldOps,
+        IReadOnlyDictionary<HttpMethodKind, Operation> newOps,
+        IReadOnlyList<SecurityRequirementInfo>? oldGlobalSecurity,
+        IReadOnlyList<SecurityRequirementInfo>? newGlobalSecurity,
+        List<SemanticChange> changes)
+    {
+        foreach (var method in MethodOrder)
+        {
+            var hasOld = oldOps.TryGetValue(method, out var oldOp);
+            var hasNew = newOps.TryGetValue(method, out var newOp);
+            if (hasOld && hasNew)
+                CompareOperations(oldOp!, newOp!, oldGlobalSecurity, newGlobalSecurity, changes);
+            else if (hasOld)
+                changes.Add(new SemanticChange
+                {
+                    Kind = ChangeKinds.OperationRemoved,
+                    Category = FindingCategory.Endpoint,
+                    Path = oldOp!.Path,
+                    HttpMethod = method,
+                    Location = $"{method.ToHttpString()} {oldOp.Path}",
+                });
+            else if (hasNew)
+                changes.Add(new SemanticChange
+                {
+                    Kind = ChangeKinds.OperationAdded,
+                    Category = FindingCategory.Endpoint,
+                    Path = newOp!.Path,
+                    HttpMethod = method,
+                    Location = $"{method.ToHttpString()} {newOp.Path}",
+                });
         }
     }
 

@@ -119,3 +119,16 @@ breaking and non-breaking ways.
   variants can no longer be resolved confidently by consumers.
 - `mapping` purely extended: **NonBreaking, Low** — existing variants keep routing exactly
   as before. This is the difference between a MAJOR and a PATCH release recommendation.
+
+## Wildcard masking: status codes vs content types
+
+Removal masking is deliberately asymmetric:
+
+- **Status codes**: removing `404` is *not* reported when a remaining `4XX` or `default`
+  entry still covers it — clients already tolerate the whole range.
+- **Content types**: removing `application/json` from a request is *always* reported, even
+  when wildcards like `*/*` exist — sending an unsupported media type is a real 415 at
+  runtime; wildcard documentation does not make a payload format acceptable.
+
+Response-header removals follow the status-code rule's spirit: they are always reported,
+because a missing documented header changes what clients may rely on.

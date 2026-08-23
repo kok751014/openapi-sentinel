@@ -9,6 +9,7 @@ Generated from the [Order Management sample contracts](../../samples/basic/) —
 | [pr-summary.md](pr-summary.md) | The compact block posted to pull requests / `$GITHUB_STEP_SUMMARY` |
 | [CHANGELOG-sample.md](CHANGELOG-sample.md) | Generated API changelog with Breaking vs Non-breaking sections |
 | [api-diff.html](api-diff.html) | The flagship single-file interactive report: filters, search, collapsible findings — works offline, no CDN |
+| [callbacks-api-diff.md](callbacks-api-diff.md) | Callback-aware report, generated from the [Notification Hooks sample](../../samples/callbacks/): callback added/target changed (CG1011/CG1013), a required property inside a callback payload (CG5015), and a response-header type change (CG5001) |
 
 To produce an interactive HTML version locally:
 

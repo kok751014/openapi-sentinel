@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: Notification Hooks API
+  version: "1.0.0"
+  description: |
+    Subscriptions API with server-to-client callbacks. Consumers register a
+    callback URL and must implement the declared delivery operations.
+paths:
+  /subscriptions:
+    post:
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - callbackUrl
+              properties:
+                callbackUrl:
+                  type: string
+                  format: uri
+                eventTypes:
+                  type: array
+                  items:
+                    type: string
+                    enum: [order.created, order.shipped]
+      responses:
+        '201':
+          description: Subscription created.
+          headers:
+            X-Request-Id:
+              description: Echoed correlation identifier.
+              schema:
+                type: integer
+      callbacks:
+        orderEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              summary: Order event delivery
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required:
+                        - eventId
+                      properties:
+                        eventId:
+                          type: string
+                          format: uuid
+                        status:
+                          type: string
+                          enum: [created, shipped]
+                        amount:
+                          type: number
+              responses:
+                '200':
+                  description: Delivery acknowledged.
