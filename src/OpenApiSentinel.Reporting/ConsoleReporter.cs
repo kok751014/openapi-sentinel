@@ -123,18 +123,32 @@ public sealed class ConsoleReporter : IResultReporter
             _ => "info",
         }}: {count}";
 
-    private static string Describe(Finding f)
+    private static string Describe(Finding f) => ComposeLocation(f);
+
+    /// <summary>
+    /// Renders "METHOD path → sub-location" without repeating the endpoint prefix:
+    /// engine-emitted locations usually embed the full "METHOD path" already
+    /// (e.g. "GET /orders responses.200.body"), which read as duplicated paths.
+    /// Display-only — stored locations and fingerprints are untouched.
+    /// </summary>
+    public static string ComposeLocation(Finding f)
     {
-        var d = f.HttpMethod == HttpMethodKind.None ? f.Path : $"{f.HttpMethod.ToHttpString()} {f.Path}";
-        return d.Length == 0 ? "(document)" : d;
+        var @base = f.HttpMethod == HttpMethodKind.None ? f.Path : $"{f.HttpMethod.ToHttpString()} {f.Path}";
+        if (@base.Length == 0) return "(document)";
+        var loc = f.Location;
+        if (string.IsNullOrEmpty(loc)) return @base;
+        if (loc == @base) return @base;
+        var prefix = $"{@base} ";
+        return loc.StartsWith(prefix, StringComparison.Ordinal)
+            ? $"{@base} → {loc[prefix.Length..]}"
+            : $"{@base} → {loc}";
     }
 
     private static void WriteFinding(TextWriter w, Colors c, Finding f, bool verbose)
     {
-        var location = string.IsNullOrEmpty(f.Location) ? Describe(f) : $"{Describe(f)} → {Clean(f.Location)}";
         var sev = f.Severity.ToString().ToUpperInvariant();
         w.Write(c.MarkSeverity(f.Severity, $"[{sev}]"));
-        w.WriteLine($" {f.RuleId}  {Clean(location)}");
+        w.WriteLine($" {f.RuleId}  {Clean(Describe(f))}");
         w.WriteLine($"        {Clean(f.Explanation)}");
         if (verbose)
         {

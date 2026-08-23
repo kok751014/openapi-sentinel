@@ -107,7 +107,7 @@
      <div class="badge fail">FAILED</div></div>
    <div><div class="lbl">Old contract</div><div class="val mono">samples/basic/v1.yaml</div><div class="sub">spec 3.0.3 · api v1.0.0</div></div>
    <div><div class="lbl">New contract</div><div class="val mono">samples/basic/v2-breaking.yaml</div><div class="sub">spec 3.0.3 · api v2.0.0</div></div>
-   <div><div class="lbl">Generated (UTC)</div><div class="val">2026-08-23 12:26:46</div><div class="sub">tool 1.0.0 · schema 1.0</div></div>
+   <div><div class="lbl">Generated (UTC)</div><div class="val">2026-08-23 14:33:32</div><div class="sub">tool 1.0.0 · schema 1.0</div></div>
   </div>
   <div class="rec"><span class="bump bump-major">MAJOR</span> 7 breaking finding(s) at high or critical severity (first: CG2002) require a major version.</div>
 </section>
@@ -210,7 +210,7 @@
   <summary>
     <span class="sev sev-high">HIGH</span>
     <span class="rule mono">CG2002</span>
-    <span class="loc mono">GET /orders → GET /orders parameters.channel</span>
+    <span class="loc mono">GET /orders → parameters.channel</span>
     <span class="compat c-break">Breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -227,7 +227,7 @@
   <summary>
     <span class="sev sev-high">HIGH</span>
     <span class="rule mono">CG2011</span>
-    <span class="loc mono">GET /orders → GET /orders parameters.pageSize</span>
+    <span class="loc mono">GET /orders → parameters.pageSize</span>
     <span class="compat c-break">Breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -249,7 +249,7 @@
   <summary>
     <span class="sev sev-high">HIGH</span>
     <span class="rule mono">CG2007</span>
-    <span class="loc mono">GET /orders → GET /orders parameters.status</span>
+    <span class="loc mono">GET /orders → parameters.status</span>
     <span class="compat c-break">Breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -271,7 +271,7 @@
   <summary>
     <span class="sev sev-info">INFO</span>
     <span class="rule mono">CG5008</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200</span>
+    <span class="loc mono">GET /orders → responses.200</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -293,7 +293,7 @@
   <summary>
     <span class="sev sev-info">INFO</span>
     <span class="rule mono">CG5008</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].items</span>
+    <span class="loc mono">GET /orders → responses.200.[].items</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -315,7 +315,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].items.[].unitPrice.amount</span>
+    <span class="loc mono">GET /orders → responses.200.[].items.[].unitPrice.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -337,7 +337,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].items.[].unitPrice.amount</span>
+    <span class="loc mono">GET /orders → responses.200.[].items.[].unitPrice.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -359,7 +359,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5003</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].status</span>
+    <span class="loc mono">GET /orders → responses.200.[].status</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -381,7 +381,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].total.amount</span>
+    <span class="loc mono">GET /orders → responses.200.[].total.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -403,7 +403,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.[].total.amount</span>
+    <span class="loc mono">GET /orders → responses.200.[].total.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -425,7 +425,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG4005</span>
-    <span class="loc mono">GET /orders → GET /orders responses.200.headers.X-Total-Count</span>
+    <span class="loc mono">GET /orders → responses.200.headers.X-Total-Count</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -447,7 +447,7 @@
   <summary>
     <span class="sev sev-info">INFO</span>
     <span class="rule mono">CG5008</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.items</span>
+    <span class="loc mono">POST /orders → responses.201.items</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -469,7 +469,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.items.[].unitPrice.amount</span>
+    <span class="loc mono">POST /orders → responses.201.items.[].unitPrice.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -491,7 +491,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.items.[].unitPrice.amount</span>
+    <span class="loc mono">POST /orders → responses.201.items.[].unitPrice.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -513,7 +513,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5003</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.status</span>
+    <span class="loc mono">POST /orders → responses.201.status</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -535,7 +535,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.total.amount</span>
+    <span class="loc mono">POST /orders → responses.201.total.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -557,7 +557,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">POST /orders → POST /orders responses.201.total.amount</span>
+    <span class="loc mono">POST /orders → responses.201.total.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -579,7 +579,7 @@
   <summary>
     <span class="sev sev-high">HIGH</span>
     <span class="rule mono">CG6001</span>
-    <span class="loc mono">POST /orders → POST /orders security</span>
+    <span class="loc mono">POST /orders → security</span>
     <span class="compat c-break">Breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -623,7 +623,7 @@
   <summary>
     <span class="sev sev-info">INFO</span>
     <span class="rule mono">CG5008</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.items</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -645,7 +645,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items.[].unitPrice.amount</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.items.[].unitPrice.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -667,7 +667,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items.[].unitPrice.amount</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.items.[].unitPrice.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -689,7 +689,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5003</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.status</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.status</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -711,7 +711,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.total.amount</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.total.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -733,7 +733,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.total.amount</span>
+    <span class="loc mono">GET /orders/{orderId} → responses.200.total.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -772,7 +772,7 @@
   <summary>
     <span class="sev sev-high">HIGH</span>
     <span class="rule mono">CG2011</span>
-    <span class="loc mono">GET /products → GET /products parameters.pageSize</span>
+    <span class="loc mono">GET /products → parameters.pageSize</span>
     <span class="compat c-break">Breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -794,7 +794,7 @@
   <summary>
     <span class="sev sev-info">INFO</span>
     <span class="rule mono">CG5008</span>
-    <span class="loc mono">GET /products → GET /products responses.200</span>
+    <span class="loc mono">GET /products → responses.200</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -816,7 +816,7 @@
   <summary>
     <span class="sev sev-low">LOW</span>
     <span class="rule mono">CG5001</span>
-    <span class="loc mono">GET /products → GET /products responses.200.[].price.amount</span>
+    <span class="loc mono">GET /products → responses.200.[].price.amount</span>
     <span class="compat c-nonbreak">Non-breaking</span>
     <span class="chevron">▾</span>
   </summary>
@@ -838,7 +838,7 @@
   <summary>
     <span class="sev sev-medium">MEDIUM</span>
     <span class="rule mono">CG5002</span>
-    <span class="loc mono">GET /products → GET /products responses.200.[].price.amount</span>
+    <span class="loc mono">GET /products → responses.200.[].price.amount</span>
     <span class="compat c-potential">Potentially breaking</span>
     <span class="chevron">▾</span>
   </summary>

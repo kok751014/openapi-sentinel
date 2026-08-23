@@ -10,19 +10,26 @@ explains why it matters, generates professional reports, and fails CI when your 
 is exceeded.
 
 ```
-$ openapi-sentinel compare v1.yaml v2.yaml --fail-on high
+$ openapi-sentinel compare v1.yaml v2-breaking.yaml --fail-on high
+
+────────────────────────────────────────────────────────────────────────
+OpenAPI Sentinel  1.0.0
+  samples/basic/v1.yaml  →  samples/basic/v2-breaking.yaml   (generated 2026-08-23 14:30 UTC)
+  versions: 3.0.3  →  3.0.3
+────────────────────────────────────────────────────────────────────────
 
 Result: FAILED
 
+
 Summary
   Findings: 33
-  Severity: critical: 1 high: 5 medium: 6 low: 4 info: 16 verify: 1
-  Compatibility: 7 breaking, 7 potentially breaking, 17 non-breaking, 1 informational, 0 unknown
-  Recommended version bump: MAJOR — breaking finding(s) at high severity require a major version.
+  Severity: critical: 1 high: 6 medium: 9 low: 10 info: 7 verify: 0
+  Compatibility: 7 breaking, 9 potentially breaking, 15 non-breaking, 2 informational, 0 unknown
+  Recommended version bump: MAJOR — 7 breaking finding(s) at high or critical severity (first: CG2002) require a major version.
 
 Findings
-[HIGH] CG2003  POST /orders → parameters.customerId
-        Required-ness of request parameter 'customerId' changed from optional to required.
+[HIGH] CG2002  GET /orders → parameters.channel
+        Parameter 'channel' was added to GET /orders as required.
 ```
 
 ## Why not just diff the JSON?

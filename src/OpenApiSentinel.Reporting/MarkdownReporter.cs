@@ -170,12 +170,7 @@ public sealed class MarkdownReporter : IResultReporter
         w.AppendLine();
     }
 
-    internal static string Describe(Finding f)
-    {
-        var baseLocation = f.HttpMethod == HttpMethodKind.None ? f.Path : $"{f.HttpMethod.ToHttpString()} {f.Path}";
-        if (baseLocation.Length == 0) return "(document)";
-        return string.IsNullOrEmpty(f.Location) ? baseLocation : $"{baseLocation} → {f.Location}";
-    }
+    internal static string Describe(Finding f) => ConsoleReporter.ComposeLocation(f);
 
     /// <summary>Flattens newlines and escapes table-cell pipes (GFM: works inside code spans too).</summary>
     private static string Esc(string text) => (text ?? "")

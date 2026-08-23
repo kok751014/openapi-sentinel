@@ -101,3 +101,47 @@ public class MarkdownInjectionTests
         Assert.Equal("'x' was removed.", MarkdownReporter.Prose("'x' was removed."));
     }
 }
+
+/// <summary>Location rendering must not repeat the endpoint prefix (display dedup).</summary>
+[Trait("Category", "LocationComposition")]
+public class LocationCompositionTests
+{
+    private static Finding WithLocation(string method, string path, string location) => new()
+    {
+        RuleId = "CG5001",
+        Title = "Type changed",
+        Severity = Severity.Critical,
+        Category = FindingCategory.Response,
+        ChangeType = ChangeType.Changed,
+        Compatibility = Compatibility.Breaking,
+        Direction = ApiDirection.Response,
+        Path = path,
+        HttpMethod = Enum.Parse<HttpMethodKind>(method, ignoreCase: true),
+        Location = location,
+        Explanation = "x",
+        Impact = "y",
+        SuggestedAction = "z",
+    };
+
+    [Fact]
+    public void EngineStyle_Location_Prefix_Is_Stripped()
+    {
+        var f = WithLocation("Get", "/orders", "GET /orders responses.200.headers.X-Total-Count");
+        Assert.Equal("GET /orders → responses.200.headers.X-Total-Count", ConsoleReporter.ComposeLocation(f));
+    }
+
+    [Fact]
+    public void Relative_Location_Is_Appended()
+    {
+        var f = WithLocation("Post", "/orders/{id}", "body.signature");
+        Assert.Equal("POST /orders/{id} → body.signature", ConsoleReporter.ComposeLocation(f));
+    }
+
+    [Fact]
+    public void Document_Level_And_Empty_Locations()
+    {
+        Assert.Equal("(document)", ConsoleReporter.ComposeLocation(WithLocation("None", "", "")));
+        var f = WithLocation("Get", "/x", "");
+        Assert.Equal("GET /x", ConsoleReporter.ComposeLocation(f));
+    }
+}
