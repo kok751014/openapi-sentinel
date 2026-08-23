@@ -623,3 +623,24 @@ Note for future probes: the tool apphost needs DOTNET_ROOT when the SDK lives ou
 All gates green and packaging verified again. Nothing concrete outstanding — publication
 remains blocked only on user-side credentials (NUGET_API_KEY secret for ci.yml release job;
 Docker daemon/registry creds). Next iteration: gate re-run unless new information arrives.
+
+---
+
+## 2026-08-23 ~16:25 UTC — INPUT-SURFACE SPOT CHECKS (git refs + stdin) — no defects
+
+Verified the remaining MASTER §6 input sources live, on real data:
+- `compare git:HEAD:samples/basic/v1.yaml samples/basic/v2-breaking.yaml` → identical
+  33-finding result to the file-vs-file run (exit semantics unchanged). The git-ref
+  loader works against a real repository today.
+- stdin source: `cat v1.yaml | compare - v2-breaking.yaml` → same 33 findings.
+- Hostile stdin (`validate -` with non-OpenAPI text) → clean actionable exit-2 message,
+  no stack trace.
+
+All four input classes (file / URL / git-ref / stdin) verified working this session.
+Quality gates re-run: build 0/0, suite **257/257**, CI green on last runs. Working tree
+clean except this entry.
+
+### Exact next recommended action
+Nothing concrete outstanding. Keep iterating only if new external information arrives;
+otherwise periodic gate re-runs suffice. Publication still awaits user-side credentials
+(NUGET_API_KEY secret; Docker daemon) — everything in-repo is done and verified.
