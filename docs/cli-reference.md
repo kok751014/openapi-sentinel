@@ -102,6 +102,11 @@ removals or renames bump `schemaVersion`. Top-level structure:
 `endpoints` lists every endpoint touched by changes (added/removed/changed) with its
 finding count — the blast-radius view. `oldInfoVersion`/`newInfoVersion` carry the
 contracts' declared `info.version` (distinct from the raw spec version).
+
+The optional `processing` object reports how the engine handled the change stream:
+total changes seen, findings emitted, unmatched changes, rule overrides that disabled
+rules, ignore-path filtering, suppression and baseline counts. Use it to answer
+"why didn't X appear?" programmatically.
 ```
 
 Each finding carries `ruleId`, `title`, `severity`, `category`, `changeType`,
