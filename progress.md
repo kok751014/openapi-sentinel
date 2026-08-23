@@ -523,3 +523,30 @@ budget both stops real bombs and admits such specs.
 Defect queue empty again. Next iteration: re-run quality gates; optional candidates:
 (a) pr-summary/callbacks artifact refresh, (b) another vendor validation (Twilio/
 DigitalOcean replacement). Release remains ready pending user-side NuGet/Docker creds.
+
+---
+
+## 2026-08-23 ~15:20 UTC — WINDOWS CI FAILURES DIAGNOSED & FIXED — commit 2096c2b (CI ✅)
+
+Remote CI had failed on 6 consecutive pushes while local Linux gates stayed green.
+Root causes, both Windows-checkout-specific and now fixed:
+
+1. **Newline-sensitive fixture mutation**: raw-string literals carry the checkout's line
+   endings (CRLF under autocrlf), so `"\n"`-terminated Replace searches silently no-op'd
+   (Mapping_Removal discriminator test). Fixed by normalizing `\r\n`→`\n` before fixture
+   mutation; added `.gitattributes` pinning LF for all text sources so fixtures are
+   platform-stable everywhere (ps1 stays CRLF; goldens excluded).
+2. **Golden snapshot comparisons were platform-dependent**: generated reports use
+   Environment.NewLine (CRLF on Windows) vs LF-pinned goldens. Comparisons now normalize
+   line endings on both sides — content remains byte-exact, endings are environment
+   artifacts.
+
+### Verification (actual)
+- Local suite 257/257; targeted golden tests pass normalized on Linux.
+- **Remote CI run 32647858425: success** (all 3 OS legs) after two follow-up commits
+  (aab1154 fixture normalization + .gitattributes; d12be11 golden -text pinning;
+  2096c2b comparison normalization).
+
+### Exact next recommended action
+Defect queue empty; remote CI healthy. Next iteration: optional vendor validation or
+gate re-run only. Release ready pending user-side NuGet/Docker credentials.
