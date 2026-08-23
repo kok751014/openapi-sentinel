@@ -198,3 +198,17 @@ FP guards baked into normalization:
 - absent `collectionFormat` on an array parameter normalizes to `"csv"` (the 2.0 spec
   default), so explicit-vs-default restyling is silent;
 - non-array parameters ignore `collectionFormat` entirely (it has no effect there).
+
+## 25. Markdown output treats spec-derived strings as untrusted
+
+PR summaries and markdown reports are rendered as rich text by Git forges, so a crafted
+enum value / property name like `[click](https://evil.example)` used to render as a live
+link inside review summaries (phishing surface), and `<img …>` passed through as raw HTML.
+Values with backticks could terminate code spans.
+
+Rendering rules (MarkdownReporter):
+- **Code spans** via `Code()`: fence length = longest backtick run + 1, space-padded when
+  content touches the fence (CommonMark); newlines flattened; table cells pre-escape pipes.
+- **Prose** via `Prose()`: backslash-escapes `\`, `<`, `[`, `]` before embedding — links,
+  autolinks and raw HTML become literal text; ordinary sentences are byte-identical.
+- HTML and JSON reporters were already safe (HTML-encoder / JSON string encoder).

@@ -1,7 +1,7 @@
 # API Compatibility Report
 
 **Result:** ❌ FAILED — `samples/callbacks/v1.yaml` → `samples/callbacks/v2-breaking.yaml`  
-**Generated:** 2026-08-23 13:54:07 UTC by OpenAPI Sentinel 1.0.0  
+**Generated:** 2026-08-23 14:18:09 UTC by OpenAPI Sentinel 1.0.0  
 **Spec versions:** 3.0.3 → 3.0.3
 
 ## Summary
@@ -47,7 +47,7 @@ The delivery target of callback 'orderEvent' changed: '{$request.body#/callbackU
 
 #### [CG5015] Required property added to request — `POST <callback:POST /subscriptions:orderEvent> → body.signature`
 
-Property 'signature' was added as REQUIRED to the request schema of POST <callback:POST /subscriptions:orderEvent>.
+Property 'signature' was added as REQUIRED to the request schema of POST \<callback:POST /subscriptions:orderEvent>.
 
 - **Compatibility:** Breaking · **Confidence:** Certain · **Direction:** Request
 - **Change:** `false` → `true`

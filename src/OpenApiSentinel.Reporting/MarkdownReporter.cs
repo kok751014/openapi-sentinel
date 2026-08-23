@@ -15,7 +15,7 @@ public sealed class MarkdownReporter : IResultReporter
 
         w.AppendLine("# API Compatibility Report");
         w.AppendLine();
-        w.AppendLine($"**Result:** {(result.PolicyViolated ? "❌ FAILED" : "✅ PASSED")} — `{result.OldContractName}` → `{result.NewContractName}`  ");
+        w.AppendLine($"**Result:** {(result.PolicyViolated ? "❌ FAILED" : "✅ PASSED")} — {Code(result.OldContractName)} → {Code(result.NewContractName)}  ");
         w.AppendLine($"**Generated:** {result.GeneratedAtUtc:yyyy-MM-dd HH:mm:ss} UTC by OpenAPI Sentinel {result.ToolVersion}  ");
         if (!string.IsNullOrEmpty(result.OldOpenApiVersion) || !string.IsNullOrEmpty(result.NewOpenApiVersion))
         {
@@ -69,8 +69,8 @@ public sealed class MarkdownReporter : IResultReporter
             foreach (var e in result.Endpoints.Take(50))
             {
                 var name = e.HttpMethod == HttpMethodKind.None
-                    ? $"`{e.Path}`"
-                    : $"`{e.HttpMethod.ToHttpString()} {e.Path}`";
+                    ? Code(Esc(e.Path))
+                    : Code(Esc($"{e.HttpMethod.ToHttpString()} {e.Path}"));
                 w.AppendLine($"| {e.State} | {name} | {e.FindingCount} |");
             }
             w.AppendLine();
@@ -107,7 +107,7 @@ public sealed class MarkdownReporter : IResultReporter
             foreach (var sf in result.Suppressed)
             {
                 var f = sf.Finding;
-                w.AppendLine($"| {f.RuleId} | {Esc(Describe(f))} | {sf.Source} | {Esc(sf.Reason)} |");
+                w.AppendLine($"| {f.RuleId} | {Code(Esc(Describe(f)))} | {sf.Source} | {Code(Esc(sf.Reason))} |");
             }
             w.AppendLine();
         }
@@ -142,7 +142,7 @@ public sealed class MarkdownReporter : IResultReporter
             w.AppendLine();
             foreach (var f in top)
             {
-                w.AppendLine($"- **[{f.RuleId}] {f.Title}** — `{Describe(f)}`: {f.Explanation}");
+                w.AppendLine($"- **[{f.RuleId}] {Prose(f.Title)}** — {Code(Describe(f))}: {Prose(f.Explanation)}");
             }
             w.AppendLine();
             w.AppendLine("</details>");
@@ -153,19 +153,19 @@ public sealed class MarkdownReporter : IResultReporter
 
     private static void WriteFinding(StringBuilder w, Finding f, bool verbose)
     {
-        w.AppendLine($"#### [{f.RuleId}] {f.Title} — `{Esc(Describe(f))}`");
+        w.AppendLine($"#### [{f.RuleId}] {Prose(f.Title)} — {Code(Describe(f))}");
         w.AppendLine();
-        w.AppendLine(f.Explanation);
+        w.AppendLine(Prose(f.Explanation));
         w.AppendLine();
         w.AppendLine($"- **Compatibility:** {f.Compatibility} · **Confidence:** {f.Confidence} · **Direction:** {f.Direction}");
         if (f.OldValue is not null || f.NewValue is not null)
         {
-            w.AppendLine($"- **Change:** `{Esc(f.OldValue ?? "(none)")}` → `{Esc(f.NewValue ?? "(removed)")}`");
+            w.AppendLine($"- **Change:** {Code(Esc(f.OldValue ?? "(none)"))} → {Code(Esc(f.NewValue ?? "(removed)"))}");
         }
         if (verbose)
         {
-            w.AppendLine($"- **Impact:** {f.Impact}");
-            w.AppendLine($"- **Suggested action:** {f.SuggestedAction}");
+            w.AppendLine($"- **Impact:** {Prose(f.Impact)}");
+            w.AppendLine($"- **Suggested action:** {Prose(f.SuggestedAction)}");
         }
         w.AppendLine();
     }
@@ -177,7 +177,42 @@ public sealed class MarkdownReporter : IResultReporter
         return string.IsNullOrEmpty(f.Location) ? baseLocation : $"{baseLocation} → {f.Location}";
     }
 
-    private static string Esc(string text) => text
+    /// <summary>Flattens newlines and escapes table-cell pipes (GFM: works inside code spans too).</summary>
+    private static string Esc(string text) => (text ?? "")
         .Replace("|", "\\|", StringComparison.Ordinal)
         .Replace("\n", " ", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Renders text as a CommonMark code span that survives embedded backticks:
+    /// fence length = longest backtick run + 1, space-padded when content touches the fence.
+    /// Spec-derived values are untrusted (§30); naive backtick fencing let payloads
+    /// terminate the span and inject arbitrary markdown.
+    /// </summary>
+    public static string Code(string? text)
+    {
+        var content = (text ?? "").Replace("\n", " ", StringComparison.Ordinal);
+        var longestRun = 0;
+        var run = 0;
+        foreach (var ch in content)
+        {
+            run = ch == '`' ? run + 1 : 0;
+            if (run > longestRun) longestRun = run;
+        }
+
+        var fence = new string('`', longestRun + 1);
+        var pad = content.Length > 0 && (content[0] == '`' || content[^1] == '`') ? " " : "";
+        return $"{fence}{pad}{content}{pad}{fence}";
+    }
+
+    /// <summary>
+    /// Neutralizes markdown link syntax and raw HTML in prose that embeds spec-derived
+    /// values: without this, a crafted enum/property value like
+    /// "[click](https://evil.example)" rendered as a live link in PR summaries.
+    /// Backslash is escaped first so the escapes themselves are literal.
+    /// </summary>
+    public static string Prose(string? text) => (text ?? "")
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("<", "\\<", StringComparison.Ordinal)
+        .Replace("[", "\\[", StringComparison.Ordinal)
+        .Replace("]", "\\]", StringComparison.Ordinal);
 }
