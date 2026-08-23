@@ -25,10 +25,10 @@ public sealed class ConsoleReporter : IResultReporter
 
         c.Dim(w, "─".Repeat(72));
         w.WriteLine($"OpenAPI Sentinel  {result.ToolVersion}");
-        c.Dim(w, $"  {result.OldContractName}  →  {result.NewContractName}   (generated {result.GeneratedAtUtc:yyyy-MM-dd HH:mm:ss} UTC)");
+        c.Dim(w, $"  {Clean(result.OldContractName)}  →  {Clean(result.NewContractName)}   (generated {result.GeneratedAtUtc:yyyy-MM-dd HH:mm:ss} UTC)");
         if (!string.IsNullOrEmpty(result.OldOpenApiVersion) || !string.IsNullOrEmpty(result.NewOpenApiVersion))
         {
-            c.Dim(w, $"  versions: {result.OldOpenApiVersion ?? "?"}  →  {result.NewOpenApiVersion ?? "?"}");
+            c.Dim(w, $"  versions: {Clean(result.OldOpenApiVersion ?? "?")}  →  {Clean(result.NewOpenApiVersion ?? "?")}");
         }
         c.Dim(w, "─".Repeat(72));
 
@@ -85,8 +85,8 @@ public sealed class ConsoleReporter : IResultReporter
             foreach (var e in endpoints.Take(25))
             {
                 var name = e.HttpMethod == HttpMethodKind.None
-                    ? e.Path
-                    : $"{e.HttpMethod.ToHttpString()} {e.Path}";
+                    ? Clean(e.Path)
+                    : $"{e.HttpMethod.ToHttpString()} {Clean(e.Path)}";
                 w.WriteLine($"  [{e.State}] {name} — {e.FindingCount} finding(s)");
             }
 
@@ -103,7 +103,7 @@ public sealed class ConsoleReporter : IResultReporter
             foreach (var sf in result.Suppressed)
             {
                 var f = sf.Finding;
-                c.Dark(w, $"  [{f.Severity.ToString().ToUpperInvariant()}] {f.RuleId} {Describe(f)} — {sf.Source}: {sf.Reason}");
+                c.Dark(w, $"  [{f.Severity.ToString().ToUpperInvariant()}] {f.RuleId} {Describe(f)} — {sf.Source}: {Clean(sf.Reason)}");
             }
         }
 
@@ -131,20 +131,37 @@ public sealed class ConsoleReporter : IResultReporter
 
     private static void WriteFinding(TextWriter w, Colors c, Finding f, bool verbose)
     {
-        var location = string.IsNullOrEmpty(f.Location) ? Describe(f) : $"{Describe(f)} → {f.Location}";
+        var location = string.IsNullOrEmpty(f.Location) ? Describe(f) : $"{Describe(f)} → {Clean(f.Location)}";
         var sev = f.Severity.ToString().ToUpperInvariant();
         w.Write(c.MarkSeverity(f.Severity, $"[{sev}]"));
-        w.WriteLine($" {f.RuleId}  {location}");
-        w.WriteLine($"        {f.Explanation}");
+        w.WriteLine($" {f.RuleId}  {Clean(location)}");
+        w.WriteLine($"        {Clean(f.Explanation)}");
         if (verbose)
         {
             if (f.OldValue is not null || f.NewValue is not null)
             {
-                w.WriteLine($"        values: {f.OldValue ?? "(none)"} → {f.NewValue ?? "(removed)"}");
+                w.WriteLine($"        values: {Clean(f.OldValue ?? "(none)")} → {Clean(f.NewValue ?? "(removed)")}");
             }
-            w.WriteLine($"        impact: {f.Impact}");
-            w.WriteLine($"        action: {f.SuggestedAction}");
+            w.WriteLine($"        impact: {Clean(f.Impact)}");
+            w.WriteLine($"        action: {Clean(f.SuggestedAction)}");
         }
+    }
+
+    /// <summary>
+    /// Strips terminal control characters (C0 except \n/\t, DEL, C1 U+0080–U+009F) from
+    /// spec-derived text. Without this, a hostile path or enum value containing raw ESC
+    /// sequences could rewrite the terminal title or clear the screen when findings are
+    /// printed — including under --no-color (§30: specifications are untrusted input).
+    /// </summary>
+    public static string Clean(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? "";
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var ch in text)
+        {
+            if (ch == '\n' || ch == '\t' || !char.IsControl(ch)) sb.Append(ch);
+        }
+        return sb.ToString();
     }
 
     private sealed class Colors

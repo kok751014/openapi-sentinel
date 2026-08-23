@@ -212,3 +212,14 @@ Rendering rules (MarkdownReporter):
 - **Prose** via `Prose()`: backslash-escapes `\`, `<`, `[`, `]` before embedding — links,
   autolinks and raw HTML become literal text; ordinary sentences are byte-identical.
 - HTML and JSON reporters were already safe (HTML-encoder / JSON string encoder).
+
+## 26. Console output strips terminal control characters
+
+A hostile spec path like `/items<ESC>]0;PWNED<ESC>[2J` reached the terminal raw through
+finding lines — rewriting the terminal title and clearing the screen even under --no-color
+(verified by PoC before the fix). ConsoleReporter.Clean() now strips C0 controls (keeping
+\n and \t), DEL and the C1 range from every spec-derived string it prints (paths,
+locations, explanations, values, impact/action text, suppressed reasons, contract names).
+
+Deliberately console-only: JSON/SARIF keep raw values behind their own string encoders for
+machine consumers; HTML uses its encoder; Markdown neutralizes via Code()/Prose() (entry 25).
