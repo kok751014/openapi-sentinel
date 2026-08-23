@@ -667,3 +667,27 @@ public class BooleanFlagParsingTests
         Assert.Equal(2, parsed.Positional.Count);
     }
 }
+
+public class MissingOptionValueTests
+{
+    [Fact]
+    public void ValueOption_WithoutValue_IsRejected()
+    {
+        var console = new RecordingConsole();
+        var code = CommandLineRunner.Run(["compare", "a.yaml", "b.yaml", "--baseline"], console);
+        Assert.Equal(ExitCodes.InvalidConfiguration, code);
+        Assert.Contains("'--baseline' requires a value", console.ErrorText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ValueOption_AtEnd_DoesNotSwallowPositionals()
+    {
+        using var specs = SpecPair.Create(CommandLineRunnerTests.BaseV1, CommandLineRunnerTests.SafeV2);
+        var console = new RecordingConsole();
+        // --format at the end has no value; must not eat anything, and compare
+        // should still fail on missing positionals rather than silently proceeding.
+        var code = await Task.Run(() =>
+            CommandLineRunner.Run(["compare", specs.OldPath, specs.NewPath, "--format"], console));
+        Assert.Equal(ExitCodes.InvalidConfiguration, code);
+    }
+}

@@ -42,10 +42,28 @@ public static class CommandLineRunner
         }
     }
 
+    /// <summary>Options that require an explicit value.</summary>
+    private static readonly HashSet<string> ValueOptions = new(StringComparer.Ordinal)
+    {
+        "format", "fail-on", "config", "baseline", "update-baseline",
+        "output", "o", "json", "markdown", "html", "sarif", "junit",
+        "changelog", "pr-summary", "explain-target",
+    };
+
     private static int RunCore(string[] args, IConsoleWriter console)
     {
         var parsed = CommandLineParser.Parse(args);
         var command = parsed.Command?.ToLowerInvariant();
+
+        // A value-taking option without its value would otherwise be silently ignored.
+        foreach (var key in ValueOptions)
+        {
+            if (parsed.Has(key) && parsed.Value(key) is null)
+            {
+                console.WriteError($"error: option '--{key}' requires a value.");
+                return ExitCodes.InvalidConfiguration;
+            }
+        }
 
         // Standard global flags that work with or without an explicit command.
         if (command is null && parsed.Has("version"))
