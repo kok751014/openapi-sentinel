@@ -1,5 +1,7 @@
 # OpenAPI Sentinel
 
+[![CI](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml)
+
 **Catch breaking API contract changes before they reach production.**
 
 OpenAPI Sentinel compares two OpenAPI contracts, understands the *semantics* of what changed,
