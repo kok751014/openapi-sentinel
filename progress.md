@@ -1100,3 +1100,33 @@ external $refs (responses/requestBodies); sibling entries nest internal refs. In
 ### Exact next recommended action
 Steady state. The external-resolution code now has both real-world (6 vendors) and randomized
 (500-seed) coverage. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 8) — PACKAGING GATE RE-VERIFIED POST-SESSION + COUNT SYNC
+
+### Packaging gate (last full check predated this session's source changes)
+- `dotnet pack -c Release` → clean, OpenApiSentinel.1.0.0.nupkg (+ library packages).
+- Isolated global-tool install from the pack source: `openapi-sentinel version` → 1.0.0;
+  breaking sample → exit 1; `rules --format json` → **83 entries shipped** (80 rules +
+  3 engine checks). Tool uninstalled after the probe.
+
+### Doc count sync
+- AGENTS.md test count refreshed ~307 → ~359 (drifted across this session's additions).
+- README rule-count reference verified current ("80 rules + 3 engine checks" = 83 registered).
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **359/359**; packaging flow green end-to-end.
+
+### Files changed
+- AGENTS.md (test count only)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state: all gates green post-refactors (build, suite, packaging, remote CI on every
+push this session). Next iteration: gate re-runs unless new information arrives.
