@@ -990,3 +990,44 @@ re-runs unless new information arrives.
 ### Exact next recommended action
 Six vendor ecosystems validated (GitHub, Stripe, DigitalOcean, Kubernetes, Twilio, Azure);
 defect queue empty again. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 5) — POST-REFACTOR BENCH RE-VERIFIED + §52 DEAD-CODE SWEEP
+
+### Performance re-verification (was still open from the multi-file/refactor work)
+Bench re-run on current code (small/medium/large generated specs):
+- Medium: parse 72.5 ms, resolve+normalize 5.6 ms, compare **13.9 ms** (113 changes), rules 1.0 ms.
+- Large: parse 181.2 ms, compare **100.4 ms** (555 changes), allocations ≈ 87.7 MB.
+All within historical ranges (Medium ~15 ms, Large ~87–100 ms compare; identical change
+counts) — no regression from sibling resolution, root-tree anchoring, prose gating, or
+above-tree changes.
+
+### Source-quality sweep (§52)
+Removed a dead empty-if branch and its now-unused helper (`LooksLikeAbsoluteUnixPath`)
+left over in RefResolver's disk branch — the containment check below it already subsumed
+the condition. No behavior change.
+
+### Vendor validation #7 attempt: not pursued
+GitLab deprecated their OpenAPI spec path; Grafana's openapi3.json is build-generated;
+Docker compose/engine canonical URLs 404. With six ecosystems validated across every major
+spec style, further vendor hunting would re-prove existing paths — skipped rather than
+forcing activity.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **318/318** after cleanup.
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/RefResolver.cs (dead-code removal only)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives. Known measured
+(but deliberately unoptimized) characteristic: URL-based multi-file validation is
+sequential-fetch-bound (~82 s on Azure's tree); parallel prefetch would help but adds
+concurrency risk late in release — only pursue with demonstrated demand.

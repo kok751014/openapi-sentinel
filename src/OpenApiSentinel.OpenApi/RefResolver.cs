@@ -254,11 +254,6 @@ public sealed class RefResolver
             // a directory for disk documents, or the document's own URL for remote documents.
             if (currentDoc.BaseDirectory is not null)
             {
-                if (_remotePolicy.Enabled == false && LooksLikeAbsoluteUnixPath(docPart) && !docPart.StartsWith(currentDoc.BaseDirectory))
-                {
-                    // fallthrough: bounds check below rejects it anyway
-                }
-
                 var combined = Path.GetFullPath(Path.Combine(currentDoc.BaseDirectory, docPart));
                 // Containment policy:
                 // - Absolute filesystem paths outside the root tree are ALWAYS rejected
@@ -349,7 +344,6 @@ public sealed class RefResolver
         return (targetDoc, node, fragment);
     }
 
-    private static bool LooksLikeAbsoluteUnixPath(string p) => p.StartsWith('/') || p.Contains("..");
 
     private DocumentInstance LoadDocumentFromFile(string fullPath, string cacheKey, ResolutionContext ctx)
     {
