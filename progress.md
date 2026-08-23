@@ -729,3 +729,27 @@ risk #2): 3.x content-based parameters now diff EVERY declared media type.
 ### Exact next recommended action
 The last known silent spot is closed. Next iterations: gate re-runs only. Release ready
 pending user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~17:45 UTC — SEEDED DIFFERENTIAL FUZZ HARNESS — commit c70f704
+
+Implemented engineering-report improvement #3: `DifferentialFuzzTests` (OpenApi.Tests) —
+a deterministic generator (fixed seeds 1–40, offline, ~170 ms total) producing randomized
+spec shapes and asserting the engine's two core invariants across structure space that
+hand-written fixtures never reach:
+1. self-compare of ANY generated doc yields zero changes (false-positive invariant);
+2. A-vs-B comparison serializes identically across runs (determinism invariant);
+3. no generated input crashes load → parse → resolve → normalize → compare.
+
+Raise SeedCount locally for deeper sweeps; CI cost stays ~0.2 s. Suite **302/302**
+(OpenApi 107). Also re-verified the Stripe cross-version diff remains byte-identical to
+its recorded baseline post content-param refactor (174 findings, MINOR).
+
+### Git status
+- main @ c70f704 pushed; tree clean except this entry (committed next).
+- AGENTS.md test count synced to ~261 earlier this iteration (pre-fuzz).
+
+### Exact next recommended action
+Steady state. Future iterations may raise SeedCount temporarily as a deeper sweep when
+engine changes land; otherwise gate re-runs only. Publication awaits user-side creds.
