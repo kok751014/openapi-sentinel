@@ -61,7 +61,7 @@ jobs:
           grep -q '"display": "MAJOR"' artifacts/api-diff.json
 
       - name: Upload report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: sentinel-reports
@@ -78,7 +78,7 @@ jobs:
           dotnet-version: 10.0.x
       - name: Pack NuGet tool
         run: dotnet pack -c Release -o artifacts/pkg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nuget-tool
           path: artifacts/pkg/
