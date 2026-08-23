@@ -642,3 +642,28 @@ public class NoSuppressedFlagTests
         Assert.Contains("Suppressed (", console2.OutText, StringComparison.Ordinal);
     }
 }
+
+public class BooleanFlagParsingTests
+{
+    [Fact]
+    public void AllowRemote_BeforeSpec_DoesNotSwallowPositional()
+    {
+        // Real-world order: flags may precede positionals. --allow-remote must not
+        // consume the following spec path as a phantom value.
+        var parsed = CommandLineParser.Parse(["validate", "--allow-remote", "https://example.com/spec.json"]);
+        Assert.Equal("validate", parsed.Command);
+        var positional = Assert.Single(parsed.Positional);
+        Assert.Equal("https://example.com/spec.json", positional);
+        Assert.True(parsed.Has("allow-remote"));
+        Assert.Null(parsed.Value("allow-remote"));
+    }
+
+    [Fact]
+    public void BooleanFlag_AtEnd_TakesNoValue()
+    {
+        var parsed = CommandLineParser.Parse(["compare", "a.yaml", "b.yaml", "--no-color", "--verbose"]);
+        Assert.True(parsed.Has("no-color"));
+        Assert.True(parsed.Has("verbose"));
+        Assert.Equal(2, parsed.Positional.Count);
+    }
+}

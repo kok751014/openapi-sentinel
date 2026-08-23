@@ -26,6 +26,12 @@ public sealed class ParsedCommandLine
 /// </summary>
 public static class CommandLineParser
 {
+    /// <summary>Flags that never take a value; the next token remains a positional.</summary>
+    private static readonly HashSet<string> BooleanFlags = new(StringComparer.Ordinal)
+    {
+        "help", "version", "no-color", "verbose", "debug", "force",
+        "allow-remote", "report-unknown-kinds", "no-suppressed",
+    };
     public static ParsedCommandLine Parse(string[] args)
     {
         var options = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -63,8 +69,14 @@ public static class CommandLineParser
                 else
                 {
                     name = body;
-                    // Consume the next token as the value unless it starts with '-' or is missing.
-                    if (i + 1 < args.Length && !(args[i + 1].StartsWith('-') && args[i + 1] != "-"))
+                    // Consume the next token as the value unless this is a boolean flag
+                    // (which would otherwise swallow a following positional) or the next
+                    // token itself looks like another option / is the stdin marker.
+                    var takesValue =
+                        !BooleanFlags.Contains(name) &&
+                        i + 1 < args.Length &&
+                        !(args[i + 1].StartsWith('-') && args[i + 1] != "-");
+                    if (takesValue)
                     {
                         value = args[++i];
                     }
