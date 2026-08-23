@@ -1,6 +1,6 @@
 # Rule catalog
 
-OpenAPI Sentinel ships **74 built-in rules** with stable IDs (`CGxxxx`)
+OpenAPI Sentinel ships **77 built-in rules** with stable IDs (`CGxxxx`)
 plus **3 engine meta-checks** (`CG9001`, `CG9002`, `CG9003`)
 that document engine-emitted process findings.
 Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the
@@ -24,6 +24,9 @@ python3 build/gen-rules-doc.py
 | `CG1003` | Endpoint added | info | NonBreaking |
 | `CG1004` | Operation added | info | NonBreaking |
 | `CG1005` | Operation deprecated | medium | PotentiallyBreaking |
+| `CG1011` | Callback added | medium | PotentiallyBreaking |
+| `CG1012` | Callback removed | low | NonBreaking |
+| `CG1013` | Callback target expression changed | high | Breaking |
 
 ### `CG1001` — Endpoint removed
 
@@ -64,6 +67,30 @@ An operation was marked deprecated, signalling planned future removal.
 - **Default severity:** medium  
 - **Classification:** PotentiallyBreaking  
 - **Change kinds:** `operation.deprecated.changed`
+
+### `CG1011` — Callback added
+
+A new callback was added to an operation: the server will start making out-of-band requests to client-provided URLs as part of this operation's flow.
+
+- **Default severity:** medium  
+- **Classification:** PotentiallyBreaking  
+- **Change kinds:** `callback.added`
+
+### `CG1012` — Callback removed
+
+A callback declaration was removed from an operation: the server will no longer make those out-of-band requests.
+
+- **Default severity:** low  
+- **Classification:** NonBreaking  
+- **Change kinds:** `callback.removed`
+
+### `CG1013` — Callback target expression changed
+
+The runtime expression or URI template that determines where callback requests are delivered changed.
+
+- **Default severity:** high  
+- **Classification:** Breaking  
+- **Change kinds:** `callback.expression.changed`
 
 ## Parameter
 
@@ -446,7 +473,7 @@ allOf/oneOf/anyOf/not membership changed structurally.
 
 ### `CG5011` — Discriminator changed
 
-The discriminator (propertyName or mapping) of a polymorphic schema changed.
+The discriminator (propertyName or mapping) of a polymorphic schema changed. Property changes and mapping removals break payload routing; purely additive mapping extensions do not.
 
 - **Default severity:** high  
 - **Classification:** Breaking  
@@ -523,7 +550,7 @@ A property appears to have been renamed (same type and highly similar structure)
 | `CG6009` | HTTP security scheme changed | high | Breaking |
 | `CG6010` | Bearer format changed | low | PotentiallyBreaking |
 | `CG6011` | OpenID Connect URL changed | medium | PotentiallyBreaking |
-| `CG6012` | OAuth flow URL changed | medium | PotentiallyBreaking |
+| `CG6012` | OAuth flow changed | medium | PotentiallyBreaking |
 | `CG6013` | OAuth scope definition removed | medium | PotentiallyBreaking |
 | `CG6014` | OAuth scope definition added | info | NonBreaking |
 | `CG6015` | API key name changed | high | Breaking |
@@ -616,9 +643,9 @@ The openIdConnectUrl of a scheme changed.
 - **Classification:** PotentiallyBreaking  
 - **Change kinds:** `security.openid.url.changed`
 
-### `CG6012` — OAuth flow URL changed
+### `CG6012` — OAuth flow changed
 
-An authorization/token/refresh URL of an OAuth flow changed.
+An OAuth flow was added or removed, or an authorization/token/refresh URL of a flow changed.
 
 - **Default severity:** medium  
 - **Classification:** PotentiallyBreaking  

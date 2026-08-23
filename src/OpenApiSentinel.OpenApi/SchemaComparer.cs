@@ -423,9 +423,40 @@ public sealed class SchemaComparer
             var hasNew = newS.TryGetKeyword("discriminator", out var nd);
             if ((hasOld || hasNew) && !JsonDeepEquals(od, nd))
             {
-                Emit(ChangeKinds.DiscriminatorChanged, direction, path, method, location,
+                // Granular details let the rule separate breaking property changes from
+                // additive mapping extensions (false-positive control).
+                var details = new Dictionary<string, string>();
+                static JsonObject? AsObj(JsonNode? n) => n as JsonObject;
+                static string? Str(JsonNode? n) =>
+                    n is System.Text.Json.Nodes.JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
+                var oldObj = AsObj(od);
+                var newObj = AsObj(nd);
+                var oldProp = Str(oldObj?["propertyName"]);
+                var newProp = Str(newObj?["propertyName"]);
+
+                details["aspect"] = !string.Equals(oldProp, newProp, StringComparison.Ordinal)
+                    ? "propertyName"
+                    : "mapping";
+
+                var oldMap = oldObj?["mapping"] as JsonObject;
+                var newMap = newObj?["mapping"] as JsonObject;
+                if (oldMap is not null || newMap is not null)
+                {
+                    var removedKeys = (oldMap?.Select(kvp => kvp.Key) ?? Enumerable.Empty<string>())
+                        .Where(k => newMap?.ContainsKey(k) != true)
+                        .OrderBy(k => k, StringComparer.Ordinal).ToList();
+                    var addedKeys = (newMap?.Select(kvp => kvp.Key) ?? Enumerable.Empty<string>())
+                        .Where(k => oldMap?.ContainsKey(k) != true)
+                        .OrderBy(k => k, StringComparer.Ordinal).ToList();
+                    if (removedKeys.Count > 0) details["mappingRemoved"] = string.Join(",", removedKeys);
+                    if (addedKeys.Count > 0) details["mappingAdded"] = string.Join(",", addedKeys);
+                }
+
+                EmitWithDetail(ChangeKinds.DiscriminatorChanged, direction, path, method, location,
                     Truncate(od is null ? null : SemanticChange.ValueToString(od)),
-                    Truncate(nd is null ? null : SemanticChange.ValueToString(nd)));
+                    Truncate(nd is null ? null : SemanticChange.ValueToString(nd)),
+                    details);
             }
         }
     }

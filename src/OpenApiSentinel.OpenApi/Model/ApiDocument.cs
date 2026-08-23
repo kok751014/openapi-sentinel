@@ -100,6 +100,21 @@ public sealed class Operation
 
     /// <summary>Operation-level security; null inherits from document global security.</summary>
     public IReadOnlyList<SecurityRequirementInfo>? Security { get; init; }
+
+    /// <summary>Callbacks declared by this operation: out-of-band requests the SERVER will make to CLIENT-provided URLs (3.0+).</summary>
+    public IReadOnlyList<CallbackInfo> Callbacks { get; init; } = [];
+}
+
+/// <summary>
+/// A named callback definition. Each runtime expression / URI template maps to a
+/// path item describing the operations the server will invoke on the client.
+/// </summary>
+public sealed class CallbackInfo
+{
+    public required string Name { get; init; }
+
+    /// <summary>Runtime expression (e.g. '{$request.body#/callbackUrl}') keyed to its operations.</summary>
+    public required IReadOnlyDictionary<string, IReadOnlyDictionary<HttpMethodKind, Operation>> Expressions { get; init; }
 }
 
 public enum ParameterLocation

@@ -266,22 +266,38 @@ internal static class SecurityRules
         {
             Descriptor = new RuleDescriptor
             {
-                Id = "CG6012", Title = "OAuth flow URL changed",
+                Id = "CG6012", Title = "OAuth flow changed",
                 Category = FindingCategory.Security,
                 DefaultSeverity = Severity.Medium,
                 DefaultCompatibility = Compatibility.PotentiallyBreaking,
                 ChangeKinds = [ChangeKinds.OAuthFlowUrlChanged],
-                Description = "An authorization/token/refresh URL of an OAuth flow changed.",
-                Impact = "Clients integrating directly against those URLs break when the old endpoints disappear.",
-                Remediation = "Redirect from old URLs during a transition period.",
+                Description = "An OAuth flow was added or removed, or an authorization/token/refresh URL of a flow changed.",
+                Impact = "Removed flows break clients using that grant type; changed URLs break clients configured with the old endpoints.",
+                Remediation = "Keep removed flows and old URLs reachable during a documented migration window.",
             },
             Build = c =>
             {
                 c.Details.TryGetValue("flow", out var flow);
                 c.Details.TryGetValue("urlKind", out var urlKind);
+                var schemeName = c.Details.TryGetValue("scheme", out var s) && !string.IsNullOrEmpty(s) ? s : "(scheme)";
+
+                if (urlKind == "flow.added")
+                    return FindingFactory.Create("CG6012", "OAuth flow added",
+                        Severity.Low, Compatibility.NonBreaking, c,
+                        $"New OAuth flow '{flow}' was documented on security scheme '{schemeName}'.",
+                        "Additive capability; existing clients are unaffected.",
+                        "No action required; document the new grant option for integrators.");
+
+                if (urlKind == "flow.removed")
+                    return FindingFactory.Create("CG6012", "OAuth flow removed",
+                        Severity.Medium, Compatibility.PotentiallyBreaking, c,
+                        $"OAuth flow '{flow}' was removed from security scheme '{schemeName}'.",
+                        "Clients authenticating through this grant flow lose their documented integration path.",
+                        "Announce the removal and keep the flow available during a migration window.");
+
                 return FindingFactory.Create("CG6012", "OAuth flow URL changed",
                     Severity.Medium, Compatibility.PotentiallyBreaking, c,
-                    $"{urlKind} URL of flow '{flow}' on scheme '{c.Path}' changed: {RuleText.Values(c)}.",
+                    $"{urlKind} URL of flow '{flow}' on security scheme '{schemeName}' changed: {RuleText.Values(c)}.",
                     "Clients configured with the old URL fail once it is retired.",
                     "Keep the old endpoint reachable (redirect) during a deprecation window.");
             },

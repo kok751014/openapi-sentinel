@@ -588,15 +588,42 @@ internal static class SchemaRules
                 DefaultSeverity = Severity.High,
                 DefaultCompatibility = Compatibility.Breaking,
                 ChangeKinds = [ChangeKinds.DiscriminatorChanged],
-                Description = "The discriminator (propertyName or mapping) of a polymorphic schema changed.",
-                Impact = "Clients dispatching on the discriminator will route payloads incorrectly.",
+                Description = "The discriminator (propertyName or mapping) of a polymorphic schema changed. Property changes and mapping removals break payload routing; purely additive mapping extensions do not.",
+                Impact = "Clients dispatching on the discriminator will route payloads incorrectly when the property or existing mappings change.",
                 Remediation = "Keep discriminator property names stable; extend mappings additively.",
             },
-            Build = c => FindingFactory.Create("CG5011", "Discriminator changed",
-                Severity.High, Compatibility.Breaking, c,
-                $"Discriminator definition changed at {Where(c)}.",
-                "Polymorphic deserialization in client SDKs may break.",
-                "Preserve the discriminator property; only ever append new mappings."),
+            Build = c =>
+            {
+                var aspect = c.Details.TryGetValue("aspect", out var a) ? a : "";
+                c.Details.TryGetValue("mappingRemoved", out var removed);
+                c.Details.TryGetValue("mappingAdded", out var added);
+                var where = Where(c);
+
+                // Purely additive mapping extension: existing payload routing untouched.
+                if (aspect == "mapping" && string.IsNullOrEmpty(removed) && !string.IsNullOrEmpty(added))
+                    return FindingFactory.Create("CG5011", "Discriminator mapping extended",
+                        Severity.Low, Compatibility.NonBreaking, c,
+                        $"New discriminator mapping(s) [{added}] were added at {where}.",
+                        "Additive: existing variants keep routing exactly as before.",
+                        "No action required; document the new variants.");
+
+                // Mapping keys removed or mapping targets changed: consumers can no longer
+                // resolve affected variants confidently.
+                if (aspect == "mapping")
+                    return FindingFactory.Create("CG5011", "Discriminator mapping changed",
+                        Severity.Medium, Compatibility.PotentiallyBreaking, c,
+                        $"Discriminator mapping changed at {where}."
+                        + (string.IsNullOrEmpty(removed) ? "" : $" Removed: [{removed}].")
+                        + (string.IsNullOrEmpty(added) ? "" : $" Added: [{added}]."),
+                        "Consumers dispatching removed or retargeted variants may fail to deserialize payloads.",
+                        "Keep removed mappings resolvable during a migration window; retarget variants additively.");
+
+                return FindingFactory.Create("CG5011", "Discriminator changed",
+                    Severity.High, Compatibility.Breaking, c,
+                    $"Discriminator definition changed at {where}.",
+                    "Polymorphic deserialization in client SDKs may break.",
+                    "Preserve the discriminator property; only ever append new mappings.");
+            },
         };
 
         yield return new RuleDefinition

@@ -174,5 +174,71 @@ internal static class EndpointRules
                     "Keep old base URLs functional during transition or communicate the new endpoints clearly.");
             },
         };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG1011", Title = "Callback added",
+                Category = FindingCategory.Endpoint,
+                DefaultSeverity = Severity.Medium,
+                DefaultCompatibility = Compatibility.PotentiallyBreaking,
+                ChangeKinds = [ChangeKinds.CallbackAdded],
+                Description = "A new callback was added to an operation: the server will start making out-of-band requests to client-provided URLs as part of this operation's flow.",
+                Impact = "Consumers must be able to receive and handle these unsolicited requests. Integrations that do not implement the callback endpoint may log errors, drop events, or fail flow-level expectations.",
+                Remediation = "Document the callback payload contract clearly and give consumers time to implement the receiving endpoint before enabling it in production.",
+                BreakingExample = "post:\n  callbacks:\n    orderEvent:\n      '{$request.body#/callbackUrl}':\n        post: {...}   # newly declared",
+                NonBreakingExample = "# removing a callback only lifts demands on consumers (see CG1012)",
+                Limitations = "The tool compares callback declarations statically; it cannot verify that consumer implementations exist.",
+            },
+            Build = c => FindingFactory.Create("CG1011", "Callback added", Severity.Medium,
+                Compatibility.PotentiallyBreaking, c,
+                $"A callback '{c.NewValue}' was added to {c.HttpMethod.ToHttpString()} {c.Path}; the server will invoke client-provided URLs.",
+                "Consumers must host a receiver for these out-of-band requests or they will miss events / see failed deliveries.",
+                "Publish the callback payload schema and rollout plan so consumers can implement the handler first."),
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG1012", Title = "Callback removed",
+                Category = FindingCategory.Endpoint,
+                DefaultSeverity = Severity.Low,
+                DefaultCompatibility = Compatibility.NonBreaking,
+                ChangeKinds = [ChangeKinds.CallbackRemoved],
+                Description = "A callback declaration was removed from an operation: the server will no longer make those out-of-band requests.",
+                Impact = "Backward compatible for strict contract terms, but consumers that built infrastructure around receiving these callbacks stop receiving them and may consider their integration broken.",
+                Remediation = "Announce the removal; keep delivering via an alternative mechanism during a transition window if any consumer relied on the events.",
+                NonBreakingExample = "post:\n  callbacks:\n    orderEvent: {...}   # present in v1, absent in v2",
+                Limitations = "Classified non-breaking because no demand is placed on consumers, but event-driven integrations may still experience functional loss.",
+            },
+            Build = c => FindingFactory.Create("CG1012", "Callback removed", Severity.Low,
+                Compatibility.NonBreaking, c,
+                $"Callback '{c.OldValue}' on {c.HttpMethod.ToHttpString()} {c.Path} was removed; the server stops invoking that client URL.",
+                "No new demands are placed on consumers, but receivers of these events will stop hearing from the API.",
+                "Communicate the removal and offer a replacement delivery mechanism if consumers depend on the events."),
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG1013", Title = "Callback target expression changed",
+                Category = FindingCategory.Endpoint,
+                DefaultSeverity = Severity.High,
+                DefaultCompatibility = Compatibility.Breaking,
+                ChangeKinds = [ChangeKinds.CallbackExpressionChanged],
+                Description = "The runtime expression or URI template that determines where callback requests are delivered changed.",
+                Impact = "Deliveries move to a different target. Consumers whose handlers are registered at the previous location stop receiving calls, and the new target may not exist on their side at all.",
+                Remediation = "Treat this as a breaking change: coordinate the new delivery target with consumers, support both locations during migration, or version the operation.",
+                BreakingExample = "callbacks:\n  orderEvent:\n    '{$request.body#/callbackUrl}': {...}   # now '{$request.body#/notificationUrl}'",
+            },
+            Build = c => FindingFactory.Create("CG1013", "Callback target expression changed",
+                Severity.High, Compatibility.Breaking, c,
+                $"The delivery target of callback '{(c.Details.TryGetValue("callback", out var cb) ? cb : "callback")}' changed: {RuleText.Values(c)}.",
+                "Handlers registered at the previous target stop receiving calls; deliveries to the new target may go unanswered.",
+                "Coordinate the new target with consumers and deliver to both locations during a migration window."),
+        };
     }
 }

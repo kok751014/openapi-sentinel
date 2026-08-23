@@ -221,3 +221,113 @@ export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 - **Global security inheritance ignored**: `effectiveOld = oldOp.Security ?? []` treated null operation security as PUBLIC instead of inheriting document-level security. Fixed: GlobalSecurity threaded through ComparePathCollection→ComparePathItems→CompareOperations→CompareEffectiveSecurity; effective = op.Security ?? doc.GlobalSecurity.
 - **Parameter sub-change kinds/categories**: parameter schema sub-changes kept schema.* kinds and RequestBody category; remapped ConstraintChanged→ParameterConstraintChanged (CG2011 now actually fires), ItemsChanged→ParameterItemsChanged, Category=Parameter.
 - **Empty parameter locations**: parameter schema pass used "" prefix; now passes full parameter location ("GET /x parameters.pageSize").
+
+---
+
+## 2026-08-23 ~13:30 UTC — CALLBACK SUPPORT (master spec §8 false-negative class closed)
+
+**Gap found:** OpenAPI 3.0+ operation-level `callbacks` had ZERO support (grep for "allback" in *.cs returned nothing) — payload/schema/method edits inside callback declarations were invisible, despite callbacks being a contract consumers must implement. Webhooks got content-diffing in 12b6; callbacks were the remaining §8 item.
+
+### Completed
+- **Model**: `Operation.Callbacks` (`IReadOnlyList<CallbackInfo>`); `CallbackInfo { Name, Expressions: expr → methods → Operation }`.
+- **Normalizer**: `ParseCallbacks` — per-operation `callbacks` parsed recursively (nested callbacks work); inner ops normalize like real endpoints under synthetic display path `<callback:{METHOD} {ownerPath}:{name}>`; `x-` keys and malformed/empty declarations skipped.
+- **Engine**: `CompareCallbacks` + `CompareCallbackExpressions` wired into `CompareOperations`: add/remove by name (Details carry expression list); 1:1 expression change collapses to single `callback.expression.changed` (no remove+add noise); multi-expression changes emit per-expression events; method pairs inside matched expressions recurse through full `CompareOperations` (schemas/params/responses/security/nested callbacks reuse ALL existing rules). Zero-operation callbacks emit nothing (mirrors webhooks).
+- **Rules**: CG1011 CallbackAdded (Medium/PotentiallyBreaking), CG1012 CallbackRemoved (Low/NonBreaking), CG1013 CallbackExpressionChanged (High/Breaking). Catalog now **77 rules + 3 engine checks = 80 entries**; docs/rules.md regenerated via build/gen-rules-doc.py.
+- **DECISIONS.md**: entry 22 documents the design.
+- **Count sync**: README.md, product-positioning.md ("74 rules"→77), NuGet package Description in Directory.Build.props, AGENTS.md test count (~134→~222).
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/{Model/ApiDocument.cs, ChangeKinds.cs, ComparisonEngine.cs, OpenApiNormalizer.cs}
+- src/OpenApiSentinel.Rules/EndpointRules.cs
+- tests/OpenApiSentinel.OpenApi.Tests/CallbackDiffTests.cs (11 NEW)
+- tests/OpenApiSentinel.Rules.Tests/CallbackRuleTests.cs (4 NEW)
+- docs/rules.md (regenerated), docs/DECISIONS.md, README.md, docs/commercial/product-positioning.md, Directory.Build.props, AGENTS.md
+
+### Verification (actual results)
+- `dotnet build -c Release` → 0 errors, 0 warnings.
+- `dotnet test -c Release` → **222/222 passed** (Core 21, Reporting 35, OpenApi 49, Rules 76, Cli 38, Integration 3); catalog drift guards caught stale rules.md as designed, green after regen.
+- CLI end-to-end: expression change → `[HIGH] CG1013 … callbacks.orderEvent`, MAJOR rec, exit 1 (--fail-on high); combined rename+add scenario JSON shows CG1013 high/breaking + CG1011 medium/potentiallyBreaking at `/subscribe`; `explain CG1013` renders full descriptor.
+
+### Bugs found & fixed during this iteration
+- Test-fixture authoring errors only (raw-string indentation math, over-eager sed on YAML); product code compiled correct first pass except static/instance mismatch caught by compiler.
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker build/push needs a docker daemon (Dockerfile + CI jobs ready); GitHub Action marketplace listing not requested.
+
+### Git status
+- Modified: 5 src files, docs (rules.md/DECISIONS/README/positioning), Directory.Build.props, AGENTS.md; NEW: 2 test files; LOOP_PROMPT.md (loop tooling). Nothing committed (no user request).
+
+### Exact next recommended action
+1. Commit this iteration when the user asks (direct-to-main allowed per AGENTS.md).
+2. Next highest-value hardening candidates: (a) `paths` with server-relative URL templating edge cases in 3.2, (b) sample spec gains a callback example for demo/marketing visibility, (c) HTML report grouping check for `<callback:…>` paths (verify no rendering oddity), (d) re-run bench to confirm no perf regression from per-op callback list allocation.
+
+---
+
+## 2026-08-23 ~13:40 UTC — FALSE-NEGATIVE SWEEP: response-header payloads + OAuth flow additions
+
+**Defects found & fixed** (both real false negatives, found by code audit of under-diffed surfaces):
+1. **Response-header schema changes were never diffed** — CompareResponses only compared header add/remove/required-toggle. `X-Total-Count: integer→string` (client deserialization breakage) was completely silent. Header schemas now flow through SchemaComparer with Response direction; sub-changes carry Category=Response, location `... responses.<code>.headers.<name>...`, and statusCode detail (glob/suppression-friendly). Existing CG50xx rules classify them direction-aware automatically (e.g. integer→number response = CG5001 PotentiallyBreaking Medium; cross-family string flip = Critical/Breaking).
+2. **Whole OAuth flow additions to an existing scheme were undetected** (flow removals and scope-def changes were, additions weren't). Engine now emits `security.flow.url.changed` with `urlKind=flow.added`; CG6012 rewritten as a 3-way branch: flow.added → Low/NonBreaking "OAuth flow added"; flow.removed → Medium/PotentiallyBreaking "OAuth flow removed" (clearer title than the old generic URL-changed wording); URL changes unchanged. Also fixed pre-existing wording bug: explanation said "on scheme ''" because it read c.Path (always empty for scheme-level events) instead of Details["scheme"].
+
+**Also verified non-defects this iteration:** SARIF `artifactLocation.uri` correctly percent-encodes synthetic `<callback:…>`/`<webhook:…>` paths (`Uri.EscapeDataString` → `%3C…%3E`) — no GitHub code-scanning interop issue; `properties.location` carries the human location at result level (earlier probe misread nesting).
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/ComparisonEngine.cs (header schema pass; flow-added emission)
+- src/OpenApiSentinel.Rules/SecurityRules.cs (CG6012 branch + descriptor + scheme-name wording fix)
+- tests/OpenApiSentinel.OpenApi.Tests/HeaderSchemaAndFlowTests.cs (5 NEW)
+- tests/OpenApiSentinel.Rules.Tests/HeaderSchemaAndFlowRuleTests.cs (4 NEW)
+- docs/rules.md (regenerated — CG6012 descriptor text)
+
+### Verification (actual results)
+- `dotnet build -c Release` → 0 errors, 0 warnings.
+- `dotnet test -c Release` → **231/231 passed** (Core 21, Reporting 35, OpenApi 54, Rules 80, Cli 38, Integration 3).
+- CLI end-to-end: header type flip → `[CRITICAL] CG5001 … responses.200.headers.X-Total-Count`, MAJOR rec, exit 1.
+- Bench re-run post-callback-feature: Small compare 1.2ms, Medium 15.4ms (113 changes), Large 87.1ms (555 changes) — consistent with historical numbers, no regression.
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker build/push needs docker daemon; marketplace listing not requested. Nothing committed (no user request).
+
+### Git status
+- Modified: ComparisonEngine.cs, SecurityRules.cs, docs/rules.md + previous iteration's 15 paths (callback feature still uncommitted).
+- NEW: tests/OpenApiSentinel.OpenApi.Tests/HeaderSchemaAndFlowTests.cs, tests/OpenApiSentinel.Rules.Tests/HeaderSchemaAndFlowRuleTests.cs.
+
+### Exact next recommended action
+1. Commit both iterations when the user asks.
+2. Remaining hardening candidates (all optional): (a) discriminator mapping-only change granularity, (b) path rename heuristic (/users/{id} → /users/{userId} currently remove+add — documented behavior), (c) docs/examples refresh to showcase callback + header findings, (d) consider `4XX`/`default` coverage note for header removals (currently only status-code removal is wildcard-masked — asymmetric but documented in 12b48b).
+
+---
+
+## 2026-08-23 ~13:55 UTC — DISCRIMINATOR GRANULARITY (CG5011 false positive eliminated)
+
+**Defect fixed:** CG5011 classified EVERY discriminator change as Breaking High — including purely additive mapping extensions, which are non-breaking by the product's own §55 standard (mapping extension = existing variants keep routing; recommendation was MAJOR for a PATCH-worthy change).
+
+**Implementation:**
+- SchemaComparer discriminator block now emits Details: `aspect` (propertyName|mapping), `mappingAdded`, `mappingRemoved` (sorted CSVs).
+- CG5011 rewritten as 3-way branch: propertyName involved → High/Breaking "Discriminator changed"; mapping removed/retargeted → Medium/PotentiallyBreaking "Discriminator mapping changed"; purely additive mapping → Low/NonBreaking "Discriminator mapping extended".
+- Verified end-to-end: mapping extension now → PASSED / PATCH recommendation / exit 0 with --fail-on high (previously FAILED/MAJOR/exit 1).
+- DECISIONS.md entry 23 + compatibility-model.md "Discriminator granularity" section.
+- Known limitation documented (not fixed, rare edge): 3.x content-based parameters keep only the first media type's schema — second-media-type edits are invisible. Recorded in DECISIONS.md entry 23.
+
+**Test-harness lesson (cost real debugging time):** C# raw-string literals strip the closing-delimiter indentation, so `.Replace()` searches inside fixture consts must use POST-STRIP indentation, not source-visible indentation. Silent no-op replaces produced "identical specs → zero findings" which masked three tests as empty-result failures. Fixed by using 10-space (effective) search strings + Assert.NotEqual guard.
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/SchemaComparer.cs (discriminator details)
+- src/OpenApiSentinel.Rules/SchemaRules.cs (CG5011 branch)
+- tests/OpenApiSentinel.Rules.Tests/DiscriminatorGranularityTests.cs (5 NEW)
+- docs/rules.md (regenerated), docs/DECISIONS.md, docs/compatibility-model.md
+
+### Verification (actual results)
+- `dotnet build -c Release` → 0 errors, 0 warnings.
+- `dotnet test -c Release` → **236/236 passed** (Core 21, Reporting 35, OpenApi 54, Rules 85, Cli 38, Integration 3).
+- CLI: mapping extension pair → CG5011 LOW, PASSED, PATCH, exit 0.
+
+### Unfinished / external blockers (unchanged)
+- NuGet push needs NUGET_API_KEY; Docker needs daemon; nothing committed (no user request).
+
+### Git status
+- Modified: SchemaComparer.cs, SchemaRules.cs, docs/{rules.md,DECISIONS.md,compatibility-model.md} + prior iterations' uncommitted paths.
+- NEW: tests/OpenApiSentinel.Rules.Tests/DiscriminatorGranularityTests.cs (+3 earlier new test files).
+
+### Exact next recommended action
+1. Commit all three iterations when the user asks.
+2. Optional remaining candidates: (a) content-parameter multi-media limitation fix (model change — only if real-world demand), (b) docs/examples refresh showcasing callback/header/discriminator findings, (c) header-removal wildcard-masking doc note (12b48b asymmetry), (d) another real-world spec validation run (e.g. DigitalOcean replacement URL or Stripe) to re-prove scale after recent engine additions.

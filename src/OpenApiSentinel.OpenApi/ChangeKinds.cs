@@ -17,6 +17,11 @@ public static class ChangeKinds
     public const string OperationIdRemoved = "operation.operationId.removed";
     public const string ServerChanged = "servers.changed";
 
+    // ---- Callbacks (out-of-band server→client operations declared per operation) ----
+    public const string CallbackAdded = "callback.added";
+    public const string CallbackRemoved = "callback.removed";
+    public const string CallbackExpressionChanged = "callback.expression.changed";
+
     // ---- Parameters ----
     public const string ParameterAdded = "parameter.added";
     public const string ParameterRemoved = "parameter.removed";

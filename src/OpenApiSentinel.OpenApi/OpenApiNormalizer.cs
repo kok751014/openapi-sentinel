@@ -172,7 +172,46 @@ public static class OpenApiNormalizer
             RequestBody = requestBody,
             Responses = responses,
             Security = ParseSecurityRequirements(op["security"], spec),
+            Callbacks = ParseCallbacks(op["callbacks"] as JsonObject, path, method, spec),
         };
+    }
+
+    /// <summary>
+    /// Parses operation-level callbacks (3.0+). Each named callback maps runtime
+    /// expressions to path items; their operations are normalized like real endpoints
+    /// under a synthetic display path so every downstream diff (schemas, parameters,
+    /// security, nested callbacks) applies unchanged. Nested callbacks recurse naturally.
+    /// </summary>
+    private static List<CallbackInfo> ParseCallbacks(
+        JsonObject? callbacks, string ownerPath, HttpMethodKind ownerMethod, SpecVersion spec)
+    {
+        var result = new List<CallbackInfo>();
+        if (callbacks is null) return result;
+
+        foreach (var (name, cbNode) in callbacks)
+        {
+            if (name.StartsWith("x-", StringComparison.Ordinal)) continue;
+            if (cbNode is not JsonObject expressions) continue;
+
+            var exprMap = new Dictionary<string, IReadOnlyDictionary<HttpMethodKind, Operation>>(StringComparer.Ordinal);
+            foreach (var (expression, itemNode) in expressions)
+            {
+                if (itemNode is not JsonObject itemObj) continue;
+                var ops = new Dictionary<HttpMethodKind, Operation>();
+                var displayPath = $"<callback:{ownerMethod.ToHttpString()} {ownerPath}:{name}>";
+                foreach (var key in HttpOperationKeys)
+                    if (itemObj[key] is JsonObject opObj)
+                    {
+                        var m = HttpMethodKindExtensions.ParseHttpMethod(key);
+                        ops[m] = NormalizeOperation(opObj, displayPath, m, [], spec);
+                    }
+                exprMap[expression] = ops;
+            }
+
+            result.Add(new CallbackInfo { Name = name, Expressions = exprMap });
+        }
+
+        return result.OrderBy(c => c.Name, StringComparer.Ordinal).ToList();
     }
 
     /// <summary>

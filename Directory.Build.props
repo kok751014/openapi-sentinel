@@ -37,7 +37,7 @@
     <ToolCommandName Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">openapi-sentinel</ToolCommandName>
     <PackageId Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">OpenApiSentinel</PackageId>
     <PackageReadmeFile Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">README.md</PackageReadmeFile>
-    <Description Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">Catch breaking OpenAPI contract changes before they reach production. Direction-aware comparison for Swagger/OpenAPI 2.0-3.2 (JSON &amp; YAML) with 74 stable rules, CI exit codes, baselines, suppressions and offline operation.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">Catch breaking OpenAPI contract changes before they reach production. Direction-aware comparison for Swagger/OpenAPI 2.0-3.2 (JSON &amp; YAML) with 77 stable rules, CI exit codes, baselines, suppressions and offline operation.</Description>
     <PackageOutputPath Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">$(MSBuildThisFileDirectory)artifacts/packages</PackageOutputPath>
     <RollForward>LatestMajor</RollForward>
   </PropertyGroup>

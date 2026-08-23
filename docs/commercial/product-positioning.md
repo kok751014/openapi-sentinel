@@ -20,7 +20,7 @@ plain language, and enforces your policy directly in CI.
 
 - **OpenAPI 2.0 → 3.2** support including 3.1/3.2 JSON-Schema dialect handling.
 - **Direction-aware analysis**: request vs response compatibility treated as distinct promises.
-- **74 rules + 3 engine self-checks** (`CGxxxx`) with human explanations, impact and remediation text.
+- **77 rules + 3 engine self-checks** (`CGxxxx`) with human explanations, impact and remediation text.
 - **Offline & private by default**: no telemetry, no uploads; remote fetch is opt-in and
   SSRF-guarded.
 - **CI-native**: documented exit codes, SARIF/JUnit, GitHub annotations, baselines,

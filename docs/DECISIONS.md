@@ -143,3 +143,46 @@ A change kind may be claimed by multiple rules when each declares an `AppliesTo`
 (e.g. became-required vs became-optional share one kind but classify oppositely). The engine
 routes deterministically (rule-id order, first accepting guard) and a coverage test enforces
 that shared kinds always declare guards — preventing first-wins misrouting regressions.
+
+## 22. Operation-level callbacks are first-class contract surface
+
+OpenAPI 3.0+ `callbacks` describe requests the SERVER makes to CLIENT-provided URLs —
+a contract consumers must implement, exactly like webhooks. Leaving them undiffed was a
+systematic false-negative class (payload edits inside callbacks were invisible).
+
+- **Normalization**: each callback's runtime expressions map to path items whose operations
+  normalize like real endpoints under the synthetic display path
+  `<callback:{METHOD} {ownerPath}:{name}>` (identifies declaring operation + callback name;
+  deterministic; glob/suppression friendly). Nested callbacks recurse naturally.
+- **Comparison**: per-operation set diff emits `callback.added` / `callback.removed`
+  (Details carry the expression list); a 1:1 expression change collapses to a single
+  `callback.expression.changed` event instead of remove+add noise. Method pairs inside
+  matched expressions flow through the standard `CompareOperations` path, so schemas,
+  parameters, responses, security and nested callbacks reuse every existing rule.
+  Callbacks with zero declared operations emit nothing (mirrors webhooks).
+- **Classification**: added = PotentiallyBreaking Medium (CG1011, consumers must host
+  receivers); removed = NonBreaking Low (CG1012, no new demands but event loss is noted);
+  target-expression changed = Breaking High (CG1013, deliveries move where handlers may
+  not exist). Whole-operation add/remove already covers its callbacks via CG1003/CG1002,
+  so no double reporting.
+
+Consequence: MASTER_PROMPT §8 "callbacks where supported" is satisfied for OpenAPI
+3.0–3.2; catalog grows to 77 rules + 3 engine checks.
+
+## 23. Discriminator changes are classified by aspect, not wholesale
+
+CG5011 previously flagged every discriminator change as Breaking High — including purely
+additive mapping extensions, a false positive by the product's own §55 standard.
+
+The comparer now emits Details on `schema.discriminator.changed`:
+- `aspect=propertyName` (property added/removed/renamed, or whole discriminator added) →
+  CG5011 High/Breaking — payload routing keys changed.
+- `aspect=mapping` with removed keys or retargeted values → Medium/PotentiallyBreaking
+  "Discriminator mapping changed" — consumers can no longer resolve affected variants.
+- `aspect=mapping` purely additive → Low/NonBreaking "Discriminator mapping extended" —
+  existing variants keep routing exactly as before; PATCH-worthy, not MAJOR.
+
+Known limitation (recorded, not fixed): 3.x content-based parameters keep only the FIRST
+media type's schema in the normalized model, so schema edits in a second media type of the
+same parameter are invisible. Multi-media-type content parameters are rare; the parameter
+model would need a content map to fix properly.

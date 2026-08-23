@@ -107,3 +107,15 @@ Reported as `CG2003` (Parameter became required), High/Breaking:
 
 The mirrored change on a *response header* would classify entirely differently — that is
 the point of the model.
+
+## Discriminator granularity
+
+Polymorphic dispatch makes discriminator changes special: the same object can change in
+breaking and non-breaking ways.
+
+- `propertyName` changed (or the discriminator added/removed wholesale): **Breaking, High**
+  — the routing key itself moved; every consumer dispatching on it is affected.
+- `mapping` entries removed or retargeted: **PotentiallyBreaking, Medium** — affected
+  variants can no longer be resolved confidently by consumers.
+- `mapping` purely extended: **NonBreaking, Low** — existing variants keep routing exactly
+  as before. This is the difference between a MAJOR and a PATCH release recommendation.

@@ -260,7 +260,183 @@ public sealed class ComparisonEngine
 
         // security
         CompareEffectiveSecurity(oldOp.Security ?? oldGlobalSecurity, newOp.Security ?? newGlobalSecurity, path, method, locPrefix, changes);
+
+        // callbacks (out-of-band server→client operations declared by this operation)
+        CompareCallbacks(oldOp.Callbacks, newOp.Callbacks, path, method, locPrefix, oldGlobalSecurity, newGlobalSecurity, changes);
     }
+
+    // ---------------- callbacks ----------------
+
+    private void CompareCallbacks(
+        IReadOnlyList<CallbackInfo> oldCallbacks,
+        IReadOnlyList<CallbackInfo> newCallbacks,
+        string parentPath,
+        HttpMethodKind parentMethod,
+        string locPrefix,
+        IReadOnlyList<SecurityRequirementInfo>? oldGlobalSecurity,
+        IReadOnlyList<SecurityRequirementInfo>? newGlobalSecurity,
+        List<SemanticChange> changes)
+    {
+        var oldByName = oldCallbacks.ToDictionary(c => c.Name, StringComparer.Ordinal);
+        var newByName = newCallbacks.ToDictionary(c => c.Name, StringComparer.Ordinal);
+
+        foreach (var name in oldByName.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (newByName.ContainsKey(name)) continue;
+            if (TotalOperations(oldByName[name]) == 0) continue;
+            changes.Add(new SemanticChange
+            {
+                Kind = ChangeKinds.CallbackRemoved,
+                Category = FindingCategory.Endpoint,
+                Path = parentPath,
+                HttpMethod = parentMethod,
+                Location = $"{locPrefix} callbacks.{name}",
+                OldValue = name,
+                Details = new FrozenMap(new Dictionary<string, string>
+                {
+                    ["callback"] = name,
+                    ["expressions"] = string.Join(", ", SortedExpressions(oldByName[name])),
+                }),
+            });
+        }
+
+        foreach (var name in newByName.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (!oldByName.TryGetValue(name, out var oldCb))
+            {
+                if (TotalOperations(newByName[name]) == 0) continue;
+                changes.Add(new SemanticChange
+                {
+                    Kind = ChangeKinds.CallbackAdded,
+                    Category = FindingCategory.Endpoint,
+                    Path = parentPath,
+                    HttpMethod = parentMethod,
+                    Location = $"{locPrefix} callbacks.{name}",
+                    NewValue = name,
+                    Details = new FrozenMap(new Dictionary<string, string>
+                    {
+                        ["callback"] = name,
+                        ["expressions"] = string.Join(", ", SortedExpressions(newByName[name])),
+                    }),
+                });
+                continue;
+            }
+
+            CompareCallbackExpressions(oldCb!, newByName[name], parentPath, parentMethod, locPrefix,
+                oldGlobalSecurity, newGlobalSecurity, changes);
+        }
+    }
+
+    private void CompareCallbackExpressions(
+        CallbackInfo oldCb,
+        CallbackInfo newCb,
+        string parentPath,
+        HttpMethodKind parentMethod,
+        string locPrefix,
+        IReadOnlyList<SecurityRequirementInfo>? oldGlobalSecurity,
+        IReadOnlyList<SecurityRequirementInfo>? newGlobalSecurity,
+        List<SemanticChange> changes)
+    {
+        var name = oldCb.Name;
+        var oldExprs = oldCb.Expressions;
+        var newExprs = newCb.Expressions;
+
+        // Common case: exactly one expression on each side that differs → one precise
+        // rename-style event instead of remove+add noise.
+        if (oldExprs.Count == 1 && newExprs.Count == 1 &&
+            !string.Equals(oldExprs.Keys.Single(), newExprs.Keys.Single(), StringComparison.Ordinal))
+        {
+            changes.Add(new SemanticChange
+            {
+                Kind = ChangeKinds.CallbackExpressionChanged,
+                Category = FindingCategory.Endpoint,
+                Path = parentPath,
+                HttpMethod = parentMethod,
+                Location = $"{locPrefix} callbacks.{name}",
+                OldValue = oldExprs.Keys.Single(),
+                NewValue = newExprs.Keys.Single(),
+                Details = new FrozenMap(new Dictionary<string, string> { ["callback"] = name }),
+            });
+        }
+        else
+        {
+            foreach (var expr in oldExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                if (newExprs.ContainsKey(expr)) continue;
+                changes.Add(new SemanticChange
+                {
+                    Kind = ChangeKinds.CallbackExpressionChanged,
+                    Category = FindingCategory.Endpoint,
+                    Path = parentPath,
+                    HttpMethod = parentMethod,
+                    Location = $"{locPrefix} callbacks.{name}",
+                    OldValue = expr,
+                    Details = new FrozenMap(new Dictionary<string, string>
+                    {
+                        ["callback"] = name, ["change"] = "removed",
+                    }),
+                });
+            }
+
+            foreach (var expr in newExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                if (oldExprs.ContainsKey(expr)) continue;
+                changes.Add(new SemanticChange
+                {
+                    Kind = ChangeKinds.CallbackExpressionChanged,
+                    Category = FindingCategory.Endpoint,
+                    Path = parentPath,
+                    HttpMethod = parentMethod,
+                    Location = $"{locPrefix} callbacks.{name}",
+                    NewValue = expr,
+                    Details = new FrozenMap(new Dictionary<string, string>
+                    {
+                        ["callback"] = name, ["change"] = "added",
+                    }),
+                });
+            }
+        }
+
+        // Diff the operations inside matched expressions. Inner operations carry the
+        // synthetic '<callback:...>' display path, so every downstream rule applies unchanged.
+        foreach (var expr in oldExprs.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (!newExprs.TryGetValue(expr, out var newOps)) continue;
+            var oldOps = oldExprs[expr];
+
+            foreach (var method in MethodOrder)
+            {
+                var hasOld = oldOps.TryGetValue(method, out var oldOp);
+                var hasNew = newOps.TryGetValue(method, out var newOp);
+                if (hasOld && hasNew)
+                    CompareOperations(oldOp!, newOp!, oldGlobalSecurity, newGlobalSecurity, changes);
+                else if (hasOld)
+                    changes.Add(new SemanticChange
+                    {
+                        Kind = ChangeKinds.OperationRemoved,
+                        Category = FindingCategory.Endpoint,
+                        Path = oldOp!.Path,
+                        HttpMethod = method,
+                        Location = $"{method.ToHttpString()} {oldOp.Path}",
+                    });
+                else if (hasNew)
+                    changes.Add(new SemanticChange
+                    {
+                        Kind = ChangeKinds.OperationAdded,
+                        Category = FindingCategory.Endpoint,
+                        Path = newOp!.Path,
+                        HttpMethod = method,
+                        Location = $"{method.ToHttpString()} {newOp.Path}",
+                    });
+            }
+        }
+    }
+
+    private static List<string> SortedExpressions(CallbackInfo cb) =>
+        cb.Expressions.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+    private static int TotalOperations(CallbackInfo cb) =>
+        cb.Expressions.Values.Sum(ops => ops.Count);
 
     // ---------------- parameters ----------------
 
@@ -602,24 +778,26 @@ public sealed class ComparisonEngine
                 var newHeaders = newResp.Headers.ToDictionary(h => h.Name, StringComparer.Ordinal);
                 foreach (var hName in oldHeaders.Keys.OrderBy(k => k, StringComparer.Ordinal))
                 {
-                    if (!newHeaders.TryGetValue(hName, out var newHeader))
+                if (!newHeaders.TryGetValue(hName, out var newHeader))
+                {
+                    changes.Add(new SemanticChange
                     {
-                        changes.Add(new SemanticChange
+                        Kind = ChangeKinds.ResponseHeaderRemoved,
+                        Category = FindingCategory.Response,
+                        Path = path,
+                        HttpMethod = method,
+                        Location = $"{locPrefix} responses.{code}.headers.{hName}",
+                        Direction = ApiDirection.Response,
+                        OldValue = hName,
+                        Details = WithStatusCode(new Dictionary<string, string>
                         {
-                            Kind = ChangeKinds.ResponseHeaderRemoved,
-                            Category = FindingCategory.Response,
-                            Path = path,
-                            HttpMethod = method,
-                            Location = $"{locPrefix} responses.{code}.headers.{hName}",
-                            Direction = ApiDirection.Response,
-                            OldValue = hName,
-                            Details = WithStatusCode(new Dictionary<string, string>
-                            {
-                                ["required"] = oldHeaders[hName].Required ? "true" : "false",
-                            }, code),
-                        });
-                    }
-                    else if (oldHeaders[hName].Required != newHeader.Required)
+                            ["required"] = oldHeaders[hName].Required ? "true" : "false",
+                        }, code),
+                    });
+                }
+                else
+                {
+                    if (oldHeaders[hName].Required != newHeader.Required)
                     {
                         changes.Add(new SemanticChange
                         {
@@ -634,6 +812,28 @@ public sealed class ComparisonEngine
                             Details = WithStatusCode(new Dictionary<string, string>(), code),
                         });
                     }
+
+                    // Header payloads are typed contracts: diff the header schema exactly
+                    // like response content so type/constraint drift cannot slip through.
+                    var oldHeaderSchema = oldHeaders[hName].Schema;
+                    var newHeaderSchema = newHeader.Schema;
+                    if (oldHeaderSchema is not null || newHeaderSchema is not null)
+                    {
+                        var subChanges = _schemaComparer.Compare(
+                            oldHeaderSchema, newHeaderSchema,
+                            path, method, ApiDirection.Response,
+                            $"{code}.headers.{hName}");
+                        foreach (var c in subChanges)
+                        {
+                            changes.Add(c with
+                            {
+                                Category = FindingCategory.Response,
+                                Location = $"{locPrefix} responses.{c.Location}",
+                                Details = WithStatusCode(c.Details, code),
+                            });
+                        }
+                    }
+                }
                 }
                 foreach (var hName in newHeaders.Keys.OrderBy(k => k, StringComparer.Ordinal))
                     if (!oldHeaders.ContainsKey(hName))
@@ -914,6 +1114,12 @@ public sealed class ComparisonEngine
                         Add(ChangeKinds.OAuthFlowScopeDefAdded, null, scope,
                             new Dictionary<string, string> { ["flow"] = flowName, ["scope"] = scope });
             }
+
+            // Whole-flow additions on an existing scheme were previously undetected.
+            foreach (var flowName in newScheme.Flows.Keys.OrderBy(k => k, StringComparer.Ordinal))
+                if (!oldScheme.Flows.ContainsKey(flowName))
+                    Add(ChangeKinds.OAuthFlowUrlChanged, null, flowName,
+                        new Dictionary<string, string> { ["flow"] = flowName, ["urlKind"] = "flow.added" });
         }
 
         foreach (var name in newSchemes.Keys.OrderBy(k => k, StringComparer.Ordinal))
