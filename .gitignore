@@ -14,3 +14,6 @@ TestResults/
 *.binlog
 sentinel-reports/
 .opencode/
+
+# local tooling artifacts
+/openapi-sentinel.yml
