@@ -68,6 +68,16 @@ public sealed class ConsoleReporter : IResultReporter
             }
         }
 
+        if (result.Processing is { } proc)
+        {
+            var bits = new List<string>();
+            if (proc.UnmatchedChanges > 0) bits.Add($"{proc.UnmatchedChanges} unevaluated");
+            if (proc.DisabledByOverride > 0) bits.Add($"{proc.DisabledByOverride} disabled by override");
+            if (proc.IgnoredByPath > 0) bits.Add($"{proc.IgnoredByPath} ignored by path filters");
+            if (bits.Count > 0)
+                w.WriteLine($"  Processing notes: {string.Join("; ", bits)}");
+        }
+
         if (options.Verbose && result.Endpoints is { Count: > 0 } endpoints)
         {
             w.WriteLine();

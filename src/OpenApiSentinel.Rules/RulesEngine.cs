@@ -194,6 +194,20 @@ public sealed class RulesEngine
         var recommendation = RecommendVersion(findings, changeList);
         var decision = options.Policy.Evaluate(findings);
 
+        var statistics = new EngineStatistics
+        {
+            ChangeCount = changeList.Count,
+            FindingsEmitted = findings.Count,
+            UnmatchedChangeCount = unmatched,
+            UnknownChangeKinds = unknownKinds.ToList(),
+            DisabledByOverrideCount = disabledByOverride,
+            IgnoredByPathCount = ignoredByPath,
+            SuppressedByConfigCount = suppressedByConfig,
+            SuppressedByBaselineCount = suppressedByBaseline,
+            ExpiredSuppressionCount = expiredCount,
+            StaleBaselineCount = staleBaseline.Count,
+        };
+
         var result = new ComparisonResult
         {
             SchemaVersion = ComparisonResult.SchemaVersionValue,
@@ -211,20 +225,16 @@ public sealed class RulesEngine
             Recommendation = recommendation,
             PolicyViolated = decision.Violated,
             Endpoints = BuildEndpointSummaries(findings, changeList),
-        };
-
-        var statistics = new EngineStatistics
-        {
-            ChangeCount = changeList.Count,
-            FindingsEmitted = findings.Count,
-            UnmatchedChangeCount = unmatched,
-            UnknownChangeKinds = unknownKinds.ToList(),
-            DisabledByOverrideCount = disabledByOverride,
-            IgnoredByPathCount = ignoredByPath,
-            SuppressedByConfigCount = suppressedByConfig,
-            SuppressedByBaselineCount = suppressedByBaseline,
-            ExpiredSuppressionCount = expiredCount,
-            StaleBaselineCount = staleBaseline.Count,
+            Processing = new ProcessingSummary
+            {
+                Changes = statistics.ChangeCount,
+                FindingsEmitted = statistics.FindingsEmitted,
+                UnmatchedChanges = statistics.UnmatchedChangeCount,
+                DisabledByOverride = statistics.DisabledByOverrideCount,
+                IgnoredByPath = statistics.IgnoredByPathCount,
+                SuppressedByConfig = statistics.SuppressedByConfigCount,
+                SuppressedByBaseline = statistics.SuppressedByBaselineCount,
+            },
         };
 
         return new EngineEvaluation { Result = result, Statistics = statistics };

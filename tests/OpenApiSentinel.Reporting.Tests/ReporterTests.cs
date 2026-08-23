@@ -513,3 +513,25 @@ public class DocumentLevelLocationTests
         Assert.False(string.IsNullOrWhiteSpace(uri));
     }
 }
+
+public class ProcessingSummaryTests
+{
+    [Fact]
+    public void Json_IncludesProcessingCounters()
+    {
+        var result = TestResults.Failing() with
+        {
+            Processing = new Core.ProcessingSummary
+            {
+                Changes = 42,
+                FindingsEmitted = 3,
+                IgnoredByPath = 2,
+            },
+        };
+        var json = new JsonReporter().Render(result, ReporterOptions.Default);
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var proc = doc.RootElement.GetProperty("processing");
+        Assert.Equal(42, proc.GetProperty("changes").GetInt32());
+        Assert.Equal(2, proc.GetProperty("ignoredByPath").GetInt32());
+    }
+}

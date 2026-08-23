@@ -90,6 +90,21 @@ public sealed record ComparisonResult
 
     /// <summary>Markdown changelog body when requested; null otherwise.</summary>
     public string? ChangelogMarkdown { get; init; }
+
+    /// <summary>How the engine processed the incoming change stream (additive, v1.0).</summary>
+    public ProcessingSummary? Processing { get; init; }
+}
+
+/// <summary>Observability counters for the rules-engine stage.</summary>
+public sealed record ProcessingSummary
+{
+    public int Changes { get; init; }
+    public int FindingsEmitted { get; init; }
+    public int UnmatchedChanges { get; init; }
+    public int DisabledByOverride { get; init; }
+    public int IgnoredByPath { get; init; }
+    public int SuppressedByConfig { get; init; }
+    public int SuppressedByBaseline { get; init; }
 }
 
 public sealed record EndpointSummary
