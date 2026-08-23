@@ -331,3 +331,22 @@ export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 ### Exact next recommended action
 1. Commit all three iterations when the user asks.
 2. Optional remaining candidates: (a) content-parameter multi-media limitation fix (model change — only if real-world demand), (b) docs/examples refresh showcasing callback/header/discriminator findings, (c) header-removal wildcard-masking doc note (12b48b asymmetry), (d) another real-world spec validation run (e.g. DigitalOcean replacement URL or Stripe) to re-prove scale after recent engine additions.
+
+---
+
+## 2026-08-23 ~14:05 UTC — MILESTONE COMMITTED & PUSHED + SCALE RE-VALIDATION
+
+**Git milestone backup policy executed** (per updated LOOP_PROMPT.md):
+- Reviewed diff (17 modified + 5 new files), secret scan clean, gates green.
+- **Commit `618c506`** pushed to origin/main: callback diffing (CG1011-13), response-header schema diff, OAuth flow-addition detection, aspect-aware CG5011 discriminator classification; catalog 77 rules + 3 engine checks; suite 236/236.
+
+**Real-world scale re-validation after all three engine additions:**
+- GitHub REST API description (~10 MB, 809 paths, 1221 operations): `validate --allow-remote` → OK in 4.9s.
+- Remote-vs-remote self-compare → passed, 0 findings, 13.6s total incl. two 10MB fetches. Deterministic, no regression from callbacks/header/flow code paths.
+
+### Current state
+- Build: 0 errors / 0 warnings. Tests: 236/236. Working tree: clean except progress.md (this entry).
+- External blockers unchanged: NuGet push needs NUGET_API_KEY; Docker image build needs a daemon (CI jobs ready).
+
+### Exact next recommended action
+1. Optional hardening only: (a) docs/examples refresh showcasing callback/header/discriminator findings for marketing; (b) header-removal wildcard-masking doc note; (c) content-parameter multi-media limitation fix if real demand appears. If none chosen: re-run gates, keep repo healthy.
