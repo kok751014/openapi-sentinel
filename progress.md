@@ -753,3 +753,16 @@ its recorded baseline post content-param refactor (174 findings, MINOR).
 ### Exact next recommended action
 Steady state. Future iterations may raise SeedCount temporarily as a deeper sweep when
 engine changes land; otherwise gate re-runs only. Publication awaits user-side creds.
+
+---
+
+## 2026-08-23 ~18:15 UTC — DEEP FUZZ SWEEP: 500 SEEDS CLEAN
+
+First deep sweep using the new harness (SeedCount temporarily 500, restored to 40 after):
+**501/501 cases passed in ~1s** — zero crashes, zero nondeterminism, zero self-compare
+false-positive violations across 500 random spec shapes. Engine invariants hold well
+beyond the committed seed range. No source changes; CI-verified tree untouched.
+
+### Exact next recommended action
+Steady state. Repeat deeper sweeps (SeedCount 500+) after future engine changes; otherwise
+gate re-runs only. Publication awaits user-side NuGet/Docker credentials.
