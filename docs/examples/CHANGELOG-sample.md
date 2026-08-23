@@ -2,7 +2,7 @@
 
 ### 💥 Breaking and potentially breaking
 
-- **Servers changed** (`CG1010`) at `` — Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.
+- **Servers changed** (`CG1010`) at `(document)` — Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.
 - **Required parameter added** (`CG2002`) at `GET /orders → GET /orders parameters.channel` — Parameter 'channel' was added to GET /orders as required.
 - **Parameter constraint changed** (`CG2011`) at `GET /orders → GET /orders parameters.pageSize` — Constraint 'maximum' of parameter 'pageSize' changed: '100' → '50'.
 - **Parameter enum value removed** (`CG2007`) at `GET /orders → GET /orders parameters.status` — Enum value "delivered" was removed from parameter 'status'.
@@ -21,8 +21,8 @@
 
 ### ✨ Non-breaking
 
-- **API version changed** (`CG7001`) at `` — Document version changed: '1.0.0' → '2.0.0'.
-- **Security scheme added** (`CG6006`) at ` → securitySchemes.oauth2` — New security scheme 'oauth2' was defined.
+- **API version changed** (`CG7001`) at `(document)` — Document version changed: '1.0.0' → '2.0.0'.
+- **Security scheme added** (`CG6006`) at `(document)` — New security scheme 'oauth2' was defined.
 - **Array item schema changed** (`CG5008`) at `GET /orders → GET /orders responses.200` — Array items changed at GET /orders; see the detailed element-level findings for specifics.
 - **Array item schema changed** (`CG5008`) at `GET /orders → GET /orders responses.200.[].items` — Array items changed at GET /orders; see the detailed element-level findings for specifics.
 - **Schema type changed** (`CG5001`) at `GET /orders → GET /orders responses.200.[].items.[].unitPrice.amount` — Type changed at GET /orders: '"number"' → '"integer"'.

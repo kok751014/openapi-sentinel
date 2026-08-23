@@ -1,7 +1,7 @@
 # API Compatibility Report
 
 **Result:** ❌ FAILED — `samples/basic/v1.yaml` → `samples/basic/v2-breaking.yaml`  
-**Generated:** 2026-08-23 10:01:33 UTC by OpenAPI Sentinel 1.0.0  
+**Generated:** 2026-08-23 12:25:17 UTC by OpenAPI Sentinel 1.0.0  
 **Spec versions:** 3.0.3 → 3.0.3
 
 ## Summary
@@ -83,7 +83,7 @@ Constraint 'maximum' of parameter 'pageSize' changed: '100' → '50'.
 
 ### MEDIUM
 
-#### [CG1010] Servers changed — ``
+#### [CG1010] Servers changed — `(document)`
 
 Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.
 
@@ -220,14 +220,14 @@ Type changed at GET /products: '"number"' → '"integer"'.
 
 ### INFO
 
-#### [CG7001] API version changed — ``
+#### [CG7001] API version changed — `(document)`
 
 Document version changed: '1.0.0' → '2.0.0'.
 
 - **Compatibility:** Informational · **Confidence:** Certain · **Direction:** Neutral
 - **Change:** `1.0.0` → `2.0.0`
 
-#### [CG6006] Security scheme added — ` → securitySchemes.oauth2`
+#### [CG6006] Security scheme added — `(document)`
 
 New security scheme 'oauth2' was defined.
 

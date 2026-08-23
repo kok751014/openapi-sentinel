@@ -7,7 +7,7 @@ Suggested version bump: **MAJOR**
 <details>
 <summary>Top breaking/potentially-breaking findings</summary>
 
-- **[CG1010] Servers changed** — ``: Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.
+- **[CG1010] Servers changed** — `(document)`: Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.
 - **[CG2002] Required parameter added** — `GET /orders → GET /orders parameters.channel`: Parameter 'channel' was added to GET /orders as required.
 - **[CG2011] Parameter constraint changed** — `GET /orders → GET /orders parameters.pageSize`: Constraint 'maximum' of parameter 'pageSize' changed: '100' → '50'.
 - **[CG2007] Parameter enum value removed** — `GET /orders → GET /orders parameters.status`: Enum value "delivered" was removed from parameter 'status'.
