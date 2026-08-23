@@ -1031,3 +1031,35 @@ Steady state. Next iteration: gate re-runs unless new information arrives. Known
 (but deliberately unoptimized) characteristic: URL-based multi-file validation is
 sequential-fetch-bound (~82 s on Azure's tree); parallel prefetch would help but adds
 concurrency risk late in release — only pursue with demonstrated demand.
+
+---
+
+## 2026-08-24 (iteration 6) — DATADOG VALIDATED (vendor #7) + DOCS CONSISTENCY PASS
+
+### Real-world validation #7: Datadog API v2 (largest generated spec yet)
+- validate: OK — **966 paths / 1523 operations / 4 security schemes**, 2.8 s / 347 MB RSS.
+- Self-compare: passed, 0 findings, deterministic (6.1 s total).
+- Style coverage now includes the two dominant generated-codec shapes (Twilio + Datadog,
+  both oneOf-heavy OpenAPI-generator output).
+
+### Docs consistency pass for this session's external-reference work
+- README Highlights: added a "Multi-file specs" row (validated against GitHub/Stripe/
+  DigitalOcean/Kubernetes/Azure-scale specifications).
+- cli-reference: new "External $ref resolution" paragraph under input sources — root-tree
+  containment, URL sibling resolution, allowAboveDocumentTree opt-in, CG5022 degradation.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **318/318** (doc-only changes; catalog drift guards green).
+
+### Files changed
+- README.md, docs/cli-reference.md, docs/benchmarks.md
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state with seven vendor ecosystems validated. Next iteration: gate re-runs unless
+new information arrives.

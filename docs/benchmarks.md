@@ -60,6 +60,8 @@ Measured on the same machine as the synthetic benches above (defaults, no config
 | **Stripe v2300 → v2404 diff** (~100 weekly releases) | 2 × ~6 MB YAML | **4.3 s** | **0.68 GB** | 174 findings (73 additive properties, 59 response enum additions, 1 unresolved-reference Verify), MINOR recommendation |
 | DigitalOcean public v2 (validate) | multi-file tree, ~2851 YAML files, 445 paths / 659 ops | 1.5 s | 0.13 GB | OK, 0 unresolved refs |
 | DigitalOcean public v2 (self-compare) | same tree resolved twice from disk | 3.4 s total | — | passed, 0 findings |
+| Datadog API v2 (validate) | ~7.7 MB generated YAML, oneOf-heavy, 966 paths / 1523 ops | 2.8 s | 0.34 GB | OK |
+| Datadog API v2 (self-compare) | same file twice from disk | 6.1 s total | — | passed, 0 findings |
 | Kubernetes API swagger.json (validate) | ~4.3 MB JSON (OpenAPI 2.0), 602 paths / 1202 ops / 862 defs | 1.9 s | 0.36 GB | OK |
 | **Kubernetes v1.30.0 → v1.31.0 diff** | 2 × ~3.3 MB JSON (OpenAPI 2.0) | **7.0 s** | — | 3710 findings (1478 additive properties, 1740 array-item notes, 166 response property removals, 51 endpoint removals + additions), MAJOR recommendation |
 

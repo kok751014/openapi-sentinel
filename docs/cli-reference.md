@@ -34,6 +34,14 @@ Full compatibility comparison. This is the command CI uses.
 Authentication for URL sources uses environment variables via the `headerEnv` config section;
 secrets never appear on the command line and are never logged.
 
+**External `$ref` resolution**: internal pointers, sibling files and remote http(s) references
+are supported. Relative file references may roam anywhere inside the main document's directory
+tree; layouts that climb above it (e.g. Azure resource-manager `common-types`) opt in via
+`externalReferences.allowAboveDocumentTree: true`. Documents loaded from a URL resolve
+sibling files against their own URL under the remote-fetch policy. Missing or unfetchable
+references degrade to Verify-level findings (`CG5022`) instead of aborting — see
+[configuration](configuration.md) and [security](security.md).
+
 ### `validate <SPEC>`
 
 Parse, resolve references and normalize one contract; prints a summary (version, paths,
