@@ -18,25 +18,25 @@ dotnet run -c Release --project bench/OpenApiSentinel.Bench
 ```
 ═══ Small: old 8 KB, new 8 KB ═══
   allocations ≈ 1.6 MB
-  parse      median 6.6 ms
-  resolve+normalize median 0.8 ms
+  parse      median 7.2 ms
+  resolve+normalize median 0.5 ms
   compare    median 1.3 ms   (11 changes)
   rules      median 0.3 ms   (11 findings)
-  reports    median 0.4 ms   (html+json)
+  reports    median 0.5 ms   (html+json)
 ═══ Medium: old 90 KB, new 94 KB ═══
-  allocations ≈ 16.7 MB
-  parse      median 67.3 ms
-  resolve+normalize median 4.2 ms
-  compare    median 18.3 ms   (113 changes)
-  rules      median 0.6 ms   (113 findings)
+  allocations ≈ 16.9 MB
+  parse      median 76.9 ms
+  resolve+normalize median 5.6 ms
+  compare    median 20.1 ms   (113 changes)
+  rules      median 0.8 ms   (113 findings)
   reports    median 1.4 ms   (html+json)
 ═══ Large: old 455 KB, new 470 KB ═══
-  allocations ≈ 82.8 MB
-  parse      median 179.0 ms
-  resolve+normalize median 42.2 ms
-  compare    median 73.2 ms   (555 changes)
-  rules      median 2.7 ms   (555 findings)
-  reports    median 21.2 ms   (html+json)
+  allocations ≈ 82.5 MB
+  parse      median 173.2 ms
+  resolve+normalize median 39.8 ms
+  compare    median 74.9 ms   (555 changes)
+  rules      median 3.2 ms   (555 findings)
+  reports    median 10.7 ms   (html+json)
 ```
 
 ## Interpretation
