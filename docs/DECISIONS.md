@@ -186,3 +186,15 @@ Known limitation (recorded, not fixed): 3.x content-based parameters keep only t
 media type's schema in the normalized model, so schema edits in a second media type of the
 same parameter are invisible. Multi-media-type content parameters are rare; the parameter
 model would need a content map to fix properly.
+
+## 24. Swagger 2.0 collectionFormat rides the style axis
+
+2.0's `collectionFormat` (csv/multi/ssv/pipes) is the direct ancestor of 3.x `style` +
+`explode` and changes the wire format for array parameters. The normalizer maps it onto
+`ParameterInfo.Style` so real changes route through the existing CG2013 event — no new
+kind, no duplicated rule.
+
+FP guards baked into normalization:
+- absent `collectionFormat` on an array parameter normalizes to `"csv"` (the 2.0 spec
+  default), so explicit-vs-default restyling is silent;
+- non-array parameters ignore `collectionFormat` entirely (it has no effect there).

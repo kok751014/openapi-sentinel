@@ -357,11 +357,26 @@ public static class OpenApiNormalizer
                 Required = required,
                 Deprecated = deprecated,
                 Schema = schema,
-                Style = po["style"]?.GetValue<string>(),
+                Style = spec == SpecVersion.Swagger20
+                    ? CollectionFormatStyle(po, schema)
+                    : po["style"]?.GetValue<string>(),
                 Explode = po["explode"] is JsonValue ev && ev.TryGetValue<bool>(out var ex) ? ex : null,
             });
         }
+
         return list;
+    }
+
+    /// <summary>
+    /// Swagger 2.0 serializes array parameters per <c>collectionFormat</c> (csv/multi/ssv/pipes);
+    /// the spec default is csv. Normalizing absent→csv for arrays only means explicit-vs-default
+    /// restyling never fires, while real wire-format changes (multi→csv) route to CG2013.
+    /// Non-array parameters ignore collectionFormat entirely — it has no effect on them.
+    /// </summary>
+    private static string? CollectionFormatStyle(JsonObject po, SchemaInfo? schema)
+    {
+        if (schema?.PrimaryType() != "array") return null;
+        return po["collectionFormat"] is JsonValue cf && cf.TryGetValue<string>(out var s) ? s : "csv";
     }
 
     /// <summary>Merges path-level and operation-level parameters; operation wins on (name, in).</summary>
