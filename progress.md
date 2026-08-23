@@ -1130,3 +1130,38 @@ Steady state. The external-resolution code now has both real-world (6 vendors) a
 ### Exact next recommended action
 Steady state: all gates green post-refactors (build, suite, packaging, remote CI on every
 push this session). Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 9) — ENGINEERING REPORT REFRESHED TO CURRENT STATE
+
+The durable MASTER_PROMPT §60 deliverable (docs/engineering-report.md) had drifted: it
+predated the multi-file/remote-sibling work, prose-noise fix, content-parameter diffing,
+above-tree opt-in, and the vendor-validation campaign.
+
+Refreshed to verified current state:
+- Snapshot date 2026-08-24; test table 257 → **359** with per-project counts; DECISIONS 31.
+- Completed list gained multi-file specs, per-media-type content parameters, container-level
+  false-positive controls, and sibling-fetch SSRF revalidation wording.
+- Real-world validation table now covers all **7 ecosystems** (GitHub, Stripe, DigitalOcean,
+  Kubernetes, Twilio, Datadog, Azure) with outcomes.
+- Remaining Risks renumbered and de-duplicated: closed items removed (content-parameter
+  limitation, ad-hoc fuzzing); sequential-fetch characteristic added as documented risk #5.
+- Commercial-readiness ratings updated (Testing 8→9 on seeded fuzz + 359 tests; Core engine
+  note about content-param limitation dropped — closed in DECISIONS 28).
+- Next improvements reduced to publication (credentials) + optional parallel prefetch.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **359/359** (docs-only change).
+
+### Files changed
+- docs/engineering-report.md
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.
