@@ -574,3 +574,24 @@ GitHub REST API results. CI green on the push (run 32648211977).
 Defect queue empty; CI green; real-world validation now covers GitHub + Stripe pairs.
 Remaining candidates are optional polish only. Next iteration: re-run gates, keep healthy;
 release ready pending user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~15:50 UTC — INIT TEMPLATE LIMITS SECTION + REPO HYGIENE — commits 1a523ec, 6fba6bf
+
+- `openapi-sentinel init` template now documents the `limits:` safety budgets (commented
+  defaults) so the giant-spec escape hatch is discoverable; extended init test asserts the
+  generated template loads through SentinelConfigLoader with ZERO warnings (template/loader
+  sync invariant, Limits==null while commented).
+- Hygiene: removed a stray generated openapi-sentinel.yml from repo root (left by an earlier
+  probe) and root-anchored it in .gitignore.
+
+### Verification (actual)
+- Build 0/0; suite **257/257**. CI green on pushes (latest run success).
+- main @ 6fba6bf pushed; tree clean except this entry (committed next).
+
+### Exact next recommended action
+Nothing concrete outstanding: defects closed, CI green on 3 OSes, real-world validation
+covers GitHub + Stripe pairs (incl. cross-version diff), docs consistent. Next iteration:
+re-run gates and keep healthy unless new information arrives. Release ready pending
+user-side NuGet/Docker credentials.
