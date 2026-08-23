@@ -151,6 +151,43 @@ public class PipelineRobustnessTests
     }
 
     [Fact]
+    public void YamlAliases_InsideSchemaPosition_AreBounded()
+    {
+        // Real YAML anchors/aliases (not $ref) inside a schema position: the representation
+        // model yields shared node references, and comparison depth guards keep traversal
+        // bounded. The pipeline must complete quickly without unbounded expansion.
+        var yaml = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /x:
+                get:
+                  operationId: x
+                  responses:
+                    '200':
+                      description: ok
+                      content:
+                        application/json:
+                          schema:
+                            type: object
+                            properties:
+                              a: &prop {type: string}
+                              b: *prop
+                              c: *prop
+                              d: *prop
+                              e: *prop
+                              f: *prop
+            """;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var result = RunPipeline(yaml);
+        sw.Stop();
+
+        Assert.Equal("completed", result);
+        Assert.True(sw.ElapsedMilliseconds < 5_000, $"pipeline took {sw.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
     public void UnsupportedFutureVersion_IsActionable()
     {
         var result = RunPipeline("openapi: 9.9.9\ninfo: {title: T}\n");
