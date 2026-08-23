@@ -461,6 +461,19 @@ public class EndpointSummaryRenderTests
     }
 
     [Fact]
+    public void ConsoleVerbose_ShowsProcessingNotes_WhenNonZero()
+    {
+        var result = TestResults.Failing() with
+        {
+            Processing = new Core.ProcessingSummary { Changes = 10, FindingsEmitted = 2, IgnoredByPath = 3 },
+        };
+        var text = new ConsoleReporter(supportsColor: false)
+            .Render(result, new ReporterOptions { NoColor = true, Verbose = true });
+        Assert.Contains("Processing notes:", text, StringComparison.Ordinal);
+        Assert.Contains("3 ignored by path filters", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Markdown_IncludesEndpointTable()
     {
         var md = new MarkdownReporter().Render(TestResults.Failing(), ReporterOptions.Default);
@@ -533,5 +546,17 @@ public class ProcessingSummaryTests
         var proc = doc.RootElement.GetProperty("processing");
         Assert.Equal(42, proc.GetProperty("changes").GetInt32());
         Assert.Equal(2, proc.GetProperty("ignoredByPath").GetInt32());
+    }
+
+    [Fact]
+    public void Markdown_ShowsProcessingNotes_WhenNonZero()
+    {
+        var result = TestResults.Failing() with
+        {
+            Processing = new Core.ProcessingSummary { Changes = 10, FindingsEmitted = 2, UnmatchedChanges = 4 },
+        };
+        var md = new MarkdownReporter().Render(result, ReporterOptions.Default);
+        Assert.Contains("Processing notes:", md, StringComparison.Ordinal);
+        Assert.Contains("4 unevaluated change kind(s)", md, StringComparison.Ordinal);
     }
 }

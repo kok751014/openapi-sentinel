@@ -44,6 +44,20 @@ public sealed class MarkdownReporter : IResultReporter
             w.AppendLine();
             w.AppendLine($"**Recommended version bump: `{rec.Display}`** — {rec.Reason}");
         }
+
+        if (result.Processing is { } p)
+        {
+            var bits = new List<string>();
+            if (p.UnmatchedChanges > 0) bits.Add($"{p.UnmatchedChanges} unevaluated change kind(s)");
+            if (p.DisabledByOverride > 0) bits.Add($"{p.DisabledByOverride} disabled by override");
+            if (p.IgnoredByPath > 0) bits.Add($"{p.IgnoredByPath} filtered by ignore paths");
+            if (bits.Count > 0)
+            {
+                w.AppendLine();
+                w.AppendLine($"*Processing notes: {string.Join(" · ", bits)}.*");
+            }
+        }
+
         w.AppendLine();
 
         if (result.Endpoints is { Count: > 0 })
