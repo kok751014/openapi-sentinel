@@ -316,12 +316,26 @@ public sealed class SchemaComparer
             var newItems = newS.TryGetKeyword("items", out var ni) ? Wrap(ni) : null;
 
             bool oldHas = HasItems(oldS.Node), newHas = HasItems(newS.Node);
-            if (oldHas != newHas || (oldHas && newHas && !NodesEquivalent(oldS, newS, "items")))
+            if (oldHas != newHas)
             {
-                Emit(ChangeKinds.ItemsChanged, direction, path, method, location,
-                    oldItems?.ToString(), newItems?.ToString());
+                // Presence change: the single-sided branch below emits exactly one event.
                 CompareCore(oldItems, newItems, path, method, direction,
                     ChildLocation(location, "[]"), depth + 1);
+            }
+            else if (oldHas)
+            {
+                // Both present: recurse first and emit the CG5008 summary marker only when
+                // the element diff produced at least one substantive change. Description/
+                // title/example drift inside an element schema must not create findings
+                // (false-positive control); previously any byte difference opened the gate.
+                var before = _changes.Count;
+                CompareCore(oldItems, newItems, path, method, direction,
+                    ChildLocation(location, "[]"), depth + 1);
+                if (_changes.Count > before)
+                {
+                    Emit(ChangeKinds.ItemsChanged, direction, path, method, location,
+                        oldItems?.ToString(), newItems?.ToString());
+                }
             }
         }
     }
@@ -423,8 +437,10 @@ public sealed class SchemaComparer
 
             if (!string.Equals(oldStr, newStr, StringComparison.Ordinal))
             {
-                // Deep equality to avoid false positives from key ordering.
-                if (!JsonDeepEquals(oldVal, newVal))
+                // Deep equality to avoid false positives from key ordering, with prose-only
+                // member drift (description/title/example) ignored entirely: a composition
+                // whose members changed wording only is not a compatibility event.
+                if (!JsonDeepEquals(StripProse(oldVal), StripProse(newVal)))
                 {
                     EmitWithDetail(ChangeKinds.CompositionChanged, direction, path, method, location,
                         Truncate(oldStr), Truncate(newStr),
@@ -618,6 +634,35 @@ public sealed class SchemaComparer
         a.TryGetKeyword(keyword, out var av);
         b.TryGetKeyword(keyword, out var bv);
         return JsonDeepEquals(av, bv);
+    }
+
+    private static readonly string[] ProseKeys = ["description", "title", "example", "examples"];
+
+    /// <summary>Deep clone without documentation-only keywords. Used to keep prose-only
+    /// drift from opening container-level change gates (§55 false-positive control).</summary>
+    internal static JsonNode? StripProse(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+            {
+                var copy = new JsonObject();
+                foreach (var (key, value) in obj)
+                {
+                    if (ProseKeys.Contains(key, StringComparer.Ordinal)) continue;
+                    copy[key] = StripProse(value);
+                }
+                return copy;
+            }
+            case JsonArray arr:
+            {
+                var copy = new JsonArray();
+                foreach (var item in arr) copy.Add(StripProse(item));
+                return copy;
+            }
+            default:
+                return node?.DeepClone();
+        }
     }
 
     /// <summary>Order-insensitive deep JSON equality.</summary>

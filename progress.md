@@ -847,3 +847,52 @@ in external `$ref` resolution — all fixed; DO now validates/diffs cleanly.
 ### Exact next recommended action
 Steady state restored with one more marquee vendor proven at scale. Next iteration: gate
 re-runs unless new information arrives; optional candidates remain docs/examples refresh.
+
+---
+
+## 2026-08-24 (iteration 2) — PROSE-ONLY CONTAINER NOISE ELIMINATED (Kubernetes-scale FP fix)
+
+Deep fuzz sweep post-refactor: **501/501 clean** (~1s, SeedCount temporarily 500, restored to 40).
+
+### Real-world validation #4: Kubernetes OpenAPI 2.0 at scale
+- swagger.json master validate: OK — 602 paths / 1202 ops / 862 defs, 1.9 s / 370 MB RSS.
+- Genuine cross-version diff v1.30.0 → v1.31.0 (2 × ~3.3 MB JSON): exposed a systematic false positive.
+
+### Defect found & fixed (commit <this>)
+**Container change gates opened on raw JSON inequality, so documentation-only drift fired ancestor events.**
+Measured on the real pair: 2,076 of 3,854 CG5008 `schema.items.changed` events (54%) had items schemas
+differing ONLY in description/title/example — child comparison correctly emitted nothing, but the marker
+fired anyway. Same class in composition: prose-only member wording changes fired CG5010
+(Medium/PotentiallyBreaking). Both violate the product's own §55 standard and predate this session.
+
+Fix:
+- items: recurse FIRST; emit the CG5008 summary marker only when the element diff produced ≥1 change.
+  Also fixes a latent double-emission on items presence change (marker + null-branch event).
+- composition: compare members after StripProse(description/title/example/examples); vendor `x-*`
+  keys still count as differences (tooling-meaningful, delta visible in the event).
+- New SchemaComparer.StripProse helper.
+
+### Verification (actual)
+- Build 0/0; suite **315/315** (+5 ProseInsensitivityTests: items prose-only→empty, substantive→exactly
+  one marker + one child, presence change→exactly one event both directions, composition prose-only→empty,
+  substantive→CG5010 fires).
+- Kubernetes pair re-run: **5,824 → 3,710 findings (−36%)**; every substantive finding preserved
+  (1478 CG5020, 224 CG5015, 166 CG5017, 51/51 CG1001/CG1003 identical).
+- Stripe v2300→v2404 baseline regression: **174 findings, MINOR, identical rule distribution**
+  (73/59/25/10/2/1/1) — zero real findings altered by the noise filter.
+- Canonical samples exit 1 / exit 0 unchanged.
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/SchemaComparer.cs (items gate rewrite, StripProse, composition gate)
+- tests/OpenApiSentinel.OpenApi.Tests/ProseInsensitivityTests.cs (NEW, 5)
+- docs/{DECISIONS.md entry 30, benchmarks.md k8s rows}
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state restored with Kubernetes added as the fourth validated real-world vendor (and first
+OpenAPI 2.0 cross-version pair). Next iteration: gate re-runs unless new information arrives.

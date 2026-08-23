@@ -279,3 +279,25 @@ resolution paths no prior real-world validation had reached:
 Measured outcome (DigitalOcean public v2, defaults): validate 1.5 s / 133 MB RSS with 0
 unresolved refs across all ~2851 files (pre-fix: exit 2); self-compare passed, 0 findings,
 3.4 s total.
+
+## 30. Container change gates are driven by substantive child diffs only
+
+Real-world trigger: the Kubernetes v1.30 → v1.31 diff produced 3,854 `schema.items.changed`
+(CG5008) events of which **2,076 (54%) were documentation-only drift** — the element schema
+differed solely in `description`/`title`/`example`, the child comparison correctly emitted
+nothing, but the ancestor gate opened on raw JSON inequality and fired an orphan summary
+marker anyway. Same class existed in composition: a member whose wording changed fired
+CG5010 (Medium/PotentiallyBreaking).
+
+Fix:
+- **items**: recurse first, then emit the CG5008 summary marker only when the element diff
+  produced at least one change. Presence changes (items added/removed) keep exactly one
+  event (the pre-fix code double-emitted there).
+- **composition**: members are compared after stripping prose keywords (`description`,
+  `title`, `example`, `examples`) before deep equality; raw values in the emitted event are
+  unchanged. Vendor extensions (`x-*`) still count as differences — they affect tooling
+  semantics and the event shows the exact delta.
+
+Measured outcome: Kubernetes pair 5,824 → 3,710 findings (−36%) with every substantive
+finding (property add/remove, endpoint add/remove, required changes) preserved byte-for-byte;
+the recorded Stripe v2300→v2404 baseline (174 findings, MINOR) is unchanged.
