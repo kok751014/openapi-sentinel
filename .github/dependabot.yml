@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Runtime + test package dependencies (YamlDotNet, xunit, Test.Sdk, ...)
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  # Keep actions (checkout, setup-dotnet, build-push-action, ...) current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
