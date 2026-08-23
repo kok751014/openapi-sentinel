@@ -896,3 +896,42 @@ Fix:
 ### Exact next recommended action
 Steady state restored with Kubernetes added as the fourth validated real-world vendor (and first
 OpenAPI 2.0 cross-version pair). Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 3) — TWILIO VALIDATED (vendor #5) + EXAMPLES REFRESH
+
+### Real-world validation #5: Twilio (generated, oneOf-heavy 3.0.1 specs)
+- twilio_api_v2010 validate: OK — 121 paths / 197 ops, 0.56 s.
+- Cross-release diff 2.7.0 → 2.7.1: core API spec byte-stable → **0 findings** (deterministic
+  no-change proof); the release's real change landed in insights_v3 — diffing that pair yields
+  **exactly 3 CG1001 Critical endpoint-removal findings** (QueryJobs endpoints genuinely
+  removed upstream), MAJOR recommendation, exit 1. Zero noise on a generated spec style.
+- Engine now validated against five vendor styles: GitHub (3.1 mega), Stripe ($ref-dense),
+  DigitalOcean (multi-file tree), Kubernetes (2.0 expanded JSON), Twilio (generated oneOf).
+
+### Examples refresh + stale artifact fixed
+- NEW docs/examples/callbacks-api-diff.html (19.8 KB self-contained interactive report with
+  all 5 callback/header/schema findings incl. properly escaped `<callback:…>` paths) and
+  callbacks-pr-summary.md — flagship HTML now showcases the callback feature set.
+- FIXED stale committed artifact: CHANGELOG-sample.md still contained pre-b263d87 doubled-path
+  locations (`GET /orders → GET /orders parameters.channel`); regenerated with current output
+  (single-composed locations). Verified api-diff.md content identical modulo timestamp and
+  pr-summary.md byte-identical — no drift from this session's engine changes.
+
+### Verification (actual)
+- Build 0/0; suite **315/315**; examples regenerated from current binary only where content changed.
+
+### Files changed
+- docs/examples/{callbacks-api-diff.html NEW, callbacks-pr-summary.md NEW, CHANGELOG-sample.md,
+  README.md}
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state: five vendors validated, defect queue empty, CI green. Next iteration: gate
+re-runs unless new information arrives.
