@@ -340,12 +340,33 @@ public static class OpenApiNormalizer
                 schema = MakeSchema(po["schema"], spec);
                 if (schema is null && po["content"] is JsonObject contentObj)
                 {
-                    // 3.x content-parameter: take first media type's schema.
-                    foreach (var (_, media) in contentObj)
+                    // 3.x content-parameter: capture ALL media types; the first one's
+                    // schema also backs the legacy Schema slot (existing rule routing).
+                    var contentMap = new Dictionary<string, SchemaInfo>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var (mediaType, media) in contentObj)
                     {
-                        if (media is JsonObject mediaObj)
-                            schema = MakeSchema(mediaObj["schema"], spec);
-                        break;
+                        if (media is not JsonObject mediaObj) continue;
+                        var mediaSchema = MakeSchema(mediaObj["schema"], spec);
+                        if (mediaSchema is null) continue;
+                        contentMap[mediaType] = mediaSchema;
+                        schema ??= mediaSchema;
+                    }
+                    if (contentMap.Count > 0)
+                    {
+                        var primary = contentMap.Keys.First();
+                        list.Add(new ParameterInfo
+                        {
+                            Name = name,
+                            In = location,
+                            Required = required,
+                            Deprecated = deprecated,
+                            Schema = schema,
+                            Content = contentMap,
+                            PrimaryContentType = primary,
+                            Style = po["style"]?.GetValue<string>(),
+                            Explode = po["explode"] is JsonValue ev2 && ev2.TryGetValue<bool>(out var ex2) ? ex2 : null,
+                        });
+                        continue;
                     }
                 }
             }

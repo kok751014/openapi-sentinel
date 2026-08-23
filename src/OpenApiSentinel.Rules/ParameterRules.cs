@@ -24,6 +24,8 @@ internal static class ParameterRules
         yield return ExplodeChanged();
         yield return LocationChanged();
         yield return DeprecatedFlag();
+        yield return ContentAdded();
+        yield return ContentRemoved();
     }
 
     private static string Where(SemanticChange c) =>
@@ -446,4 +448,45 @@ internal static class ParameterRules
                 nowDeprecated ? "Document the deprecation and the replacement parameter." : "No action required.");
         },
     };
+
+    private static RuleDefinition ContentAdded() => new()
+    {
+        Descriptor = new RuleDescriptor
+        {
+            Id = "CG2017", Title = "Parameter content type added",
+            Category = FindingCategory.Parameter,
+            DefaultSeverity = Severity.Info,
+            DefaultCompatibility = Compatibility.NonBreaking,
+            ChangeKinds = [ChangeKinds.ParameterContentAdded],
+            Description = "A 3.x content-based parameter started declaring an additional media type.",
+            Impact = "Additive: previously documented media types keep working.",
+            Remediation = "No action required; document the newly accepted format.",
+        },
+        Build = c => FindingFactory.Create("CG2017", "Parameter content type added",
+            Severity.Info, Compatibility.NonBreaking, c,
+            $"Parameter '{ParamName(c)}' now also accepts '{c.NewValue}'.",
+            "Additive: existing senders are unaffected.",
+            "No action required."),
+    };
+
+    private static RuleDefinition ContentRemoved() => new()
+    {
+        Descriptor = new RuleDescriptor
+        {
+            Id = "CG2018", Title = "Parameter content type removed",
+            Category = FindingCategory.Parameter,
+            DefaultSeverity = Severity.High,
+            DefaultCompatibility = Compatibility.Breaking,
+            ChangeKinds = [ChangeKinds.ParameterContentRemoved],
+            Description = "A media type declared by a 3.x content-based parameter was removed.",
+            Impact = "Clients sending this parameter in that format will be rejected (415-equivalent).",
+            Remediation = "Keep accepting the removed media type during a migration window or migrate clients first.",
+        },
+        Build = c => FindingFactory.Create("CG2018", "Parameter content type removed",
+            Severity.High, Compatibility.Breaking, c,
+            $"Parameter '{ParamName(c)}' no longer accepts '{c.OldValue}'.",
+            "Requests using this media type will fail validation.",
+            "Support both formats during a transition or migrate consumers first."),
+    };
+
 }

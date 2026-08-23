@@ -1,6 +1,6 @@
 # Rule catalog
 
-OpenAPI Sentinel ships **78 built-in rules** with stable IDs (`CGxxxx`)
+OpenAPI Sentinel ships **80 built-in rules** with stable IDs (`CGxxxx`)
 plus **3 engine meta-checks** (`CG9001`, `CG9002`, `CG9003`)
 that document engine-emitted process findings.
 Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the
@@ -112,6 +112,8 @@ The runtime expression or URI template that determines where callback requests a
 | `CG2014` | Parameter explode behaviour changed | medium | Breaking |
 | `CG2015` | Parameter moved to a different location | high | Breaking |
 | `CG2016` | Parameter deprecated | medium | PotentiallyBreaking |
+| `CG2017` | Parameter content type added | info | NonBreaking |
+| `CG2018` | Parameter content type removed | high | Breaking |
 
 ### `CG2001` — Parameter removed
 
@@ -240,6 +242,22 @@ A parameter was marked (or unmarked) deprecated.
 - **Default severity:** medium  
 - **Classification:** PotentiallyBreaking  
 - **Change kinds:** `parameter.deprecated.changed`
+
+### `CG2017` — Parameter content type added
+
+A 3.x content-based parameter started declaring an additional media type.
+
+- **Default severity:** info  
+- **Classification:** NonBreaking  
+- **Change kinds:** `parameter.content.added`
+
+### `CG2018` — Parameter content type removed
+
+A media type declared by a 3.x content-based parameter was removed.
+
+- **Default severity:** high  
+- **Classification:** Breaking  
+- **Change kinds:** `parameter.content.removed`
 
 ## RequestBody
 

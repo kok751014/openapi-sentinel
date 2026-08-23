@@ -41,6 +41,10 @@ public static class ChangeKinds
     /// <summary>Generic constraint change; Details["constraint"] carries the keyword.</summary>
     public const string ParameterConstraintChanged = "parameter.constraint.changed";
 
+    // ---- Parameter content maps (3.x content-based parameters) ----
+    public const string ParameterContentAdded = "parameter.content.added";
+    public const string ParameterContentRemoved = "parameter.content.removed";
+
     // ---- Request bodies ----
     public const string RequestBodyAdded = "requestbody.added";
     public const string RequestBodyRemoved = "requestbody.removed";

@@ -595,6 +595,72 @@ public sealed class ComparisonEngine
                 });
             }
         }
+
+        CompareParameterContent(oldP, newP, path, method, location, changes);
+    }
+
+    /// <summary>
+    /// Diffs the media-type maps of 3.x content-based parameters. Engaged only when BOTH
+    /// sides declare content (other transitions keep their legacy behavior untouched).
+    /// The primary media type is already covered by the legacy Schema path above; every
+    /// additional key gets add/remove events and per-key schema diffs.
+    /// </summary>
+    private void CompareParameterContent(
+        ParameterInfo oldP, ParameterInfo newP,
+        string path, HttpMethodKind method, string location,
+        List<SemanticChange> changes)
+    {
+        if (oldP.Content.Count == 0 || newP.Content.Count == 0) return;
+
+        void Add(string kind, string? oldV, string? newV, string contentType)
+        {
+            changes.Add(new SemanticChange
+            {
+                Kind = kind,
+                Category = FindingCategory.Parameter,
+                Path = path,
+                HttpMethod = method,
+                Location = $"{location} content.{contentType}",
+                ParameterName = newP.Name,
+                Direction = ApiDirection.Request,
+                OldValue = oldV,
+                NewValue = newV,
+            });
+        }
+
+        foreach (var ct in oldP.Content.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            if (newP.Content.ContainsKey(ct)) continue;
+            Add(ChangeKinds.ParameterContentRemoved, ct, null, ct);
+        }
+
+        foreach (var ct in newP.Content.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            var isPrimaryOnBoth =
+                string.Equals(ct, newP.PrimaryContentType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(ct, oldP.PrimaryContentType, StringComparison.OrdinalIgnoreCase);
+
+            if (!oldP.Content.TryGetValue(ct, out var oldSchema))
+            {
+                Add(ChangeKinds.ParameterContentAdded, null, ct, ct);
+                continue;
+            }
+
+            if (isPrimaryOnBoth) continue; // legacy Schema path already diffed this pair
+
+            var subChanges = _schemaComparer.Compare(
+                oldSchema!, newP.Content[ct], path, method, ApiDirection.Request,
+                $"content.{ct}");
+            foreach (var c in subChanges)
+            {
+                changes.Add(c with
+                {
+                    Category = FindingCategory.Parameter,
+                    Location = $"{location} {c.Location}",
+                    ParameterName = newP.Name,
+                });
+            }
+        }
     }
 
     private static IEnumerable<SemanticChange> FilterParamSubChanges(IEnumerable<SemanticChange> changes) =>

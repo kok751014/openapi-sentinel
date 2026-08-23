@@ -46,7 +46,7 @@ A text diff tells you `required: false` became `required: true`. OpenAPI Sentine
 
 | | |
 |---|---|
-| **78 rules + 3 engine checks** | Endpoints, parameters, request bodies, responses (incl. header payloads), schemas, security, callbacks & webhooks, metadata (`CGxxxx` IDs) |
+| **80 rules + 3 engine checks** | Endpoints, parameters, request bodies, responses (incl. header payloads), schemas, security, callbacks & webhooks, metadata (`CGxxxx` IDs) |
 | **Direction-aware** | Request tightening breaks clients; response widening is classified differently — see [compatibility model](docs/compatibility-model.md) |
 | **2.0 → 3.2** | Swagger/OpenAPI 2.0, 3.0.x, 3.1.x and 3.2.x, JSON & YAML |
 | **Offline & private** | No telemetry, no uploads, no AI, no cloud. Contracts never leave your machine |

@@ -149,6 +149,18 @@ public sealed class ParameterInfo
 
     /// <summary>Content type for 2.0 body params / 3.x content-based params.</summary>
     public string? ContentType { get; init; }
+
+    /// <summary>
+    /// All declared media types for 3.x content-based parameters (media type → schema).
+    /// Empty unless the parameter used <c>content:</c>. The first media type also populates
+    /// <see cref="Schema"/> (and <see cref="PrimaryContentType"/>) for legacy rule routing;
+    /// the engine diffs every additional media type separately.
+    /// </summary>
+    public IReadOnlyDictionary<string, SchemaInfo> Content { get; init; } =
+        new Dictionary<string, SchemaInfo>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The media type whose schema backs <see cref="Schema"/> (content params only).</summary>
+    public string? PrimaryContentType { get; init; }
 }
 
 public sealed class RequestBodyInfo

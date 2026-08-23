@@ -10,7 +10,7 @@ this page states the verified current state only.
 - **Engine**: direction-aware comparison of Swagger 2.0 / OpenAPI 3.0 / 3.1 / 3.2 (JSON & YAML),
   semantic normalization, `$ref` resolution (internal / relative files / remote-with-policy),
   cycle markers, bounded processing with graceful degradation.
-- **78 rules + 3 engine meta-checks** (`CGxxxx`), stable IDs, human explanations,
+- **80 rules + 3 engine meta-checks** (`CGxxxx`), stable IDs, human explanations,
   impact and remediation text; aspect-aware discriminator classification; direction-aware
   formats, numeric types/unions, nullability, requiredness, additionalProperties,
   readOnly/writeOnly; callback diffing (CG1011–13); response-header payload diffing;
@@ -110,9 +110,7 @@ Then open `docs/examples/api-diff.html` for a pre-rendered example, or
 
 1. **Publication pending credentials**: NuGet.org push needs the `NUGET_API_KEY` secret;
    Docker image push needs registry credentials. Everything in-repo is ready and gated.
-2. **Multi-media-type content parameters**: only the first media type's schema is kept —
-   edits to a second media type are invisible (documented limitation, DECISIONS 27).
-3. **Budget degradation granularity**: extremely reference-heavy specs may produce
+2. **Budget degradation granularity**: extremely reference-heavy specs may produce
    CG5022 Verify events where detailed diffing was skipped (raise `limits:` if needed).
 4. **Path renames** are reported as remove + add (no path-level rename heuristic).
 5. Single-maintainer bus factor; test suite is strong but fuzz coverage is ad-hoc.

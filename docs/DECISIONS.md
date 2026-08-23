@@ -244,3 +244,12 @@ parser's raw-node cap and now surface as noisy-but-finite CG5022 findings rather
 silent success. The `limits:` config section exposes the five budgets with safe defaults.
 Measured outcome on Stripe spec3.yaml with DEFAULT limits: validate 3.8s, self-compare
 7.0s / 703 MB peak RSS, 0 findings, fully deterministic.
+
+## 28. Content-parameter limitation closed
+
+DECISIONS 27 recorded "first media type only" as a known limitation. Closed: content maps
+now hold every media type. Legacy routing is preserved exactly — single-media params and
+the primary key keep their existing CG20xx schema events — while additional keys gain:
+add/remove events (`parameter.content.added` / `.removed`, CG2017 Info NonBreaking /
+CG2018 High Breaking, mirroring body content-type semantics) and full per-key schema diffs
+through the standard comparer.
