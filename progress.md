@@ -550,3 +550,27 @@ Root causes, both Windows-checkout-specific and now fixed:
 ### Exact next recommended action
 Defect queue empty; remote CI healthy. Next iteration: optional vendor validation or
 gate re-run only. Release ready pending user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~15:30 UTC — STRIPE CROSS-VERSION DIFF VERIFIED (real pair, not self-compare) — commit 2612b24
+
+Ran a genuine evolution diff across ~100 weekly Stripe releases (tags v2300 → v2404,
+2 × ~6 MB YAML) with default limits:
+- **4.3s wall, 683 MB peak RSS** — full pipeline on a production-scale vendor pair.
+- **174 findings, all plausible**: 73 optional-property additions (CG5020), 59 response
+  enum additions (CG5004), 25 composition changes (CG5010), 10 array-items notes (CG5008),
+  2 new endpoints (CG1003), info-version change (CG7001), and exactly **1 CG5022**
+  unresolved-reference Verify event — the degradation path firing precisely as designed.
+- Recommendation: MINOR (additive evolution), matching Stripe's actual release posture.
+
+Datapoint recorded in docs/benchmarks.md "Real-world spot checks" alongside the earlier
+GitHub REST API results. CI green on the push (run 32648211977).
+
+### Git status
+- main @ 2612b24 pushed; working tree clean except this entry (committed next).
+
+### Exact next recommended action
+Defect queue empty; CI green; real-world validation now covers GitHub + Stripe pairs.
+Remaining candidates are optional polish only. Next iteration: re-run gates, keep healthy;
+release ready pending user-side NuGet/Docker credentials.
