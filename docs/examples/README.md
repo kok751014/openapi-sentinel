@@ -1,0 +1,19 @@
+# Example outputs
+
+Generated from the [Order Management sample contracts](../../samples/basic/) —
+`v1.yaml` compared against the intentionally breaking `v2-breaking.yaml`:
+
+| File | What it shows |
+|------|---------------|
+| [api-diff.md](api-diff.md) | Full Markdown report: summary tables, every finding with explanation, suppressed section |
+| [pr-summary.md](pr-summary.md) | The compact block posted to pull requests / `$GITHUB_STEP_SUMMARY` |
+| [CHANGELOG-sample.md](CHANGELOG-sample.md) | Generated API changelog with Breaking vs Non-breaking sections |
+| [api-diff.html](api-diff.html) | The flagship single-file interactive report: filters, search, collapsible findings — works offline, no CDN |
+
+To produce an interactive HTML version locally:
+
+```bash
+openapi-sentinel compare ../../samples/basic/v1.yaml ../../samples/basic/v2-breaking.yaml --html report.html
+```
+
+These files are committed so reviewers can inspect real output without installing anything.

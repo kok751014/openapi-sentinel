@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenAPI Sentinel — old.yaml → new.yaml</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --ink: #1f2328; --muted: #656d76;
+    --line: #d8dee4; --accent: #0969da;
+    --red: #cf222e; --orange: #bc4c00; --green: #1a7f37; --purple: #8250df;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .topbar { background: #10151c; color: #fff; padding: 14px 0; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand .shield { filter: drop-shadow(0 0 6px rgba(80,200,255,.55)); }
+  .brand strong { letter-spacing: .3px; }
+  .brand .tag { margin-left: 10px; color: #9aa7b4; font-size: 13px; }
+  #verdict { font-weight: 700; padding: 4px 14px; border-radius: 999px; font-size: 14px; letter-spacing: 1px; }
+  #verdict.pass { background: rgba(46,160,67,.25); color: #7ee787; border: 1px solid #2ea043; }
+  #verdict.fail { background: rgba(218,54,51,.22); color: #ff8182; border: 1px solid #da3633; }
+  main { padding: 24px 20px 40px; display: grid; gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  h2 { font-size: 17px; margin: 26px 0 12px; }
+  .head-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: start; }
+  .lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 4px; }
+  .val { font-weight: 600; word-break: break-all; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .badge { display: inline-block; font-weight: 700; padding: 3px 12px; border-radius: 999px; }
+  .badge.ok { color: var(--green); background: #dafbe1; border: 1px solid rgba(26,127,55,.35); }
+  .badge.fail { color: var(--red); background: #ffebe9; border: 1px solid rgba(207,34,46,.35); }
+  .rec { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--ink); font-size: 14px; }
+  .bump { display: inline-block; font-weight: 700; border-radius: 6px; padding: 1px 9px; margin-right: 6px; font-size: 13px; }
+  .bump-major { background: #ffebe9; color: var(--red); }
+  .bump-minor { background: #ddf4ff; color: var(--accent); }
+  .bump-patch { background: #eaeef2; color: var(--ink); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .t { color: var(--muted); font-size: 12.5px; }
+  .stat.bad { border-color: rgba(207,34,46,.45); }
+  .stat.bad .n { color: var(--red); }
+  .stat.warn { border-color: rgba(188,76,0,.45); }
+  .stat.warn .n { color: var(--orange); }
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 6px; }
+  .filters input[type=search] { flex: 1 1 240px; }
+  input, select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid rgba(9,105,218,.35); outline-offset: 1px; }
+  .chk { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+  .count-line { color: var(--muted); font-size: 12.5px; margin: 4px 2px 10px; }
+  details.finding { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: #fff; overflow: hidden; }
+  details.finding[open] { box-shadow: 0 1px 4px rgba(31,35,40,.08); }
+  summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 10px 14px; flex-wrap: wrap; }
+  summary::-webkit-details-marker { display: none; }
+  .chevron { margin-left: auto; color: var(--muted); transition: transform .15s ease; }
+  details[open] .chevron { transform: rotate(180deg); }
+  .sev { font-size: 11px; font-weight: 800; letter-spacing: .6px; padding: 2px 8px; border-radius: 5px; min-width: 58px; text-align: center; }
+  .sev-critical, .sev-high { background: #ffebe9; color: var(--red); }
+  .sev-medium { background: #fff1e5; color: var(--orange); }
+  .sev-low { background: #eaeef2; color: var(--ink); }
+  .sev-info { background: #ddf4ff; color: var(--accent); }
+  .sev-verify { background: #fbefff; color: var(--purple); }
+  .rule { color: var(--muted); font-size: 12.5px; }
+  .loc { font-size: 13.5px; word-break: break-all; }
+  .compat { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .c-break { background: var(--red); color: #fff; }
+  .c-potential { background: #fff1e5; color: var(--orange); border: 1px solid rgba(188,76,0,.4); }
+  .c-nonbreak { background: #dafbe1; color: var(--green); }
+  .c-info { background: #ddf4ff; color: var(--accent); }
+  .c-unknown { background: #fbefff; color: var(--purple); }
+  .body { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+  .body p { margin: 6px 0; }
+  .title { margin-top: 2px; }
+  .values { display: flex; gap: 12px; align-items: stretch; margin: 10px 0; flex-wrap: wrap; }
+  .values > div { flex: 1 1 220px; min-width: 0; }
+  .values pre { margin: 4px 0 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+                white-space: pre-wrap; word-break: break-all; font-size: 12.5px; }
+  .values .arrow { flex: 0 0 auto; align-self: center; color: var(--muted); font-size: 18px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .grid2 .lbl { margin-bottom: 2px; }
+  .grid2 p { color: #3a444d; }
+  .muted { color: var(--muted); font-weight: 400; }
+  .empty { color: var(--green); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.tbl th, table.tbl td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  table.tbl th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .foot { text-align: center; color: var(--muted); font-size: 12.5px; padding: 8px 0 20px; }
+  .st { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 2px 8px; border-radius: 5px; }
+  .st-removed { background: #ffebe9; color: var(--red); }
+  .st-added { background: #dafbe1; color: var(--green); }
+  .st-changed { background: #ddf4ff; color: var(--accent); }
+  .st-unchanged { background: #eaeef2; color: var(--ink); }
+</style></head>
+<body>
+<header class="topbar"><div class="wrap brand-row">
+  <div class="brand"><span class="shield">🛡</span> <strong>OpenAPI Sentinel</strong><span class="tag">API Compatibility Report</span></div>
+  <div id="verdict" class="fail">FAILED</div>
+</div></header>
+<main class="wrap">
+<section class="card head-card">
+  <div class="head-grid">
+   <div><div class="lbl">Result</div>
+     <div class="badge fail">FAILED</div></div>
+   <div><div class="lbl">Old contract</div><div class="val mono">old.yaml</div><div class="sub">spec 3.0.3 · api v1.4.0</div></div>
+   <div><div class="lbl">New contract</div><div class="val mono">new.yaml</div><div class="sub">spec 3.1.0 · api v2.0.0</div></div>
+   <div><div class="lbl">Generated (UTC)</div><div class="val">2026-03-01 10:30:00</div><div class="sub">tool 1.2.3 · schema 1.0</div></div>
+  </div>
+  <div class="rec"><span class="bump bump-major">MAJOR</span> 2 breaking finding(s) at high or critical severity require a major version.</div>
+</section>
+<section class="stats">
+<div class="stat stat-total" data-stat="total"><div class="n">3</div><div class="t">Findings</div></div>
+<div class="stat bad" data-stat="breaking"><div class="n">2</div><div class="t">Breaking</div></div>
+<div class="stat " data-stat="potentially"><div class="n">0</div><div class="t">Potentially breaking</div></div>
+<div class="stat " data-stat="nonbreaking"><div class="n">1</div><div class="t">Non-breaking</div></div>
+<div class="stat " data-stat="verify"><div class="n">0</div><div class="t">Needs review</div></div>
+<div class="stat " data-stat="suppressed"><div class="n">1</div><div class="t">Suppressed</div></div>
+</section>
+<section class="card">
+  <h2>Affected endpoints</h2>
+  <table class="tbl"><thead><tr><th>State</th><th>Endpoint</th><th>Findings</th></tr></thead><tbody>
+    <tr><td><span class="st st-removed">Removed</span></td><td class="mono">GET /orders</td><td>1</td></tr>
+    <tr><td><span class="st st-changed">Changed</span></td><td class="mono">POST /orders/{id}</td><td>2</td></tr>
+  </tbody></table>
+</section>
+<section class="card">
+  <h2>Findings</h2>
+  <div class="filters">
+    <input id="search" type="search" placeholder="Search path, rule, explanation…" autocomplete="off">
+    <select id="f-severity"><option value="">All severities</option><option value="CRITICAL">CRITICAL</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="INFO">INFO</option><option value="VERIFY">VERIFY</option></select>
+    <select id="f-method"><option value="">All methods</option><option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="PATCH">PATCH</option><option value="DELETE">DELETE</option><option value="HEAD">HEAD</option><option value="OPTIONS">OPTIONS</option><option value="TRACE">TRACE</option></select>
+    <select id="f-compat"><option value="">All compatibility</option><option value="Breaking">Breaking</option><option value="PotentiallyBreaking">PotentiallyBreaking</option><option value="NonBreaking">NonBreaking</option><option value="Informational">Informational</option><option value="Unknown">Unknown</option></select>
+    <label class="chk"><input type="checkbox" id="f-breaking-only"> Breaking only</label>
+  </div>
+  <div class="count-line" id="visible-count"></div>
+  <div id="findings">
+<details class="finding" data-sev="CRITICAL" data-method="GET" data-compat="Breaking" data-rule="CG1001" data-text="/orders  cg1001 endpoint removed endpoint removed: clients calling this endpoint will be affected.">
+  <summary>
+    <span class="sev sev-critical">CRITICAL</span>
+    <span class="rule mono">CG1001</span>
+    <span class="loc mono">GET /orders</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Endpoint removed</strong> <span class="muted">· Removed · direction: Neutral · confidence: Certain</span></p>
+    <p>Endpoint removed: clients calling this endpoint will be affected.</p>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Existing integrations stop working.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Coordinate the removal with consumers.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="POST" data-compat="Breaking" data-rule="CG2003" data-text="/orders/{id}  cg2003 parameter became required parameter became required: clients calling this endpoint will be affected.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG2003</span>
+    <span class="loc mono">POST /orders/{id}</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Parameter became required</strong> <span class="muted">· Removed · direction: Neutral · confidence: Certain</span></p>
+    <p>Parameter became required: clients calling this endpoint will be affected.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">false</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">true</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Existing integrations stop working.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Coordinate the removal with consumers.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="GET" data-compat="NonBreaking" data-rule="CG1003" data-text="/webhooks  cg1003 endpoint added endpoint added: clients calling this endpoint will be affected.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG1003</span>
+    <span class="loc mono">GET /webhooks</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Endpoint added</strong> <span class="muted">· Removed · direction: Neutral · confidence: Certain</span></p>
+    <p>Endpoint added: clients calling this endpoint will be affected.</p>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Existing integrations stop working.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Coordinate the removal with consumers.</p></div>
+    </div>
+  </div>
+</details>
+  </div>
+  <h2>Suppressed findings <span class="muted">(acknowledged, not counted)</span></h2>
+  <table class="tbl"><thead><tr><th>Rule</th><th>Location</th><th>Source</th><th>Reason</th></tr></thead><tbody>
+    <tr><td class="mono">CG5004</td><td class="mono">GET /orders</td><td>suppression</td><td>Planned extension; consumers informed.</td></tr>
+  </tbody></table>
+</section>
+<footer class="foot">Generated by OpenAPI Sentinel — deterministic, offline contract analysis. Rule IDs are stable; see docs/rules.md.</footer>
+</main>
+<script>
+(function () {
+  "use strict";
+  var search = document.getElementById("search");
+  var fSeverity = document.getElementById("f-severity");
+  var fMethod = document.getElementById("f-method");
+  var fCompat = document.getElementById("f-compat");
+  var fBreakingOnly = document.getElementById("f-breaking-only");
+  var countLine = document.getElementById("visible-count");
+  var cards = Array.prototype.slice.call(document.querySelectorAll("#findings > details.finding"));
+  function apply() {
+    var q = (search && search.value || "").trim().toLowerCase();
+    var sev = fSeverity ? fSeverity.value : "";
+    var met = fMethod ? fMethod.value : "";
+    var cmp = fCompat ? fCompat.value : "";
+    var brk = fBreakingOnly ? fBreakingOnly.checked : false;
+    var visible = 0;
+    cards.forEach(function (el) {
+      var ok = true;
+      if (q && el.getAttribute("data-text").indexOf(q) === -1) ok = false;
+      if (ok && sev && el.getAttribute("data-sev") !== sev) ok = false;
+      if (ok && met && el.getAttribute("data-method") !== met) ok = false;
+      if (ok && cmp && el.getAttribute("data-compat") !== cmp) ok = false;
+      if (ok && brk) {
+        var c = el.getAttribute("data-compat");
+        if (c !== "Breaking" && c !== "PotentiallyBreaking") ok = false;
+      }
+      el.style.display = ok ? "" : "none";
+      if (ok) visible++;
+    });
+    if (countLine) {
+      var total = cards.length;
+      countLine.textContent = visible === total
+        ? "Showing all " + total + " finding(s)"
+        : "Showing " + visible + " of " + total + " finding(s)";
+    }
+  }
+  [search, fSeverity, fMethod, fCompat].forEach(function (ctl) {
+    if (!ctl) return;
+    ctl.addEventListener(ctl.tagName === "INPUT" && ctl.type === "search" ? "input" : "change", apply);
+  });
+  if (fBreakingOnly) fBreakingOnly.addEventListener("change", apply);
+  apply();
+})();
+</script></body>
+</html>

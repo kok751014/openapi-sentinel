@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenAPI Sentinel — samples/basic/v1.yaml → samples/basic/v2-breaking.yaml</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --card: #ffffff; --ink: #1f2328; --muted: #656d76;
+    --line: #d8dee4; --accent: #0969da;
+    --red: #cf222e; --orange: #bc4c00; --green: #1a7f37; --purple: #8250df;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .topbar { background: #10151c; color: #fff; padding: 14px 0; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .brand .shield { filter: drop-shadow(0 0 6px rgba(80,200,255,.55)); }
+  .brand strong { letter-spacing: .3px; }
+  .brand .tag { margin-left: 10px; color: #9aa7b4; font-size: 13px; }
+  #verdict { font-weight: 700; padding: 4px 14px; border-radius: 999px; font-size: 14px; letter-spacing: 1px; }
+  #verdict.pass { background: rgba(46,160,67,.25); color: #7ee787; border: 1px solid #2ea043; }
+  #verdict.fail { background: rgba(218,54,51,.22); color: #ff8182; border: 1px solid #da3633; }
+  main { padding: 24px 20px 40px; display: grid; gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  h2 { font-size: 17px; margin: 26px 0 12px; }
+  .head-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: start; }
+  .lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 4px; }
+  .val { font-weight: 600; word-break: break-all; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .badge { display: inline-block; font-weight: 700; padding: 3px 12px; border-radius: 999px; }
+  .badge.ok { color: var(--green); background: #dafbe1; border: 1px solid rgba(26,127,55,.35); }
+  .badge.fail { color: var(--red); background: #ffebe9; border: 1px solid rgba(207,34,46,.35); }
+  .rec { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--ink); font-size: 14px; }
+  .bump { display: inline-block; font-weight: 700; border-radius: 6px; padding: 1px 9px; margin-right: 6px; font-size: 13px; }
+  .bump-major { background: #ffebe9; color: var(--red); }
+  .bump-minor { background: #ddf4ff; color: var(--accent); }
+  .bump-patch { background: #eaeef2; color: var(--ink); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .t { color: var(--muted); font-size: 12.5px; }
+  .stat.bad { border-color: rgba(207,34,46,.45); }
+  .stat.bad .n { color: var(--red); }
+  .stat.warn { border-color: rgba(188,76,0,.45); }
+  .stat.warn .n { color: var(--orange); }
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 6px; }
+  .filters input[type=search] { flex: 1 1 240px; }
+  input, select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid rgba(9,105,218,.35); outline-offset: 1px; }
+  .chk { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+  .count-line { color: var(--muted); font-size: 12.5px; margin: 4px 2px 10px; }
+  details.finding { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: #fff; overflow: hidden; }
+  details.finding[open] { box-shadow: 0 1px 4px rgba(31,35,40,.08); }
+  summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 10px 14px; flex-wrap: wrap; }
+  summary::-webkit-details-marker { display: none; }
+  .chevron { margin-left: auto; color: var(--muted); transition: transform .15s ease; }
+  details[open] .chevron { transform: rotate(180deg); }
+  .sev { font-size: 11px; font-weight: 800; letter-spacing: .6px; padding: 2px 8px; border-radius: 5px; min-width: 58px; text-align: center; }
+  .sev-critical, .sev-high { background: #ffebe9; color: var(--red); }
+  .sev-medium { background: #fff1e5; color: var(--orange); }
+  .sev-low { background: #eaeef2; color: var(--ink); }
+  .sev-info { background: #ddf4ff; color: var(--accent); }
+  .sev-verify { background: #fbefff; color: var(--purple); }
+  .rule { color: var(--muted); font-size: 12.5px; }
+  .loc { font-size: 13.5px; word-break: break-all; }
+  .compat { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .c-break { background: var(--red); color: #fff; }
+  .c-potential { background: #fff1e5; color: var(--orange); border: 1px solid rgba(188,76,0,.4); }
+  .c-nonbreak { background: #dafbe1; color: var(--green); }
+  .c-info { background: #ddf4ff; color: var(--accent); }
+  .c-unknown { background: #fbefff; color: var(--purple); }
+  .body { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+  .body p { margin: 6px 0; }
+  .title { margin-top: 2px; }
+  .values { display: flex; gap: 12px; align-items: stretch; margin: 10px 0; flex-wrap: wrap; }
+  .values > div { flex: 1 1 220px; min-width: 0; }
+  .values pre { margin: 4px 0 0; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+                white-space: pre-wrap; word-break: break-all; font-size: 12.5px; }
+  .values .arrow { flex: 0 0 auto; align-self: center; color: var(--muted); font-size: 18px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .grid2 .lbl { margin-bottom: 2px; }
+  .grid2 p { color: #3a444d; }
+  .muted { color: var(--muted); font-weight: 400; }
+  .empty { color: var(--green); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.tbl th, table.tbl td { text-align: left; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+  table.tbl th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .foot { text-align: center; color: var(--muted); font-size: 12.5px; padding: 8px 0 20px; }
+  .st { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 2px 8px; border-radius: 5px; }
+  .st-removed { background: #ffebe9; color: var(--red); }
+  .st-added { background: #dafbe1; color: var(--green); }
+  .st-changed { background: #ddf4ff; color: var(--accent); }
+  .st-unchanged { background: #eaeef2; color: var(--ink); }
+</style></head>
+<body>
+<header class="topbar"><div class="wrap brand-row">
+  <div class="brand"><span class="shield">🛡</span> <strong>OpenAPI Sentinel</strong><span class="tag">API Compatibility Report</span></div>
+  <div id="verdict" class="fail">FAILED</div>
+</div></header>
+<main class="wrap">
+<section class="card head-card">
+  <div class="head-grid">
+   <div><div class="lbl">Result</div>
+     <div class="badge fail">FAILED</div></div>
+   <div><div class="lbl">Old contract</div><div class="val mono">samples/basic/v1.yaml</div><div class="sub">spec 3.0.3 · api v1.0.0</div></div>
+   <div><div class="lbl">New contract</div><div class="val mono">samples/basic/v2-breaking.yaml</div><div class="sub">spec 3.0.3 · api v2.0.0</div></div>
+   <div><div class="lbl">Generated (UTC)</div><div class="val">2026-08-23 10:10:27</div><div class="sub">tool 1.0.0 · schema 1.0</div></div>
+  </div>
+  <div class="rec"><span class="bump bump-major">MAJOR</span> 7 breaking finding(s) at high or critical severity (first: CG2002) require a major version.</div>
+</section>
+<section class="stats">
+<div class="stat stat-total" data-stat="total"><div class="n">33</div><div class="t">Findings</div></div>
+<div class="stat bad" data-stat="breaking"><div class="n">7</div><div class="t">Breaking</div></div>
+<div class="stat warn" data-stat="potentially"><div class="n">9</div><div class="t">Potentially breaking</div></div>
+<div class="stat " data-stat="nonbreaking"><div class="n">15</div><div class="t">Non-breaking</div></div>
+<div class="stat " data-stat="verify"><div class="n">0</div><div class="t">Needs review</div></div>
+<div class="stat " data-stat="suppressed"><div class="n">0</div><div class="t">Suppressed</div></div>
+</section>
+<section class="card">
+  <h2>Affected endpoints</h2>
+  <table class="tbl"><thead><tr><th>State</th><th>Endpoint</th><th>Findings</th></tr></thead><tbody>
+    <tr><td><span class="st st-changed">Changed</span></td><td class="mono">GET /orders</td><td>11</td></tr>
+    <tr><td><span class="st st-changed">Changed</span></td><td class="mono">POST /orders</td><td>8</td></tr>
+    <tr><td><span class="st st-changed">Changed</span></td><td class="mono">GET /orders/{orderId}</td><td>6</td></tr>
+    <tr><td><span class="st st-removed">Removed</span></td><td class="mono">DELETE /orders/{orderId}</td><td>1</td></tr>
+    <tr><td><span class="st st-changed">Changed</span></td><td class="mono">GET /products</td><td>4</td></tr>
+  </tbody></table>
+</section>
+<section class="card">
+  <h2>Findings</h2>
+  <div class="filters">
+    <input id="search" type="search" placeholder="Search path, rule, explanation…" autocomplete="off">
+    <select id="f-severity"><option value="">All severities</option><option value="CRITICAL">CRITICAL</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="INFO">INFO</option><option value="VERIFY">VERIFY</option></select>
+    <select id="f-method"><option value="">All methods</option><option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="PATCH">PATCH</option><option value="DELETE">DELETE</option><option value="HEAD">HEAD</option><option value="OPTIONS">OPTIONS</option><option value="TRACE">TRACE</option></select>
+    <select id="f-compat"><option value="">All compatibility</option><option value="Breaking">Breaking</option><option value="PotentiallyBreaking">PotentiallyBreaking</option><option value="NonBreaking">NonBreaking</option><option value="Informational">Informational</option><option value="Unknown">Unknown</option></select>
+    <label class="chk"><input type="checkbox" id="f-breaking-only"> Breaking only</label>
+  </div>
+  <div class="count-line" id="visible-count"></div>
+  <div id="findings">
+<details class="finding" data-sev="MEDIUM" data-method="" data-compat="PotentiallyBreaking" data-rule="CG1010" data-text="  cg1010 servers changed advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG1010</span>
+    <span class="loc mono"></span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Servers changed</strong> <span class="muted">· Changed · direction: Neutral · confidence: Certain</span></p>
+    <p>Advertised servers changed: 'https://api.example.com/v1' → 'https://api.example.com/v2'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">https://api.example.com/v1</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">https://api.example.com/v2</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Generated clients pinned to a removed server URL may stop resolving.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Keep old base URLs functional during transition or communicate the new endpoints clearly.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="" data-compat="Informational" data-rule="CG7001" data-text="  cg7001 api version changed document version changed: '1.0.0' → '2.0.0'.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG7001</span>
+    <span class="loc mono"></span>
+    <span class="compat c-info">Informational</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>API version changed</strong> <span class="muted">· Changed · direction: Neutral · confidence: Certain</span></p>
+    <p>Document version changed: '1.0.0' → '2.0.0'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">1.0.0</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">2.0.0</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Metadata only — no wire-level impact.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="" data-compat="Informational" data-rule="CG6006" data-text=" securityschemes.oauth2 cg6006 security scheme added new security scheme 'oauth2' was defined.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG6006</span>
+    <span class="loc mono"> → securitySchemes.oauth2</span>
+    <span class="compat c-info">Informational</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Security scheme added</strong> <span class="muted">· Added · direction: Neutral · confidence: Certain</span></p>
+    <p>New security scheme 'oauth2' was defined.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">(none)</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">oauth2</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Additive; affects compatibility only once operations require it.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="GET" data-compat="Breaking" data-rule="CG2002" data-text="/orders get /orders parameters.channel cg2002 required parameter added parameter 'channel' was added to get /orders as required.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG2002</span>
+    <span class="loc mono">GET /orders → GET /orders parameters.channel</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Required parameter added</strong> <span class="muted">· Added · direction: Request · confidence: Certain</span></p>
+    <p>Parameter 'channel' was added to GET /orders as required.</p>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Existing clients that do not send this parameter may begin receiving validation errors.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Introduce the field as optional first, migrate consumers, then enforce the requirement in a later API version.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="GET" data-compat="Breaking" data-rule="CG2011" data-text="/orders get /orders parameters.pagesize cg2011 parameter constraint changed constraint 'maximum' of parameter 'pagesize' changed: '100' → '50'.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG2011</span>
+    <span class="loc mono">GET /orders → GET /orders parameters.pageSize</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Parameter constraint changed</strong> <span class="muted">· Changed · direction: Request · confidence: Certain</span></p>
+    <p>Constraint 'maximum' of parameter 'pageSize' changed: '100' → '50'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">100</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">50</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Requests that were valid before may now be rejected by validation.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Relax the constraint, or tighten only in a new major version after verifying consumer data.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="GET" data-compat="Breaking" data-rule="CG2007" data-text="/orders get /orders parameters.status cg2007 parameter enum value removed enum value &quot;delivered&quot; was removed from parameter 'status'.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG2007</span>
+    <span class="loc mono">GET /orders → GET /orders parameters.status</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Parameter enum value removed</strong> <span class="muted">· Removed · direction: Request · confidence: Certain</span></p>
+    <p>Enum value &quot;delivered&quot; was removed from parameter 'status'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;delivered&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Clients sending this value will now be rejected.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Deprecate the value first; remove acceptance only after consumers migrated.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="GET" data-compat="NonBreaking" data-rule="CG5008" data-text="/orders get /orders responses.200 cg5008 array item schema changed array items changed at get /orders; see the detailed element-level findings for specifics.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG5008</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Array item schema changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Array items changed at GET /orders; see the detailed element-level findings for specifics.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;id&quot;,&quot;customerId&quot;,&quot;status&quot;,&quot;items&quot;,&quot;total&quot;],&quot;properties&quot;:{&quot;id&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;customerId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;status&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;enum&quot;:[&quot;pending&quot;,&quot;paid&quot;,&quot;shipped&quot;,&quot;delivered&quot;,&quot;cancelled&quot;]},&quot;items&quot;:{&quot;type&quot;:&quot;array&quot;,&quot;minItems&quot;:1,&quot;items&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}},&quot;total&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}},&quot;createdAt&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;date-time&quot;,&quot;readOnly&quot;:true}}}</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;id&quot;,&quot;customerId&quot;,&quot;status&quot;,&quot;items&quot;,&quot;total&quot;],&quot;properties&quot;:{&quot;id&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;customerId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;status&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;description&quot;:&quot;Lifecycle status of an order&quot;,&quot;enum&quot;:[&quot;pending&quot;,&quot;paid&quot;,&quot;shipped&quot;,&quot;cancelled&quot;]},&quot;items&quot;:{&quot;type&quot;:&quot;array&quot;,&quot;minItems&quot;:1,&quot;items&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}},&quot;total&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}},&quot;createdAt&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;date-time&quot;,&quot;readOnly&quot;:true}}}</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Summary only — the individual element changes are reported by their own rules.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Review the element schema diff carefully.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="GET" data-compat="NonBreaking" data-rule="CG5008" data-text="/orders get /orders responses.200.[].items cg5008 array item schema changed array items changed at get /orders; see the detailed element-level findings for specifics.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG5008</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].items</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Array item schema changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Array items changed at GET /orders; see the detailed element-level findings for specifics.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Summary only — the individual element changes are reported by their own rules.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Review the element schema diff carefully.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders get /orders responses.200.[].items.[].unitprice.amount cg5001 schema type changed type changed at get /orders: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].items.[].unitPrice.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at GET /orders: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders get /orders responses.200.[].items.[].unitprice.amount cg5002 schema format changed format changed at get /orders: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].items.[].unitPrice.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at GET /orders: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5003" data-text="/orders get /orders responses.200.[].status cg5003 response enum value removed enum value &quot;delivered&quot; removed at get /orders.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5003</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].status</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Response enum value removed</strong> <span class="muted">· Removed · direction: Response · confidence: Certain</span></p>
+    <p>Enum value &quot;delivered&quot; removed at GET /orders.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;delivered&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Narrowing possible outputs; readers are unaffected unless they depended on exhaustive cases.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Update documentation/UI enumerations accordingly.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders get /orders responses.200.[].total.amount cg5001 schema type changed type changed at get /orders: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].total.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at GET /orders: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders get /orders responses.200.[].total.amount cg5002 schema format changed format changed at get /orders: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.[].total.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at GET /orders: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG4005" data-text="/orders get /orders responses.200.headers.x-total-count cg4005 response header removed response header 'x-total-count' was removed from get /orders.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG4005</span>
+    <span class="loc mono">GET /orders → GET /orders responses.200.headers.X-Total-Count</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Response header removed</strong> <span class="muted">· Removed · direction: Response · confidence: Certain</span></p>
+    <p>Response header 'X-Total-Count' was removed from GET /orders.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">X-Total-Count</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Clients reading this header may misbehave when it is absent.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Keep sending the header during migration or document its removal.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="POST" data-compat="NonBreaking" data-rule="CG5008" data-text="/orders post /orders responses.201.items cg5008 array item schema changed array items changed at post /orders; see the detailed element-level findings for specifics.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG5008</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.items</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Array item schema changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Array items changed at POST /orders; see the detailed element-level findings for specifics.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Summary only — the individual element changes are reported by their own rules.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Review the element schema diff carefully.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="POST" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders post /orders responses.201.items.[].unitprice.amount cg5001 schema type changed type changed at post /orders: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.items.[].unitPrice.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at POST /orders: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="POST" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders post /orders responses.201.items.[].unitprice.amount cg5002 schema format changed format changed at post /orders: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.items.[].unitPrice.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at POST /orders: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="POST" data-compat="NonBreaking" data-rule="CG5003" data-text="/orders post /orders responses.201.status cg5003 response enum value removed enum value &quot;delivered&quot; removed at post /orders.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5003</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.status</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Response enum value removed</strong> <span class="muted">· Removed · direction: Response · confidence: Certain</span></p>
+    <p>Enum value &quot;delivered&quot; removed at POST /orders.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;delivered&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Narrowing possible outputs; readers are unaffected unless they depended on exhaustive cases.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Update documentation/UI enumerations accordingly.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="POST" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders post /orders responses.201.total.amount cg5001 schema type changed type changed at post /orders: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.total.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at POST /orders: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="POST" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders post /orders responses.201.total.amount cg5002 schema format changed format changed at post /orders: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">POST /orders → POST /orders responses.201.total.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at POST /orders: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="POST" data-compat="Breaking" data-rule="CG6001" data-text="/orders post /orders security cg6001 endpoint now requires authentication authentication became mandatory for post /orders (oauth2).">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG6001</span>
+    <span class="loc mono">POST /orders → POST /orders security</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Endpoint now requires authentication</strong> <span class="muted">· Added · direction: Neutral · confidence: Certain</span></p>
+    <p>Authentication became mandatory for POST /orders (oauth2).</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">(none)</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">oauth2</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Unauthenticated clients will receive 401/403 responses and stop working.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Migrate clients to authenticated calls before enforcing, or document a transition period.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="POST" data-compat="Breaking" data-rule="CG5006" data-text="/orders body.items cg5006 validation constraint changed constraint 'maxitems' changed at post /orders: '100' → '20'.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG5006</span>
+    <span class="loc mono">POST /orders → body.items</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Validation constraint changed</strong> <span class="muted">· Changed · direction: Request · confidence: Certain</span></p>
+    <p>Constraint 'maxItems' changed at POST /orders: '100' → '20'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">100</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">20</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Previously valid requests may now be rejected by validation.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Relax the constraint or enforce it only in a major version.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="GET" data-compat="NonBreaking" data-rule="CG5008" data-text="/orders/{orderid} get /orders/{orderid} responses.200.items cg5008 array item schema changed array items changed at get /orders/{orderid}; see the detailed element-level findings for specifics.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG5008</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Array item schema changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Array items changed at GET /orders/{orderId}; see the detailed element-level findings for specifics.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;productId&quot;,&quot;quantity&quot;],&quot;properties&quot;:{&quot;productId&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;quantity&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;minimum&quot;:1},&quot;unitPrice&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Summary only — the individual element changes are reported by their own rules.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Review the element schema diff carefully.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders/{orderid} get /orders/{orderid} responses.200.items.[].unitprice.amount cg5001 schema type changed type changed at get /orders/{orderid}: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items.[].unitPrice.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at GET /orders/{orderId}: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders/{orderid} get /orders/{orderid} responses.200.items.[].unitprice.amount cg5002 schema format changed format changed at get /orders/{orderid}: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.items.[].unitPrice.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at GET /orders/{orderId}: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5003" data-text="/orders/{orderid} get /orders/{orderid} responses.200.status cg5003 response enum value removed enum value &quot;delivered&quot; removed at get /orders/{orderid}.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5003</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.status</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Response enum value removed</strong> <span class="muted">· Removed · direction: Response · confidence: Certain</span></p>
+    <p>Enum value &quot;delivered&quot; removed at GET /orders/{orderId}.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;delivered&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Narrowing possible outputs; readers are unaffected unless they depended on exhaustive cases.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Update documentation/UI enumerations accordingly.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5001" data-text="/orders/{orderid} get /orders/{orderid} responses.200.total.amount cg5001 schema type changed type changed at get /orders/{orderid}: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.total.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at GET /orders/{orderId}: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/orders/{orderid} get /orders/{orderid} responses.200.total.amount cg5002 schema format changed format changed at get /orders/{orderid}: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">GET /orders/{orderId} → GET /orders/{orderId} responses.200.total.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at GET /orders/{orderId}: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="CRITICAL" data-method="DELETE" data-compat="Breaking" data-rule="CG1002" data-text="/orders/{orderid}  cg1002 operation removed operation delete /orders/{orderid} was removed.">
+  <summary>
+    <span class="sev sev-critical">CRITICAL</span>
+    <span class="rule mono">CG1002</span>
+    <span class="loc mono">DELETE /orders/{orderId}</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Operation removed</strong> <span class="muted">· Removed · direction: Neutral · confidence: Certain</span></p>
+    <p>Operation DELETE /orders/{orderId} was removed.</p>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Existing calls to this operation fail with 404/405 responses.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Restore the operation or formally deprecate it and coordinate a migration window.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="HIGH" data-method="GET" data-compat="Breaking" data-rule="CG2011" data-text="/products get /products parameters.pagesize cg2011 parameter constraint changed constraint 'maximum' of parameter 'pagesize' changed: '100' → '50'.">
+  <summary>
+    <span class="sev sev-high">HIGH</span>
+    <span class="rule mono">CG2011</span>
+    <span class="loc mono">GET /products → GET /products parameters.pageSize</span>
+    <span class="compat c-break">Breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Parameter constraint changed</strong> <span class="muted">· Changed · direction: Request · confidence: Certain</span></p>
+    <p>Constraint 'maximum' of parameter 'pageSize' changed: '100' → '50'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">100</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">50</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Requests that were valid before may now be rejected by validation.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Relax the constraint, or tighten only in a new major version after verifying consumer data.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="INFO" data-method="GET" data-compat="NonBreaking" data-rule="CG5008" data-text="/products get /products responses.200 cg5008 array item schema changed array items changed at get /products; see the detailed element-level findings for specifics.">
+  <summary>
+    <span class="sev sev-info">INFO</span>
+    <span class="rule mono">CG5008</span>
+    <span class="loc mono">GET /products → GET /products responses.200</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Array item schema changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Array items changed at GET /products; see the detailed element-level findings for specifics.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;id&quot;,&quot;name&quot;,&quot;price&quot;],&quot;properties&quot;:{&quot;id&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;name&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;minLength&quot;:1,&quot;maxLength&quot;:150},&quot;price&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;format&quot;:&quot;double&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;id&quot;,&quot;name&quot;,&quot;price&quot;],&quot;properties&quot;:{&quot;id&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;format&quot;:&quot;uuid&quot;},&quot;name&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;minLength&quot;:1,&quot;maxLength&quot;:150},&quot;price&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;required&quot;:[&quot;amount&quot;,&quot;currency&quot;],&quot;properties&quot;:{&quot;amount&quot;:{&quot;type&quot;:&quot;integer&quot;,&quot;description&quot;:&quot;Whole currency units only; decimal amounts no longer accepted&quot;,&quot;minimum&quot;:0},&quot;currency&quot;:{&quot;type&quot;:&quot;string&quot;,&quot;pattern&quot;:&quot;^[A-Z]{3}$&quot;}}}}}</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Summary only — the individual element changes are reported by their own rules.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Review the element schema diff carefully.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="LOW" data-method="GET" data-compat="NonBreaking" data-rule="CG5001" data-text="/products get /products responses.200.[].price.amount cg5001 schema type changed type changed at get /products: '&quot;number&quot;' → '&quot;integer&quot;'.">
+  <summary>
+    <span class="sev sev-low">LOW</span>
+    <span class="rule mono">CG5001</span>
+    <span class="loc mono">GET /products → GET /products responses.200.[].price.amount</span>
+    <span class="compat c-nonbreak">Non-breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema type changed</strong> <span class="muted">· Changed · direction: Response · confidence: Certain</span></p>
+    <p>Type changed at GET /products: '&quot;number&quot;' → '&quot;integer&quot;'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">&quot;number&quot;</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">&quot;integer&quot;</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Relaxation: previously valid values remain valid.</p></div>
+      <div><span class="lbl">Suggested action</span><p>No action required; document the widened type.</p></div>
+    </div>
+  </div>
+</details>
+<details class="finding" data-sev="MEDIUM" data-method="GET" data-compat="PotentiallyBreaking" data-rule="CG5002" data-text="/products get /products responses.200.[].price.amount cg5002 schema format changed format changed at get /products: 'double' → '(removed)'.">
+  <summary>
+    <span class="sev sev-medium">MEDIUM</span>
+    <span class="rule mono">CG5002</span>
+    <span class="loc mono">GET /products → GET /products responses.200.[].price.amount</span>
+    <span class="compat c-potential">Potentially breaking</span>
+    <span class="chevron">▾</span>
+  </summary>
+  <div class="body">
+    <p class="title"><strong>Schema format changed</strong> <span class="muted">· Changed · direction: Response · confidence: Likely</span></p>
+    <p>Format changed at GET /products: 'double' → '(removed)'.</p>
+    <div class="values">
+      <div class="val-old"><span class="lbl">before</span><pre class="mono">double</pre></div>
+      <div class="arrow">→</div>
+      <div class="val-new"><span class="lbl">after</span><pre class="mono">(removed)</pre></div>
+    </div>
+    <div class="grid2">
+      <div><span class="lbl">Impact</span><p>Precision and parsing expectations shift; some clients will fail.</p></div>
+      <div><span class="lbl">Suggested action</span><p>Verify client handling; prefer widening formats with documentation.</p></div>
+    </div>
+  </div>
+</details>
+  </div>
+</section>
+<footer class="foot">Generated by OpenAPI Sentinel — deterministic, offline contract analysis. Rule IDs are stable; see docs/rules.md.</footer>
+</main>
+<script>
+(function () {
+  "use strict";
+  var search = document.getElementById("search");
+  var fSeverity = document.getElementById("f-severity");
+  var fMethod = document.getElementById("f-method");
+  var fCompat = document.getElementById("f-compat");
+  var fBreakingOnly = document.getElementById("f-breaking-only");
+  var countLine = document.getElementById("visible-count");
+  var cards = Array.prototype.slice.call(document.querySelectorAll("#findings > details.finding"));
+  function apply() {
+    var q = (search && search.value || "").trim().toLowerCase();
+    var sev = fSeverity ? fSeverity.value : "";
+    var met = fMethod ? fMethod.value : "";
+    var cmp = fCompat ? fCompat.value : "";
+    var brk = fBreakingOnly ? fBreakingOnly.checked : false;
+    var visible = 0;
+    cards.forEach(function (el) {
+      var ok = true;
+      if (q && el.getAttribute("data-text").indexOf(q) === -1) ok = false;
+      if (ok && sev && el.getAttribute("data-sev") !== sev) ok = false;
+      if (ok && met && el.getAttribute("data-method") !== met) ok = false;
+      if (ok && cmp && el.getAttribute("data-compat") !== cmp) ok = false;
+      if (ok && brk) {
+        var c = el.getAttribute("data-compat");
+        if (c !== "Breaking" && c !== "PotentiallyBreaking") ok = false;
+      }
+      el.style.display = ok ? "" : "none";
+      if (ok) visible++;
+    });
+    if (countLine) {
+      var total = cards.length;
+      countLine.textContent = visible === total
+        ? "Showing all " + total + " finding(s)"
+        : "Showing " + visible + " of " + total + " finding(s)";
+    }
+  }
+  [search, fSeverity, fMethod, fCompat].forEach(function (ctl) {
+    if (!ctl) return;
+    ctl.addEventListener(ctl.tagName === "INPUT" && ctl.type === "search" ? "input" : "change", apply);
+  });
+  if (fBreakingOnly) fBreakingOnly.addEventListener("change", apply);
+  apply();
+})();
+</script></body>
+</html>

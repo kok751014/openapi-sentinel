@@ -1,0 +1,35 @@
+# GitLab CI — OpenAPI Sentinel
+#
+# Fails merge requests that introduce breaking changes at the configured threshold.
+
+stages: [verify]
+
+openapi-sentinel:
+  stage: verify
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: 0   # full clone so `git:` sources can reach origin/main
+  before_script:
+    - dotnet tool install --global OpenApiSentinel || true
+    - export PATH="$HOME/.dotnet/tools:$PATH"
+  script:
+    - set +e
+    - openapi-sentinel compare
+        "git:origin/${CI_DEFAULT_BRANCH}:contracts/openapi.yaml"
+        contracts/openapi.yaml
+        --fail-on high
+        --json sentinel/api-diff.json
+        --markdown sentinel/api-diff.md
+        --html sentinel/api-diff.html
+        --no-color
+    - EXIT=$?
+    - |
+      BREAKING=$(python3 -c "import json;d=json.load(open('sentinel/api-diff.json'));print(d['summary']['breaking'])")
+      echo "breaking changes: ${BREAKING}"
+    - exit $EXIT
+  artifacts:
+    when: always
+    paths: [sentinel/]
+    reports: {}

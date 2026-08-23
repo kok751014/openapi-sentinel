@@ -1,0 +1,144 @@
+name: "OpenAPI Sentinel"
+description: >
+  Detect breaking OpenAPI contract changes in CI. Compares a base contract against the
+  current one and fails when the configured severity threshold is exceeded.
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  base:
+    description: "Path (or URL / git:ref:path) of the OLD contract"
+    required: true
+  head:
+    description: "Path (or URL / git:ref:path) of the NEW contract"
+    required: true
+  fail-on:
+    description: "Minimum severity that fails the job: critical | high | medium | low | verify | info | all"
+    required: false
+    default: "high"
+  config:
+    description: "Path to openapi-sentinel.yml (optional)"
+    required: false
+  allow-remote:
+    description: "Enable remote $ref / URL fetching (true|false)"
+    required: false
+    default: "false"
+  report-dir:
+    description: "Directory for generated reports"
+    required: false
+    default: "sentinel-reports"
+  dotnet-version:
+    description: ".NET SDK version used to run the tool"
+    required: false
+    default: "10.0.x"
+
+outputs:
+  breaking-count:
+    description: "Number of breaking findings"
+    value: ${{ steps.sentinel.outputs.breaking-count }}
+  high-count:
+    description: "Number of high severity findings"
+    value: ${{ steps.sentinel.outputs.high-count }}
+  medium-count:
+    description: "Number of medium severity findings"
+    value: ${{ steps.sentinel.outputs.medium-count }}
+  recommended-version:
+    description: "Recommended semver bump (MAJOR/MINOR/PATCH/NONE)"
+    value: ${{ steps.sentinel.outputs.recommended-version }}
+  report-path:
+    description: "Path of the generated HTML report"
+    value: ${{ steps.sentinel.outputs.report-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: Install OpenAPI Sentinel
+      shell: bash
+      run: |
+        if command -v openapi-sentinel >/dev/null 2>&1; then
+          echo "openapi-sentinel already available"
+          exit 0
+        fi
+        if dotnet tool install --global OpenApiSentinel 2>/dev/null; then
+          echo "installed from NuGet"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          exit 0
+        fi
+        echo "NuGet package not found; building from the action sources"
+        dotnet build -c Release "$GITHUB_ACTION_PATH/.."
+        dotnet pack -c Release --no-build "$GITHUB_ACTION_PATH/.." -o "$RUNNER_TEMP/pkg"
+        dotnet tool install --global --add-source "$RUNNER_TEMP/pkg" OpenApiSentinel
+        echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+    - name: Run comparison
+      id: sentinel
+      shell: bash
+      env:
+        INPUTS_FAILON: ${{ inputs.fail-on }}
+      run: |
+        set +e
+        ARGS=(compare "$INPUT_BASE" "$INPUT_HEAD" --fail-on "$INPUTS_FAILON" \
+              --json "$INPUT_REPORT_DIR/api-diff.json" \
+              --markdown "$INPUT_REPORT_DIR/api-diff.md" \
+              --html "$INPUT_REPORT_DIR/api-diff.html" \
+              --pr-summary "$INPUT_REPORT_DIR/pr-summary.md")
+        [ -n "$INPUT_CONFIG" ] && ARGS+=(--config "$INPUT_CONFIG")
+        [ "$INPUT_ALLOW_REMOTE" = "true" ] && ARGS+=(--allow-remote)
+        openapi-sentinel "${ARGS[@]}" --no-color
+        CODE=$?
+        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+
+        # Machine-readable counts come from the JSON report; annotations from breaking findings.
+        python3 - "$INPUT_REPORT_DIR/api-diff.json" "$GITHUB_OUTPUT" <<'PYEOF'
+        import json, sys
+        path, out = sys.argv[1], sys.argv[2]
+        with open(path, encoding="utf-8") as fh:
+            report = json.load(fh)
+        s = report["summary"]
+        rec = (report.get("recommendation") or {}).get("display", "NONE")
+        lines = [
+            f"breaking-count={s.get('breaking', 0)}",
+            f"high-count={s.get('high', 0)}",
+            f"medium-count={s.get('medium', 0)}",
+            f"recommended-version={rec}",
+            "report-path=" + sys.argv[1].replace("api-diff.json", "api-diff.html"),
+        ]
+        with open(out, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+        PYEOF
+
+        # GitHub annotations for breaking findings (bounded to keep logs readable).
+        python3 - "$INPUT_REPORT_DIR/api-diff.json" <<'PYEOF'
+        import json, sys
+        with open(sys.argv[1], encoding="utf-8") as fh:
+            report = json.load(fh)
+        shown = 0
+        for f in report["findings"]:
+            if shown >= 20:
+                print("::notice::Additional findings omitted — see the full report artifact.")
+                break
+            if f["compatibility"] not in ("Breaking", "PotentiallyBreaking"):
+                continue
+            loc = f.get("location") or f["path"] or "(document)"
+            print(f"::error title={f['ruleId']} {f['title']}::{loc}: {f['explanation']}")
+            shown += 1
+        PYEOF
+
+        # Publish the compact PR summary to the job/step summary when available.
+        if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "$INPUT_REPORT_DIR/pr-summary.md" ]; then
+          cat "$INPUT_REPORT_DIR/pr-summary.md" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        exit $CODE
+      env:
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_HEAD: ${{ inputs.head }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_REPORT_DIR: ${{ inputs.report-dir }}
+        INPUT_ALLOW_REMOTE: ${{ inputs.allow-remote }}

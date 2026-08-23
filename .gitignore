@@ -1,0 +1,16 @@
+# .gitignore — .NET
+bin/
+obj/
+dist/
+artifacts/
+pkg/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+TestResults/
+[Bb]ench[Rr]esults/
+*.binlog
+sentinel-reports/
+.opencode/

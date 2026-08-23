@@ -1,0 +1,58 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors></WarningsNotAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Deterministic builds -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources Condition="'$(CI)' == 'true'">true</EmbedUntrackedSources>
+
+    <!-- Product metadata (single source of truth for versioning) -->
+    <Product>OpenAPI Sentinel</Product>
+    <Company>OpenAPI Sentinel</Company>
+    <Authors>OpenAPI Sentinel</Authors>
+    <Copyright>Copyright (c) OpenAPI Sentinel</Copyright>
+    <PackageProjectUrl>https://openapi-sentinel.example</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/owner/openapi-sentinel</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>false</IncludeSymbols>
+    <Version Condition="'$(SentinelVersion)' != ''">$(SentinelVersion)</Version>
+    <Version Condition="'$(SentinelVersion)' == ''">1.0.0</Version>
+    <FileVersion Condition="'$(SentinelFileVersion)' != ''">$(SentinelFileVersion)</FileVersion>
+    <FileVersion Condition="'$(SentinelFileVersion)' == ''">1.0.0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+
+    <!-- CLI tool metadata -->
+    <PackAsTool Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">true</PackAsTool>
+    <ToolCommandName Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">openapi-sentinel</ToolCommandName>
+    <PackageId Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">OpenApiSentinel</PackageId>
+    <PackageReadmeFile Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">README.md</PackageReadmeFile>
+    <Description Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">Catch breaking OpenAPI contract changes before they reach production. Direction-aware comparison for Swagger/OpenAPI 2.0-3.2 (JSON &amp; YAML) with 74 stable rules, CI exit codes, baselines, suppressions and offline operation.</Description>
+    <PackageOutputPath Condition="'$(MSBuildProjectName)' == 'OpenApiSentinel.Cli'">$(MSBuildThisFileDirectory)artifacts/packages</PackageOutputPath>
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName.EndsWith(`Tests`))' == 'false'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- XML doc warnings on internal-only members are noise; we document public APIs -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName.EndsWith(`Tests`))' == 'true' OR '$(MSBuildProjectName.Contains(`Benchmarks`))' == 'true'">
+    <!-- Underscore-separated test method names are the accepted xUnit convention -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

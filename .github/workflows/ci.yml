@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (warnings are errors)
+        run: dotnet build -c Release --no-restore
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+  samples:
+    name: Demo scenarios on sample contracts
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build CLI
+        run: dotnet build -c Release src/OpenApiSentinel.Cli
+
+      - name: Safe evolution passes
+        run: |
+          dotnet run -c Release --no-build --project src/OpenApiSentinel.Cli -- \
+            compare samples/basic/v1.yaml samples/basic/v2-safe.yaml \
+            --fail-on high --no-color
+
+      - name: Breaking evolution fails with MAJOR recommendation
+        run: |
+          set +e
+          dotnet run -c Release --no-build --project src/OpenApiSentinel.Cli -- \
+            compare samples/basic/v1.yaml samples/basic/v2-breaking.yaml \
+            --fail-on high --json artifacts/api-diff.json --html artifacts/api-diff.html \
+            --no-color
+          code=$?
+          [ "$code" -eq 1 ] || { echo "expected policy violation (exit 1), got $code"; exit 1; }
+          grep -q '"display": "MAJOR"' artifacts/api-diff.json
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sentinel-reports
+          path: artifacts/
+
+  pack:
+    name: Package global tool
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Pack NuGet tool
+        run: dotnet pack -c Release -o artifacts/pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-tool
+          path: artifacts/pkg/

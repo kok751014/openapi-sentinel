@@ -1,0 +1,48 @@
+# GitHub Actions example — OpenAPI Sentinel
+#
+# Compares the contract on main against the PR head and fails on high+ findings.
+# Requires the composite action in this repository (action/action.yml).
+
+name: API compatibility
+
+on:
+  pull_request:
+
+jobs:
+  sentinel:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # post the PR summary comment
+    steps:
+      - uses: actions/checkout@v4
+
+      # Typical flow: generate the current swagger.json first.
+      # - run: dotnet run --project src/My.Api -- generate-swagger > swagger.json
+
+      - name: Compare contracts
+        id: sentinel
+        uses: openapi-sentinel/openapi-sentinel-action@v1
+        with:
+          base: git:origin/main:contracts/openapi.yaml
+          head: contracts/openapi.yaml
+          fail-on: high
+          report-dir: sentinel-reports
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-compatibility-report
+          path: sentinel-reports/
+
+      - name: Post PR summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("sentinel-reports/api-diff.md")
+          print(p.read_text(encoding="utf-8") if p.exists() else "No report generated.")
+          PYEOF
