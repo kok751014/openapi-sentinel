@@ -175,15 +175,16 @@ public sealed class RulesEngine
             if (expiredMatch is not null)
             {
                 expiredCount++;
-                findings.Add(CreateExpiredSuppressionWarning(expiredMatch, finding));
+                if (!IsMetaRuleOff(overrideMap, ExpiredSuppressionRuleId))
+                    findings.Add(CreateExpiredSuppressionWarning(expiredMatch, finding));
             }
         }
 
-        if (options.ReportUnknownChangeKinds && unknownKinds.Count > 0)
+        if (options.ReportUnknownChangeKinds && unknownKinds.Count > 0 && !IsMetaRuleOff(overrideMap, UnknownChangeKindRuleId))
             findings.Add(CreateUnknownKindFinding(unknownKinds));
 
         var staleBaseline = baseline.Except(usedBaseline, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-        if (staleBaseline.Count > 0)
+        if (staleBaseline.Count > 0 && !IsMetaRuleOff(overrideMap, StaleBaselineRuleId))
             findings.Add(CreateStaleBaselineFinding(staleBaseline));
 
         findings.Sort(FindingsComparer);
@@ -228,6 +229,10 @@ public sealed class RulesEngine
 
         return new EngineEvaluation { Result = result, Statistics = statistics };
     }
+
+    private static bool IsMetaRuleOff(Dictionary<string, RuleOverride> overrides, string ruleId) =>
+        overrides.TryGetValue(ruleId, out var ov) &&
+        string.Equals(ov.Action, "off", StringComparison.OrdinalIgnoreCase);
 
     private static int FindingsComparer(Finding x, Finding y)
     {

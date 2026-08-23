@@ -277,3 +277,30 @@ public class RulesEngineTests
         Assert.Equal(1, summary.NonBreaking);
     }
 }
+
+public class MetaRuleOverrideTests
+{
+    private static EngineEvaluation EvaluateWithOverrides(SemanticChange[] changes, RuleOverride[] overrides)
+    {
+        var engine = new RulesEngine(RuleRegistry.CreateDefault(), new FakeClock(FakeClock.Fixed));
+        return engine.Evaluate(changes, new EngineOptions
+        {
+            OldContractName = "old",
+            NewContractName = "new",
+            ReportUnknownChangeKinds = true,
+            Overrides = overrides,
+        });
+    }
+
+    [Fact]
+    public void MetaChecks_CanBeDisabled_ViaOffOverride()
+    {
+        var changes = new[]
+        {
+            Change.Make("totally.unknown.kind"),                    // CG9003 (opt-in)
+        };
+        var evaluation = EvaluateWithOverrides(changes,
+            [new RuleOverride { RuleId = "CG9003", Action = "off" }]);
+        Assert.DoesNotContain(evaluation.Result.Findings, f => f.RuleId == "CG9003");
+    }
+}
