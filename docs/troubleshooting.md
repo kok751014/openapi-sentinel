@@ -8,9 +8,14 @@ Start from the exit code — they are stable (see [cli-reference](cli-reference.
 
 - *"Unresolvable reference …"* — a `$ref` target does not exist. Check fragment spelling
   and that referenced files sit inside the main document's directory tree.
-- Deep-nesting/reference-bomb errors indicate the safety limits were hit; legitimate specs
-  beyond them can raise limits via future config knobs (defaults: 128 depth, 2M nodes,
-  200k refs).
+- Deep-nesting errors indicate the depth limit was hit (defaults: 128 parse depth,
+  64 `$ref` chain depth).
+- **Very large, reference-heavy specs no longer fail outright**: when the node/ref budgets
+  trip during `$ref` resolution the comparison degrades — affected subtrees become opaque
+  markers and any non-identical pair surfaces as a single `CG5022` Verify finding. To get
+  full detail instead, raise the budgets via the `limits:` config section
+  (see [configuration](configuration.md)); e.g. Stripe-scale specs compare cleanly with
+  defaults today, at reduced granularity only if they grow further.
 - Swagger 2.0 documents missing `info`/`paths` fail version detection with an actionable
   message.
 

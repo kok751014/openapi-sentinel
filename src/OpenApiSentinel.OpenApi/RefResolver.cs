@@ -14,6 +14,11 @@ public sealed class RefResolver
 {
     private const string CyclicMarkerKey = "x-sentinel-cyclic-ref";
 
+    /// <summary>Marks a subtree left un-materialized because a safety budget tripped
+    /// (see Materialize). Comparison treats identical markers as equal and differing
+    /// ones as a single Verify-level event instead of failing the whole run.</summary>
+    public const string UnresolvedMarkerKey = "x-sentinel-unresolved-ref";
+
     private readonly ProcessingLimits _limits;
     private readonly RemoteFetchPolicy _remotePolicy;
     private readonly SpecLoader _loader;
@@ -27,6 +32,23 @@ public sealed class RefResolver
         _limits = limits;
         _remotePolicy = remotePolicy;
         _loader = new SpecLoader(remotePolicy);
+    }
+
+    internal static JsonObject UnresolvedMarker(string reference) => new()
+    {
+        [UnresolvedMarkerKey] = reference,
+    };
+
+    public static bool IsUnresolvedMarker(JsonNode? node, out string? reference)
+    {
+        reference = null;
+        if (node is not JsonObject obj ||
+            !obj.TryGetPropertyValue(UnresolvedMarkerKey, out var v) ||
+            v is not JsonValue val ||
+            !val.TryGetValue<string>(out var s))
+            return false;
+        reference = s;
+        return true;
     }
 
     /// <summary>Resolves all references in-place within the given root node.</summary>
@@ -84,8 +106,11 @@ public sealed class RefResolver
         HashSet<string> activeChain)
     {
         if (ResolvedRefCount >= _limits.MaxResolvedRefs)
-            throw new SpecParseException(
-                $"Document exceeds the maximum number of resolvable references ({_limits.MaxResolvedRefs}). Possible reference bomb.");
+        {
+            // Budget tripped: degrade to an opaque marker instead of failing the run.
+            // Identical markers compare equal; differing ones surface as one Verify finding.
+            return UnresolvedMarker(reference);
+        }
 
         var (targetDoc, targetNode, fragment) = LocateTarget(reference, currentDoc, ctx);
 
@@ -229,8 +254,13 @@ public sealed class RefResolver
         if (depth > _limits.MaxRefChainDepth)
             throw new SpecParseException($"Schema nesting deeper than {_limits.MaxRefChainDepth} levels during reference resolution.");
         if (++_clonedNodes > _limits.MaxNodes)
-            throw new SpecParseException(
-                "Reference resolution exceeded the maximum node budget. The document likely contains a reference bomb.");
+        {
+            // Node budget exhausted: leave an opaque marker rather than aborting. Real
+            // mega-specs (e.g. Stripe) legitimately exceed fixed budgets; adversarial
+            // bombs stay bounded by the parser's raw-node cap and produce noisy-but-
+            // bounded Verify findings instead of silent success.
+            return UnresolvedMarker("(node-budget)");
+        }
 
         switch (node)
         {

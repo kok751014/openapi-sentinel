@@ -112,7 +112,7 @@ internal static class SchemaRules
         {
             Descriptor = new RuleDescriptor
             {
-                Id = "CG5016", Title = "Optional property added",
+                Id = "CG5020", Title = "Optional property added",
                 Category = FindingCategory.Schema,
                 DefaultSeverity = Severity.Info,
                 DefaultCompatibility = Compatibility.NonBreaking,
@@ -125,7 +125,7 @@ internal static class SchemaRules
             {
                 c.Details.TryGetValue("property", out var prop);
                 var isResponse = c.Direction == ApiDirection.Response;
-                return FindingFactory.Create("CG5016", isResponse ? "Response property added" : "Optional property added",
+                return FindingFactory.Create("CG5020", isResponse ? "Response property added" : "Optional property added",
                     Severity.Info, Compatibility.NonBreaking, c,
                     $"New property '{prop}' added to {Where(c)} ({(isResponse ? "clients should tolerate unknown fields" : "optional on request")}).",
                     isResponse
@@ -624,6 +624,27 @@ internal static class SchemaRules
                     "Polymorphic deserialization in client SDKs may break.",
                     "Preserve the discriminator property; only ever append new mappings.");
             },
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG5022", Title = "Unresolved reference changed",
+                Category = FindingCategory.Schema,
+                DefaultSeverity = Severity.Verify,
+                DefaultCompatibility = Compatibility.Unknown,
+                ChangeKinds = [ChangeKinds.SchemaUnresolvedChanged],
+                Description = "A subtree was left un-resolved because a processing-safety budget (limits.maxNodes / limits.maxResolvedRefs) tripped, so the two sides cannot be compared in detail. This finding reports that the targets are not provably identical.",
+                Impact = "Changes inside the affected subtrees may be invisible; treat the comparison as lower-granularity for these schemas.",
+                Remediation = "Raise limits.maxNodes / limits.maxResolvedRefs in openapi-sentinel.yml for this repository and re-run, or compare the affected fragments directly.",
+                Limitations = "Only fires when the sides differ or cannot be proven equal; identical unresolved targets are silently equal.",
+            },
+            Build = c => FindingFactory.Create("CG5022", "Unresolved reference changed",
+                Severity.Verify, Compatibility.Unknown, c,
+                $"A schema subtree could not be resolved within the configured safety budgets at {Where(c)}: {RuleText.Values(c)}.",
+                "Detailed compatibility analysis of this fragment was skipped; changes may be hidden.",
+                "Raise the relevant limits in the configuration file and re-run the comparison."),
         };
 
         yield return new RuleDefinition

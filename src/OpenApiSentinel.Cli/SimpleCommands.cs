@@ -20,7 +20,7 @@ public static class SimpleCommands
         IConsoleWriter console, CancellationToken ct)
     {
         var doc = await AnalysisPipeline.LoadDocumentAsync(
-            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, ct);
+            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, config.Limits, ct);
         var paths = doc.Paths.Count;
         var operations = doc.Paths.Sum(p => p.Value.Operations.Count);
         console.Out($"OK — '{DisplayName(source)}' parsed as {doc.RawVersion}: {paths} path(s), {operations} operation(s), {doc.SecuritySchemes.Count} security scheme(s).");

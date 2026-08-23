@@ -30,6 +30,10 @@ public sealed record SentinelConfiguration
     /// <summary>Configured output artifact paths keyed by format.</summary>
     public IReadOnlyDictionary<string, string> Output { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>Overrides for the built-in safety budgets (giant legitimate specs);
+    /// null = defaults. See ProcessingLimits.</summary>
+    public ProcessingLimits? Limits { get; init; }
 }
 
 public sealed class SentinelConfigException(string message) : Exception(message);
@@ -44,7 +48,7 @@ public static class SentinelConfigLoader
     private static readonly HashSet<string> TopLevelKeys = new(StringComparer.Ordinal)
     {
         "failOn", "rules", "ignore", "remoteReferences", "headerEnv",
-        "suppressions", "baseline", "output", "reportUnknownKinds",
+        "suppressions", "baseline", "output", "reportUnknownKinds", "limits",
     };
 
     private static readonly Dictionary<string, HashSet<string>> NestedKeys = new(StringComparer.Ordinal)
@@ -54,6 +58,8 @@ public static class SentinelConfigLoader
             { "enabled", "allowHttp", "allowPrivateNetwork", "allowedHosts", "timeoutSeconds", "maxResponseBytes" },
         ["output"] = new(StringComparer.Ordinal)
             { "console", "json", "markdown", "html", "sarif", "junit", "changelog", "pr-summary" },
+        ["limits"] = new(StringComparer.Ordinal)
+            { "maxDocumentBytes", "maxDepth", "maxNodes", "maxResolvedRefs", "maxRefChainDepth" },
     };
 
     private const string SuppressKeyRule = "rule";
@@ -246,6 +252,31 @@ public static class SentinelConfigLoader
             }
         }
 
+        // ---- limits (safety-budget overrides for giant legitimate specs) ----
+        ProcessingLimits? limits = null;
+        if (root.TryGetValue("limits", out var limitsRaw))
+        {
+            if (limitsRaw is not Dictionary<object, object> limitsMap)
+                throw new SentinelConfigException("'limits' must be a mapping.");
+
+            static int RequirePositive(Dictionary<object, object> map, string key, int? fallback)
+            {
+                var v = GetInt(map, key) ?? fallback;
+                if (v is null || v <= 0)
+                    throw new SentinelConfigException($"'limits.{key}' must be a positive integer.");
+                return v.Value;
+            }
+
+            limits = new ProcessingLimits
+            {
+                MaxDocumentBytes = RequirePositive(limitsMap, "maxDocumentBytes", 20 * 1024 * 1024),
+                MaxDepth = RequirePositive(limitsMap, "maxDepth", 128),
+                MaxNodes = RequirePositive(limitsMap, "maxNodes", 2_000_000),
+                MaxResolvedRefs = RequirePositive(limitsMap, "maxResolvedRefs", 200_000),
+                MaxRefChainDepth = RequirePositive(limitsMap, "maxRefChainDepth", 64),
+            };
+        }
+
         return new SentinelConfiguration
         {
             Policy = policy,
@@ -257,6 +288,7 @@ public static class SentinelConfigLoader
             BaselinePath = baselinePath,
             ReportUnknownKinds = reportUnknownKinds,
             Output = output,
+            Limits = limits,
         };
     }
 

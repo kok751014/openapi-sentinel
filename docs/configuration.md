@@ -61,6 +61,19 @@ suppressions:
 # structural change no registered rule evaluates.
 reportUnknownKinds: false
 
+# ── Processing safety budgets (rarely needed) ─────────────────────────────
+# Hard bounds against malicious/degenerate inputs. When a budget trips during
+# $ref resolution the run now DEGRADES instead of failing: affected subtrees
+# become opaque markers; identical markers compare silently, differing ones
+# surface as a single Verify finding (CG5022). Raise these only for very
+# large, legitimately reference-heavy specifications.
+limits:
+  maxDocumentBytes: 20971520   # raw document size cap (bytes)
+  maxDepth: 128                # nesting depth cap
+  maxNodes: 2000000            # parsed-node cap
+  maxResolvedRefs: 200000      # total $ref resolutions cap
+  maxRefChainDepth: 64         # $ref chain depth cap
+
 # ── Baseline ──────────────────────────────────────────────────────────────
 baseline: sentinel-baseline.json   # CLI --baseline/--update-baseline override this
 

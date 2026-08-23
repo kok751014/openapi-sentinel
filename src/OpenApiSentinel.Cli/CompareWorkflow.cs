@@ -49,9 +49,9 @@ public static class CompareWorkflow
         var config = request.Config;
 
         var oldDoc = await AnalysisPipeline.LoadDocumentAsync(
-            request.OldSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, ct);
+            request.OldSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, config.Limits, ct);
         var newDoc = await AnalysisPipeline.LoadDocumentAsync(
-            request.NewSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, ct);
+            request.NewSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, config.Limits, ct);
 
         var changes = new ComparisonEngine().Compare(oldDoc, newDoc);
 

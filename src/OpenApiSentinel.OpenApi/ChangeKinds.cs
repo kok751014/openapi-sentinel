@@ -78,6 +78,10 @@ public static class ChangeKinds
     public const string DefaultChanged = "schema.default.changed";
     public const string ExampleChanged = "schema.example.changed";
 
+    /// <summary>Emitted when a subtree was left un-materialized by a safety budget and
+    /// the two sides cannot be proven identical (see RefResolver.UnresolvedMarkerKey).</summary>
+    public const string SchemaUnresolvedChanged = "schema.unresolved.changed";
+
     // ---- Security ----
     public const string SecurityRequirementAdded = "security.requirement.added";
     public const string SecurityRequirementRemoved = "security.requirement.removed";

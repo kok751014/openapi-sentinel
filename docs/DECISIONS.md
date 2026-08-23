@@ -223,3 +223,24 @@ locations, explanations, values, impact/action text, suppressed reasons, contrac
 
 Deliberately console-only: JSON/SARIF keep raw values behind their own string encoders for
 machine consumers; HTML uses its encoder; Markdown neutralizes via Code()/Prose() (entry 25).
+
+## 27. Budget exhaustion degrades to unresolved-reference markers
+
+Real-world trigger: Stripe's production spec (~6 MB YAML, extreme $ref density) was
+rejected as a "reference bomb" — a false positive that blocked a marquee vendor. Measured
+before the fix: full in-place materialization needs >128M nodes / >12 GB RAM; no sane
+static budget both stops real bombs and admits such specs.
+
+New behavior when `limits.maxNodes` / `limits.maxResolvedRefs` trips during resolution:
+- the affected subtree becomes an opaque marker (`x-sentinel-unresolved-ref`), mirroring
+  the existing cyclic-marker strategy;
+- identical markers (same reference string) compare silently equal;
+- differing pairs emit exactly ONE Verify finding — CG5022 "Unresolved reference changed" —
+  instead of cascading noise or hard failure.
+
+Rationale: bounded memory always wins over unbounded failure; honest lower-granularity
+output beats exit code 2 for legitimate inputs; adversarial bombs remain bounded by the
+parser's raw-node cap and now surface as noisy-but-finite CG5022 findings rather than
+silent success. The `limits:` config section exposes the five budgets with safe defaults.
+Measured outcome on Stripe spec3.yaml with DEFAULT limits: validate 3.8s, self-compare
+7.0s / 703 MB peak RSS, 0 findings, fully deterministic.

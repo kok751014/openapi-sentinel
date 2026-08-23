@@ -14,6 +14,7 @@ public static class AnalysisPipeline
         RemoteFetchPolicy remotePolicy,
         IReadOnlyList<EnvHeader> envHeaders,
         bool allowRemoteOverride = false,
+        ProcessingLimits? limits = null,
         CancellationToken ct = default)
     {
         var policy = allowRemoteOverride && !remotePolicy.Enabled
@@ -31,18 +32,18 @@ public static class AnalysisPipeline
             throw; // mapped to exit code 4 by the runner
         }
 
-        var limits = ProcessingLimits.Default();
+        var effectiveLimits = limits ?? ProcessingLimits.Default();
         JsonNode root;
         try
         {
-            root = DocumentParser.Parse(loaded.SourceName, loaded.Content, limits);
+            root = DocumentParser.Parse(loaded.SourceName, loaded.Content, effectiveLimits);
         }
         catch (SpecParseException)
         {
             throw; // mapped to exit code 2
         }
 
-        var resolver = new RefResolver(limits, policy);
+        var resolver = new RefResolver(effectiveLimits, policy);
         resolver.Resolve(root, loaded.BaseDirectoryOrNull);
 
         return OpenApiNormalizer.Normalize(root);

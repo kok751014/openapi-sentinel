@@ -44,6 +44,22 @@ public sealed class SchemaComparer
         var oldNode = StripCyclicMarker(oldS.Node);
         var newNode = StripCyclicMarker(newS.Node);
 
+        // Unresolved-reference markers (safety budgets tripped): identical targets are
+        // silently equal; anything else surfaces as exactly ONE Verify event instead of
+        // cascading noise or a hard failure.
+        var oldMarker = RefResolver.IsUnresolvedMarker(oldNode, out var oldRef);
+        var newMarker = RefResolver.IsUnresolvedMarker(newNode, out var newRef);
+        if (oldMarker || newMarker)
+        {
+            if (oldMarker && newMarker &&
+                string.Equals(oldRef, newRef, StringComparison.Ordinal))
+                return;
+            Emit(ChangeKinds.SchemaUnresolvedChanged, direction, path, method, location,
+                oldMarker ? oldRef : SemanticChange.ValueToString(oldS.Node),
+                newMarker ? newRef : SemanticChange.ValueToString(newS.Node));
+            return;
+        }
+
         // Cyclic markers only match when pointing at the same target.
         if (oldNode is not JsonObject && newNode is not JsonObject) return;
 

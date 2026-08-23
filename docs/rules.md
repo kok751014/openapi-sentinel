@@ -1,6 +1,6 @@
 # Rule catalog
 
-OpenAPI Sentinel ships **77 built-in rules** with stable IDs (`CGxxxx`)
+OpenAPI Sentinel ships **78 built-in rules** with stable IDs (`CGxxxx`)
 plus **3 engine meta-checks** (`CG9001`, `CG9002`, `CG9003`)
 that document engine-emitted process findings.
 Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the
@@ -387,9 +387,10 @@ The required flag of a response header changed.
 | `CG5013` | Schema deprecated | medium | PotentiallyBreaking |
 | `CG5014` | Default value changed | verify | Unknown |
 | `CG5015` | Required property changed | high | Breaking |
-| `CG5016` | Optional property added | info | NonBreaking |
 | `CG5017` | Property removed | medium | PotentiallyBreaking |
 | `CG5018` | Property renamed | medium | Breaking |
+| `CG5020` | Optional property added | info | NonBreaking |
+| `CG5022` | Unresolved reference changed | verify | Unknown |
 
 ### `CG5001` — Schema type changed
 
@@ -511,14 +512,6 @@ A property entered or left the 'required' list. Direction decides impact: requir
 - **Classification:** Breaking  
 - **Change kinds:** `schema.required.changed`
 
-### `CG5016` — Optional property added
-
-A new optional property appeared in a schema.
-
-- **Default severity:** info  
-- **Classification:** NonBreaking  
-- **Change kinds:** `schema.property.added`
-
 ### `CG5017` — Property removed
 
 A property disappeared from a schema.
@@ -534,6 +527,22 @@ A property appears to have been renamed (same type and highly similar structure)
 - **Default severity:** medium  
 - **Classification:** Breaking  
 - **Change kinds:** `schema.property.renamed`
+
+### `CG5020` — Optional property added
+
+A new optional property appeared in a schema.
+
+- **Default severity:** info  
+- **Classification:** NonBreaking  
+- **Change kinds:** `schema.property.added`
+
+### `CG5022` — Unresolved reference changed
+
+A subtree was left un-resolved because a processing-safety budget (limits.maxNodes / limits.maxResolvedRefs) tripped, so the two sides cannot be compared in detail. This finding reports that the targets are not provably identical.
+
+- **Default severity:** verify  
+- **Classification:** Unknown  
+- **Change kinds:** `schema.unresolved.changed`
 
 ## Security
 
