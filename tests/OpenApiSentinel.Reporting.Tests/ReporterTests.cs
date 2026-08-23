@@ -421,10 +421,15 @@ public class GoldenConsoleTests
         Assert.True(File.Exists(goldenPath),
             $"Golden file missing: {goldenPath}. Run SENTINEL_ACCEPT_GOLDEN=1 dotnet test once to create it.");
         var golden = File.ReadAllText(goldenPath);
-        Assert.True(text == golden,
+        // Line endings are platform artifacts (WriteLine / git normalization), not
+        // report content; compare with normalized endings so goldens are byte-stable
+        // across Windows/Linux checkouts.
+        Assert.True(NormalizeNewlines(text) == NormalizeNewlines(golden),
             "Console report diverged from the golden snapshot. " +
             "If the change is intentional, rerun with SENTINEL_ACCEPT_GOLDEN=1 and commit the updated file.");
     }
+
+    internal static string NormalizeNewlines(string s) => s.Replace("\r\n", "\n", StringComparison.Ordinal);
 }
 
 public class GoldenHtmlTests
@@ -451,7 +456,7 @@ public class GoldenHtmlTests
         Assert.True(File.Exists(goldenPath),
             $"Golden file missing: {goldenPath}. Run SENTINEL_ACCEPT_GOLDEN=1 dotnet test once to create it.");
         var golden = File.ReadAllText(goldenPath);
-        Assert.True(html == golden,
+        Assert.True(GoldenConsoleTests.NormalizeNewlines(html) == GoldenConsoleTests.NormalizeNewlines(golden),
             "HTML report diverged from the golden snapshot. " +
             "If the change is intentional, rerun with SENTINEL_ACCEPT_GOLDEN=1 and commit the updated file.");
     }
