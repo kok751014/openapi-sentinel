@@ -185,6 +185,63 @@ public class FalsePositiveNegativeSuites
         Assert.False(HasRisk(findings));
     }
 
+    [Fact]
+    public void ExamplesAndDefaultsOnly_Changes_NeverBreak()
+    {
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                post:
+                  operationId: createOrder
+                  requestBody:
+                    content:
+                      application/json:
+                        schema:
+                          type: object
+                          required: [customerId]
+                          properties:
+                            customerId:
+                              type: string
+                              examples: [abc-123]
+                            priority:
+                              type: integer
+                              default: 1
+                  responses:
+                    '201': {description: created}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                post:
+                  operationId: createOrder
+                  requestBody:
+                    content:
+                      application/json:
+                        schema:
+                          type: object
+                          required: [customerId]
+                          properties:
+                            customerId:
+                              type: string
+                              examples: [xyz-789, abc-123]
+                            priority:
+                              type: integer
+                              default: 3
+                  responses:
+                    '201':
+                      description: created
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        // Examples/defaults are documentation-flavoured: at most informational or
+        // Verify findings — never Breaking/PotentiallyBreaking.
+        Assert.DoesNotContain(findings,
+            f => f.Compatibility is Compatibility.Breaking or Compatibility.PotentiallyBreaking);
+    }
+
     // ---------------- §56 false negatives ----------------
 
     [Fact]
