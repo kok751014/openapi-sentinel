@@ -350,3 +350,36 @@ export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 
 ### Exact next recommended action
 1. Optional hardening only: (a) docs/examples refresh showcasing callback/header/discriminator findings for marketing; (b) header-removal wildcard-masking doc note; (c) content-parameter multi-media limitation fix if real demand appears. If none chosen: re-run gates, keep repo healthy.
+
+---
+
+## 2026-08-23 ~14:00 UTC — RENAMED-CALLBACK FN FIXED (self-caught) + CALLBACKS SHOWCASE — commit f0b2687
+
+**Defect found & fixed (false negative in my own callback feature):** a 1:1 callback
+expression rename emitted CG1013 but skipped the inner operation diff (`TryGetValue` on the
+renamed key never matched) — ALL payload changes inside a renamed callback were invisible.
+Caught immediately by building the showcase sample: `signature` becoming required inside a
+renamed-expression callback produced nothing. Rename now pairs both sides and diffs methods;
+regression test `Expression_Rename_Still_Diffs_Inner_Operations` pins rename + payload-change
+together. Sample pair now yields all 5 intended findings incl. CG5015 at
+`POST <callback:...> → body.signature`.
+
+**Showcase/commercial:**
+- samples/callbacks/{v1.yaml,v2-breaking.yaml} — Notification Hooks demo pair (CG7001,
+  CG1013 High, CG1011 Medium, CG5001 Critical header drift, CG5015 High).
+- docs/examples/callbacks-api-diff.md generated artifact + examples README row.
+- README features row now mentions callbacks/webhooks and response-header payloads.
+- compatibility-model.md: wildcard-masking asymmetry note (status codes masked by ranges;
+  content-type removals never masked).
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/ComparisonEngine.cs (rename-aware inner diff; DiffCallbackMethods extracted)
+- tests/OpenApiSentinel.OpenApi.Tests/CallbackDiffTests.cs (+1 regression test)
+- samples/callbacks/* (NEW), docs/examples/callbacks-api-diff.md (NEW), docs/examples/README.md, README.md, docs/compatibility-model.md
+
+### Verification (actual)
+- Build 0/0; tests **237/237** (OpenApi 55). Sample compare → FAILED/MAJOR/exit 1 with 5 findings.
+- Committed **f0b2687**, pushed to origin/main.
+
+### Next recommended action
+Optional only: Pro-oriented polish (HTML example refresh with callback finding; pr-summary for callbacks pair). Otherwise repo is healthy; re-run gates next iteration.
