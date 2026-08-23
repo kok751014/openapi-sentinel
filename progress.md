@@ -694,3 +694,38 @@ product-positioning.md and docs/rules.md.
 Steady state reached: defect queue empty, CI green (3 OSes), packaging & release flow
 verified, real-world validation covers GitHub + Stripe pairs. Future iterations: gate
 re-runs unless new information arrives. Publication awaits user-side credentials only.
+
+---
+
+## 2026-08-23 ~17:20 UTC — CONTENT-PARAMETER LIMITATION CLOSED (last known FN) — commit 4340c9c
+
+Closed the final documented false-negative limitation (DECISIONS 27 / engineering-report
+risk #2): 3.x content-based parameters now diff EVERY declared media type.
+
+**Design (backward-compatible):**
+- Normalizer: ParameterInfo gains `Content` (all media types) + `PrimaryContentType`;
+  Schema still backs the primary key, so single-media params and primary-key diffs keep
+  legacy CG20xx routing byte-for-byte (regression-tested).
+- Engine: CompareParameterContent engages only when BOTH sides declare content — secondary
+  keys emit parameter.content.added/.removed; matched non-primary keys get full per-key
+  schema diffs with locations like `… parameters.filter content.application/xml`.
+- Rules: **CG2017** content added (Info/NonBreaking), **CG2018** content removed
+  (High/Breaking — mirrors body content-type semantics). Catalog: **80 rules + 3 checks**.
+- DECISIONS entry 28; engineering report risk #2 removed; counts synced everywhere.
+
+### Files changed
+- Model/ApiDocument.cs, OpenApiNormalizer.cs, ComparisonEngine.cs, ChangeKinds.cs,
+  Rules/ParameterRules.cs, docs/{rules.md regenerated, DECISIONS.md, engineering-report.md,
+  README.md, commercial/product-positioning.md}
+- tests/OpenApiSentinel.OpenApi.Tests/ParameterContentTests.cs (4 NEW)
+
+### Verification (actual)
+- Build 0/0; suite **261/261** (OpenApi 66). CLI: second-media constraint change →
+  `[VERIFY] CG5006 … content.application/xml`; key removal → CG2018 High/Breaking.
+
+### Git status
+- main @ 4340c9c pushed; tree clean except this entry (committed next).
+
+### Exact next recommended action
+The last known silent spot is closed. Next iterations: gate re-runs only. Release ready
+pending user-side NuGet/Docker credentials.
