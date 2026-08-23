@@ -784,3 +784,12 @@ invariants under randomized structure space. Committed SeedCount stays 40 (~170 
 ### Exact next recommended action
 Steady state. Re-run deep sweeps after future engine changes; gate re-runs otherwise.
 Publication awaits user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~19:10 UTC — FUZZ MUTATION OPERATORS ROTATED
+
+The determinism sweep now rotates four deterministic single-token mutations across seeds
+(constraint swap, enum-value removal, security-requirement removal, comment marker) instead
+of one — exercising constraint, enum, and the newest security-diff rule families under the
+differential invariants. 41/41 fuzz cases green; suite **302/302**.

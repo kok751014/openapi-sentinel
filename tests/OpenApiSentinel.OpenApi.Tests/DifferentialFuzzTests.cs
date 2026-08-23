@@ -208,11 +208,16 @@ public class DifferentialFuzzTests
     {
         for (var seed = 1; seed <= SeedCount; seed++)
         {
+            // Rotate through several deterministic single-token mutation operators so
+            // the differential invariants are exercised across different rule families.
             var oldSpec = Generate(seed);
-            // Deterministic single-token mutation: swap one maxLength value.
-            var newSpec = oldSpec.Contains("maxLength")
-                ? ReplaceFirst(oldSpec, "maxLength:", "minLength:")
-                : oldSpec.Replace("description: ok", "description: ok #");
+            var newSpec = (seed % 4) switch
+            {
+                0 when oldSpec.Contains("maxLength") => ReplaceFirst(oldSpec, "maxLength:", "minLength:"),
+                1 when oldSpec.Contains("enum: [a") => ReplaceFirst(oldSpec, "enum: [a", "enum: [z"),
+                2 when oldSpec.Contains("bearerAuth: []") => ReplaceFirst(oldSpec, "        - bearerAuth: []\n", ""),
+                _ => oldSpec.Replace("description: ok", "description: ok #"),
+            };
 
             var first = CompareDocs(oldSpec, newSpec);
             var second = CompareDocs(oldSpec, newSpec);
