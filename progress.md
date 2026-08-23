@@ -383,3 +383,43 @@ together. Sample pair now yields all 5 intended findings incl. CG5015 at
 
 ### Next recommended action
 Optional only: Pro-oriented polish (HTML example refresh with callback finding; pr-summary for callbacks pair). Otherwise repo is healthy; re-run gates next iteration.
+
+---
+
+## 2026-08-23 ~14:35 UTC — 2.0 COLLECTIONFORMAT FN + MARKDOWN INJECTION HARDENING — commits 2409a69, a5abed8
+
+**Commit `2409a69` (previous iteration, progress entry deferred until now):**
+- Swagger 2.0 `collectionFormat` (csv/multi/ssv/pipes) changes were undetected — wire-format
+  breakage for array parameters. Normalizer maps it onto ParameterInfo.Style so existing
+  CG2013 routing applies. FP guards: absent → spec-default "csv" for arrays only; non-array
+  params ignore it entirely. DECISIONS entry 24; 3 tests; CLI verified (CG2013 Medium/Breaking).
+
+**Commit `a5abed8` — markdown/HTML injection hardening (security):**
+- Found by adversarial probing: enum value `[click](https://evil.example)` rendered as a
+  LIVE LINK inside markdown reports and PR summaries; `<img …>` passed through as raw HTML;
+  backtick payloads terminated code spans. HTML and JSON reporters verified already safe
+  (encoder-based) — including synthetic `<callback:…>` paths.
+- MarkdownReporter now routes all spec-derived strings through two CommonMark-safe helpers:
+  Code() (fence = longest backtick run + 1, pad when content touches fence) and Prose()
+  (backslash-escapes `\ < [ ]`; benign sentences byte-identical). Table cells pre-escape pipes.
+- callbacks example artifact regenerated (`\<callback:…>` in explanations); benign basic-sample
+  artifacts byte-identical (no churn).
+- DECISIONS entry 25; 6 injection regression tests.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings both commits; suite **246/246** (Core 21, Reporting 41,
+  OpenApi 58, Rules 85, Cli 38, Integration 3).
+- Adversarial CLI probe: raw script/svg/iframe/link payloads absent from rendered output;
+  JSON contract intentionally preserves raw strings (machine consumers escape their own).
+
+### Unfinished / external blockers (unchanged)
+- NuGet push needs NUGET_API_KEY; Docker image needs a daemon; nothing else pending.
+
+### Git status
+- main @ a5abed8, working tree clean except this progress entry (committed next).
+
+### Exact next recommended action
+Optional candidates only: console ANSI control-char sanitization (hypothetical, needs PoC),
+content-parameter multi-media limitation fix (deferred on demand), docs screenshot refresh.
+If none chosen: re-run gates and keep repo healthy; the release is publication-ready
+pending user-side credentials (NuGet/Docker).
