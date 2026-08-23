@@ -2,7 +2,7 @@
 
 Generated: 2026-08-23 ~19:15 local time
 Git branch: `main`
-Latest commit: **`3ff0b5d`** — full v0.9.0 implementation committed on main (119 files). Push to origin pending user confirmation. (`git status`: untracked AGENTS.md, Directory.Build.props, LOOP_PROMPT.md, MASTER_PROMPT.md, OpenApiSentinel.slnx, progress.md, src/, tests/)
+Latest commit: **`3ff0b5d`** — full v0.9.0 implementation committed on main (119 files). Pushed to origin/main (github.com/kok751014/openapi-sentinel) — publicly available. (`git status`: untracked AGENTS.md, Directory.Build.props, LOOP_PROMPT.md, MASTER_PROMPT.md, OpenApiSentinel.slnx, progress.md, src/, tests/)
 
 Environment: .NET SDK **10.0.400** installed at `/home/kim/.dotnet`. Every shell must run:
 ```bash
