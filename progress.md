@@ -477,3 +477,49 @@ Also:
 Concrete-defect queue is empty. Next iteration: re-run quality gates; optionally a second
 real-world spec validation (different vendor style) or leave healthy. Release ready pending
 user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~15:40 UTC — STRIPE-CLASS SPECS UNBLOCKED: BUDGET DEGRADATION + LIMITS CONFIG — commit 1e0e9e6
+
+**Defect (real-world false positive):** Stripe's production spec (~6 MB, extreme $ref
+density) was rejected as a "reference bomb" — exit 2 on a legitimate marquee vendor.
+Measured: full in-place materialization requires >128M nodes / >12 GB RAM; no static
+budget both stops real bombs and admits such specs.
+
+**Fix — graceful degradation + escape hatch:**
+- Budget exhaustion during $ref resolution now leaves an opaque
+  `x-sentinel-unresolved-ref` marker subtree (mirrors the cyclic-marker strategy).
+  Identical markers compare silently equal; differing pairs emit exactly ONE Verify
+  finding — new rule **CG5022 "Unresolved reference changed"**. Bombs remain bounded by
+  the parser's raw-node cap and surface as finite CG5022 noise, never silent success.
+- New validated `limits:` config section (maxDocumentBytes/maxDepth/maxNodes/
+  maxResolvedRefs/maxRefChainDepth), wired loader → AnalysisPipeline for compare AND
+  validate; unknown keys warn; non-positive values → exit 3.
+
+**Measured outcome (Stripe spec3.yaml, DEFAULT limits):**
+- validate: OK in 3.8s (416 paths, 589 operations).
+- remote self-compare: passed, 0 findings, 7.0s wall, **703 MB peak RSS**
+  (pre-fix: hard failure; budget-raise attempts: 12.5 GB RSS without completing).
+- GitHub spec re-check unaffected (809 paths still clean).
+
+### Files changed
+- RefResolver.cs (markers), SchemaComparer.cs (marker equality/Verify event),
+  ChangeKinds.cs + SchemaRules.cs (schema.unresolved.changed / CG5022),
+  SentinelConfig.cs + AnalysisPipeline.cs + CompareWorkflow.cs + SimpleCommands.cs
+  (limits wiring), docs/{rules.md regenerated — 81 rules, configuration.md,
+  troubleshooting.md, DECISIONS.md entry 27}
+- tests/OpenApiSentinel.OpenApi.Tests/UnresolvedReferenceTests.cs (4 NEW)
+
+### Verification (actual)
+- Build 0/0; suite **257/257** (OpenApi 62). Catalog drift guard satisfied post-regen.
+- Config plumbing proven both directions via CLI (absurd limit → exit 2 parse error;
+  unknown limits key → warning with supported list).
+
+### Git status
+- main @ 1e0e9e6 pushed; tree clean except this entry.
+
+### Exact next recommended action
+Defect queue empty again. Next iteration: re-run quality gates; optional candidates:
+(a) pr-summary/callbacks artifact refresh, (b) another vendor validation (Twilio/
+DigitalOcean replacement). Release remains ready pending user-side NuGet/Docker creds.
