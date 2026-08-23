@@ -6,10 +6,13 @@ using OpenApiSentinel.OpenApi.Model;
 
 namespace OpenApiSentinel.Cli;
 
+/// <summary>Loaded specification plus diagnostics from reference resolution.</summary>
+public sealed record AnalysisOutcome(ApiDocument Document, int UnresolvedExternalRefs);
+
 /// <summary>Loads one specification through the full pipeline: load → parse → resolve → normalize.</summary>
 public static class AnalysisPipeline
 {
-    public static async Task<ApiDocument> LoadDocumentAsync(
+    public static async Task<AnalysisOutcome> LoadDocumentAsync(
         string source,
         RemoteFetchPolicy remotePolicy,
         IReadOnlyList<EnvHeader> envHeaders,
@@ -44,9 +47,11 @@ public static class AnalysisPipeline
         }
 
         var resolver = new RefResolver(effectiveLimits, policy);
-        resolver.Resolve(root, loaded.BaseDirectoryOrNull);
+        resolver.Resolve(root, loaded.BaseDirectoryOrNull, loaded.BaseUriOrNull);
 
-        return OpenApiNormalizer.Normalize(root);
+        return new AnalysisOutcome(
+            OpenApiNormalizer.Normalize(root),
+            RefResolver.CountUnresolvedMarkers(root));
     }
 }
 

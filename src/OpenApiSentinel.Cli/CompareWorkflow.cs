@@ -48,10 +48,12 @@ public static class CompareWorkflow
     {
         var config = request.Config;
 
-        var oldDoc = await AnalysisPipeline.LoadDocumentAsync(
+        var oldOutcome = await AnalysisPipeline.LoadDocumentAsync(
             request.OldSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, config.Limits, ct);
-        var newDoc = await AnalysisPipeline.LoadDocumentAsync(
+        var newOutcome = await AnalysisPipeline.LoadDocumentAsync(
             request.NewSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, config.Limits, ct);
+        var oldDoc = oldOutcome.Document;
+        var newDoc = newOutcome.Document;
 
         var changes = new ComparisonEngine().Compare(oldDoc, newDoc);
 

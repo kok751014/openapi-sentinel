@@ -58,6 +58,8 @@ Measured on the same machine as the synthetic benches above (defaults, no config
 | GitHub REST API (self-compare) | 2 × ~10 MB fetched remotely | 13.6 s | — | passed, 0 findings |
 | Stripe spec3.yaml (validate) | ~6 MB YAML, 416 paths / 589 ops | 3.8 s | — | OK |
 | **Stripe v2300 → v2404 diff** (~100 weekly releases) | 2 × ~6 MB YAML | **4.3 s** | **0.68 GB** | 174 findings (73 additive properties, 59 response enum additions, 1 unresolved-reference Verify), MINOR recommendation |
+| DigitalOcean public v2 (validate) | multi-file tree, ~2851 YAML files, 445 paths / 659 ops | 1.5 s | 0.13 GB | OK, 0 unresolved refs |
+| DigitalOcean public v2 (self-compare) | same tree resolved twice from disk | 3.4 s total | — | passed, 0 findings |
 
 The Stripe pair exercises the safety-budget degradation path: exactly one `CG5022` Verify
 finding marks the single subtree that could not be resolved within default budgets;

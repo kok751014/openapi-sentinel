@@ -39,7 +39,8 @@ public sealed record EnvHeader(string HeaderName, string EnvironmentVariable)
 public sealed record LoadedSpec(
     string SourceName,
     string Content,
-    string? BaseDirectoryOrNull);
+    string? BaseDirectoryOrNull,
+    string? BaseUriOrNull = null);
 
 /// <summary>
 /// Loads specifications from files, URLs, stdin or git revisions.

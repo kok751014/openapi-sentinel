@@ -16,6 +16,11 @@ Start from the exit code — they are stable (see [cli-reference](cli-reference.
   full detail instead, raise the budgets via the `limits:` config section
   (see [configuration](configuration.md)); e.g. Stripe-scale specs compare cleanly with
   defaults today, at reduced granularity only if they grow further.
+- **Missing external reference files** (dead `$ref` targets, unreachable URLs) also degrade:
+  `validate` reports `Warning: N external reference(s) could not be resolved` and still
+  exits 0; comparisons surface differing unresolved references as `CG5022` Verify findings.
+  Multi-file layouts may reach shared files via `../` anywhere inside the main document's
+  directory tree. Documents loaded from URLs resolve sibling files relative to their own URL.
 - Swagger 2.0 documents missing `info`/`paths` fail version detection with an actionable
   message.
 

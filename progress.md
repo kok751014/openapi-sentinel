@@ -793,3 +793,57 @@ The determinism sweep now rotates four deterministic single-token mutations acro
 (constraint swap, enum-value removal, security-requirement removal, comment marker) instead
 of one — exercising constraint, enum, and the newest security-diff rule families under the
 differential invariants. 41/41 fuzz cases green; suite **302/302**.
+
+---
+
+## 2026-08-24 — MULTI-FILE SPECS UNBLOCKED: REMOTE SIBLINGS + ROOT-TREE ANCHOR + TOLERANT EXTERNAL REFS
+
+Real-world validation candidate #3 (DigitalOcean public API spec) exposed THREE real defects
+in external `$ref` resolution — all fixed; DO now validates/diffs cleanly.
+
+### Defects found & fixed
+1. **Remote documents could not resolve sibling-file references** (`description.yml#/x` from a
+   URL-loaded spec → hard error "no base directory"). Fix: `LoadedSpec.BaseUri` +
+   `DocumentInstance.BaseUri`; relative refs of URL-loaded docs resolve against their own URL
+   per RFC 3986 via the SAME policy-gated loader (scheme/allowlist/SSRF/redirect/size/timeout).
+   stdin/git keep their actionable no-base error.
+2. **False path-escape rejection (significant)**: containment was anchored to each CONTAINING
+   document's directory, so legitimate `resources/<cat>/x.yml → ../../shared/…` layouts inside
+   the root tree were rejected ("escapes the base directory"). Found by bisection to
+   `/upload_url`; root-caused with an instrumented run showing baseDir=`…/resources/inference`
+   vs combined=`…/specification/shared/headers.yml`. Fix: `ResolutionContext.RootBaseDirectory`
+   anchors containment to the ROOT document's tree. Escapes beyond it stay hard errors.
+3. **One dead external link aborted whole runs**: missing files / 404s / policy-refused fetches
+   now degrade to `x-sentinel-unresolved-ref` markers (mirrors DECISIONS 27 budget path):
+   identical markers compare silently; differing pairs emit CG5022 Verify findings; `validate`
+   prints `Warning: N external reference(s) could not be resolved` and still exits 0.
+   Usage errors remain fatal: no-base sources, root-tree escapes, unsafe URI schemes.
+   New `RefResolver.CountUnresolvedMarkers`; AnalysisPipeline returns AnalysisOutcome(Document,
+   UnresolvedExternalRefs); ValidateAsync surfaces the count.
+
+### Verification (actual)
+- Build: 0 errors / 0 warnings.
+- Suite: **310/310** (Core 21, Reporting 48, OpenApi 115, Rules 85, Cli 38, Integration 3).
+- DigitalOcean public v2 (multi-file, ~2851 YAML files): validate **1.5 s / 133 MB RSS, 445
+  paths / 659 ops / 0 unresolved** (pre-fix: exit 2 twice over); self-compare passed 0 findings
+  3.4 s. Recorded in docs/benchmarks.md alongside GitHub + Stripe.
+- CLI probes: dead ref in NEW side → `[VERIFY] CG5022`, FAILED under --fail-on info (never
+  silent); canonical samples exit 1 (breaking) / 0 (safe).
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/{RefResolver.cs, GitAndStdinLoader.cs, UrlLoader.cs}
+- src/OpenApiSentinel.Cli/{AnalysisPipeline.cs, CompareWorkflow.cs, SimpleCommands.cs}
+- tests/OpenApiSentinel.OpenApi.Tests/{RemoteSiblingRefTests.cs NEW (6, loopback HTTP server),
+  PipelineSmokeTests.cs (+2)}
+- docs/{DECISIONS.md entry 29, security.md threat-model row, troubleshooting.md,
+  configuration.md, benchmarks.md}, AGENTS.md (test count)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon. Both CI jobs armed.
+
+### Git status
+- main @ <this commit>; tree clean after commit+push.
+
+### Exact next recommended action
+Steady state restored with one more marquee vendor proven at scale. Next iteration: gate
+re-runs unless new information arrives; optional candidates remain docs/examples refresh.

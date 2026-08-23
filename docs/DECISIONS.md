@@ -253,3 +253,29 @@ the primary key keep their existing CG20xx schema events — while additional ke
 add/remove events (`parameter.content.added` / `.removed`, CG2017 Info NonBreaking /
 CG2018 High Breaking, mirroring body content-type semantics) and full per-key schema diffs
 through the standard comparer.
+
+## 29. External references: URL siblings, root-tree containment, graceful degradation
+
+Three related fixes, all triggered by the DigitalOcean public API specification — a
+multi-file spec (main + `resources/**` + `shared/`, ~2851 YAML files) that exercised
+resolution paths no prior real-world validation had reached:
+
+1. **URL documents resolve sibling-file references.** A document loaded from http(s) now
+   resolves relative `$ref`s (e.g. `description.yml#/introduction`) against its own URL per
+   RFC 3986. Every fetched sibling passes the identical policy gates as any other remote
+   document: scheme gate, host allowlist, SSRF DNS guard, redirect revalidation, size and
+   timeout caps. stdin/git sources keep their actionable "no file location" error.
+2. **Containment is anchored to the ROOT document's directory**, not each containing
+   sub-document. The previous per-document anchor falsely rejected legitimate layouts where
+   `resources/<cat>/x.yml` references `../../shared/…` — inside the root tree, above the
+   containing file's own directory. Escaping the root tree remains a hard error.
+3. **Data-condition failures degrade to markers.** A referenced external file that is
+   missing on disk, 404s, or is refused by fetch policy now leaves an
+   `x-sentinel-unresolved-ref` marker (mirroring decision 27) instead of aborting the run:
+   identical markers compare silently; differing pairs emit CG5022 Verify findings;
+   `validate` reports the count as a warning line and still exits 0. Usage errors stay
+   hard failures: no-base sources (stdin/git), root-tree escapes, unsafe URI schemes.
+
+Measured outcome (DigitalOcean public v2, defaults): validate 1.5 s / 133 MB RSS with 0
+unresolved refs across all ~2851 files (pre-fix: exit 2); self-compare passed, 0 findings,
+3.4 s total.

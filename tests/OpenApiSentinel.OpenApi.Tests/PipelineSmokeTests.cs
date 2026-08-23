@@ -255,8 +255,7 @@ public class PipelineSmokeTests
 
     [Fact]
     public void External_File_Refs_Resolve_Within_Base_Directory()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "sentinel-tests", Guid.NewGuid().ToString("N"));
+    {        var dir = Path.Combine(Path.GetTempPath(), "sentinel-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
@@ -318,6 +317,108 @@ public class PipelineSmokeTests
             var ex = Assert.Throws<SpecParseException>(() =>
                 new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(evilRoot, dir));
             Assert.Contains("escapes the base directory", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Sub_Document_May_Reference_Shared_File_Above_Its_Own_Directory()
+    {
+        // Real-world layout (e.g. DigitalOcean): resources/<cat>/endpoint.yml references
+        // ../../shared/… which climbs above the containing document's own directory while
+        // remaining inside the ROOT specification's tree. Containment is anchored to the
+        // root document's directory, not each sub-document's directory.
+        var dir = Path.Combine(Path.GetTempPath(), "sentinel-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "resources", "a"));
+        Directory.CreateDirectory(Path.Combine(dir, "shared"));
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "main.yaml"), """
+                openapi: 3.0.3
+                info:
+                  title: Tree layout
+                  version: "1.0"
+                paths:
+                  /widgets:
+                    get:
+                      responses:
+                        '200':
+                          description: ok
+                          content:
+                            application/json:
+                              schema:
+                                $ref: 'resources/a/endpoint.yaml#/Widget'
+                """);
+            File.WriteAllText(Path.Combine(dir, "resources", "a", "endpoint.yaml"), """
+                Widget:
+                  $ref: '../../shared/schema.yaml#/Thing'
+                """);
+            File.WriteAllText(Path.Combine(dir, "shared", "schema.yaml"), """
+                Thing:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                """);
+
+            var limits = ProcessingLimits.Default();
+            var root = DocumentParser.Parse("main",
+                File.ReadAllText(Path.Combine(dir, "main.yaml")), limits);
+            new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(root, dir);
+            var doc = OpenApiNormalizer.Normalize(root);
+
+            var schema = doc.Paths["/widgets"].Operations[HttpMethodKind.Get].Responses["200"].Content["application/json"];
+            Assert.Equal("object", schema.PrimaryType());
+            Assert.NotNull(schema.PropertyOrNull("id"));
+
+            // Escaping the root tree entirely stays rejected.
+            File.WriteAllText(Path.Combine(dir, "shared", "schema.yaml").Replace("schema.yaml", "evil.yaml"),
+                File.ReadAllText(Path.Combine(dir, "main.yaml")).Replace("'resources/a/endpoint.yaml#/Widget'", "'../../../../etc/passwd#/x'"));
+            var evilRoot = DocumentParser.Parse("evil",
+                File.ReadAllText(Path.Combine(dir, "main.yaml").Replace("main.yaml", "shared/evil.yaml")), limits);
+            var ex = Assert.Throws<SpecParseException>(() =>
+                new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(evilRoot, dir));
+            Assert.Contains("escapes the base directory", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Missing_External_File_Degrades_To_Unresolved_Marker()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "sentinel-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            const string spec = """
+                openapi: 3.0.3
+                info:
+                  title: Dead link on disk
+                  version: "1.0"
+                paths:
+                  /x:
+                    get:
+                      responses:
+                        '200':
+                          description: ok
+                          content:
+                            application/json:
+                              schema:
+                                $ref: 'vanished.yaml#/X'
+                """;
+            var limits = ProcessingLimits.Default();
+            var root = DocumentParser.Parse("disk-dead-link", spec, limits);
+            new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(root, dir);
+            OpenApiNormalizer.Normalize(root);
+
+            // Analysis continues; the dead link remains visible as a marker.
+            Assert.Equal(1, RefResolver.CountUnresolvedMarkers(root));
         }
         finally
         {

@@ -92,7 +92,9 @@ public sealed partial class SpecLoader
 
             var bytes = await ReadBoundedAsync(response, uri, ct);
             var content = System.Text.Encoding.UTF8.GetString(bytes);
-            return new LoadedSpec(uri.ToString(), content, null);
+            // BaseUri lets relative sibling-file $refs resolve against this document's URL
+            // (multi-file specs served over HTTP), under the same fetch policy.
+            return new LoadedSpec(uri.ToString(), content, null, uri.ToString());
         }
     }
 

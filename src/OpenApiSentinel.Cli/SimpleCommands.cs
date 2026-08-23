@@ -19,11 +19,17 @@ public static class SimpleCommands
         string source, SentinelConfiguration config, bool allowRemoteOverride,
         IConsoleWriter console, CancellationToken ct)
     {
-        var doc = await AnalysisPipeline.LoadDocumentAsync(
+        var outcome = await AnalysisPipeline.LoadDocumentAsync(
             source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, config.Limits, ct);
+        var doc = outcome.Document;
         var paths = doc.Paths.Count;
         var operations = doc.Paths.Sum(p => p.Value.Operations.Count);
         console.Out($"OK — '{DisplayName(source)}' parsed as {doc.RawVersion}: {paths} path(s), {operations} operation(s), {doc.SecuritySchemes.Count} security scheme(s).");
+        if (outcome.UnresolvedExternalRefs > 0)
+        {
+            console.Out($"Warning: {outcome.UnresolvedExternalRefs} external reference(s) could not be resolved " +
+                        "(missing file, unreachable URL or policy refusal); affected subtrees were skipped.");
+        }
         return ExitCodes.Ok;
     }
 

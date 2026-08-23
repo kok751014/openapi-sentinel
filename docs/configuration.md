@@ -35,6 +35,9 @@ ignore:
     - "*/beta/*"
 
 # ── Remote references & URL fetching ──────────────────────────────────────
+# Also applies to relative sibling-file $refs of documents loaded from a URL
+# (multi-file specs served over HTTP): each sibling fetch passes the same
+# scheme gate, host allowlist, SSRF guard and size/time caps.
 remoteReferences:
   enabled: false              # master switch; also --allow-remote on the CLI
   allowHttp: false            # plain HTTP opt-in (HTTPS enforced by default)
