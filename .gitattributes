@@ -11,3 +11,4 @@
 *.ps1 text eol=crlf
 *.png binary
 *.ico binary
+tests/OpenApiSentinel.Reporting.Tests/GoldenFiles/* -text
