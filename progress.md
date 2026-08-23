@@ -766,3 +766,21 @@ beyond the committed seed range. No source changes; CI-verified tree untouched.
 ### Exact next recommended action
 Steady state. Repeat deeper sweeps (SeedCount 500+) after future engine changes; otherwise
 gate re-runs only. Publication awaits user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~18:35 UTC — FUZZ GRAMMAR COVERS NEWEST SURFACES — commit 10d2222
+
+Extended the differential fuzz generator: operation-level security requirements, response
+headers, post-operation callbacks (with optional payload schemas), 3.1 documents with
+webhooks and type-array schemas. Verified with a temporary **500-seed deep sweep on the
+extended grammar: 501/501 clean** — the newest diff surfaces (callbacks CG1011-13,
+webhooks content diffing, header payloads, security requirements) hold all engine
+invariants under randomized structure space. Committed SeedCount stays 40 (~170 ms in CI).
+
+### Git status
+- main @ 10d2222 pushed; tree clean except this entry (committed next).
+
+### Exact next recommended action
+Steady state. Re-run deep sweeps after future engine changes; gate re-runs otherwise.
+Publication awaits user-side NuGet/Docker credentials.
