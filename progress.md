@@ -450,3 +450,30 @@ All identified concrete defects are now closed. Remaining optional: content-para
 multi-media limitation fix (deferred until real demand); docs screenshot refresh. Next
 iteration should re-run quality gates and keep the repo healthy; release stays ready
 pending user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~15:05 UTC — LOCATION RENDERING DEDUP + README AUTHENTICITY — commit b263d87
+
+**Display defect fixed:** every endpoint-scoped finding rendered its path twice
+(`GET /orders → GET /orders responses.200.headers.X-Total-Count`) because engine locations
+embed the full `METHOD path` prefix and reporters prepended it again. Console and Markdown
+(now incl. PR summary + SARIF properties.location, which share the helper) compose the
+location once: `GET /orders → responses.200.headers.X-Total-Count`. Display-only — stored
+Location values and fingerprints are untouched, so baselines/suppressions stay valid.
+
+Also:
+- README example output block replaced with authentic current CLI output (banner, real
+  severity counts, current MAJOR reason wording, CG2002 with exact engine texts); stale
+  AGENTS.md test count 222→250.
+- Shipped example artifacts (api-diff.md/.html/pr-summary.md) regenerated — doubled paths gone.
+- 3 new location-composition tests. Suite **253/253**.
+
+### Verification
+- Build 0/0; suite 253/253; markdown/html/pr-summary contain zero doubled-path occurrences.
+- Commit `b263d87` pushed to origin/main.
+
+### Exact next recommended action
+Concrete-defect queue is empty. Next iteration: re-run quality gates; optionally a second
+real-world spec validation (different vendor style) or leave healthy. Release ready pending
+user-side NuGet/Docker credentials.
