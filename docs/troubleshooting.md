@@ -40,6 +40,9 @@ Rerun with `--debug` to see the stack trace, then report the spec snippet that t
   once per affected endpoint to show blast radius.
 - **Missing a change you expected?** Run `openapi-sentinel rules --format json` and
   `explain <RULE-ID>` to check coverage; file an issue with both specs if a rule should fire.
+- **Suspicious that some changes go unclassified?** Enable `--report-unknown-kinds`
+  (or `reportUnknownKinds: true` in config): structural changes no registered rule
+  evaluates are surfaced as an aggregated CG9003 Verify finding instead of being silent.
 - **Too noisy?** Tune severities via `rules:` overrides, silence paths via `ignore.paths`,
   acknowledge known debt with [suppressions/baselines](configuration.md).
 

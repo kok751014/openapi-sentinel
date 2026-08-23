@@ -107,7 +107,7 @@ stay meaningful.
 |----|---------|------------------|
 | `CG9001` | An expired suppression matched this finding | low |
 | `CG9002` | Baseline entries no longer match anything | info |
-| `CG9003` | Change kinds no registered rule evaluates (opt-in via engine option) | verify |
+| `CG9003` | Change kinds no registered rule evaluates (opt-in via `reportUnknownKinds` / `--report-unknown-kinds`) | verify |
 
 ## Validation behaviour
 
