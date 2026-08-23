@@ -1063,3 +1063,40 @@ concurrency risk late in release — only pursue with demonstrated demand.
 ### Exact next recommended action
 Steady state with seven vendor ecosystems validated. Next iteration: gate re-runs unless
 new information arrives.
+
+---
+
+## 2026-08-24 (iteration 7) — DATADOG EVOLUTION DIFF + MULTI-FILE FUZZ COVERAGE
+
+### Datadog genuine evolution diff (completes vendor #7 validation)
+2.56.0 → main (~3 releases): **1,280 findings, MAJOR recommendation**, exit 1 — plausible
+distribution across rule families: 220 additive properties (CG5020), 126 new endpoints
+(CG1003), 201 array-item notes (CG5008), 109 response enum additions (CG5004), 83 composition
+changes (CG5010 Verify), 36 property removals (CG5017 High/Breaking), 28 OAuth scope
+additions (CG6003). Spot-checked samples are genuine upstream changes (user-defined-field
+removal, scope tightening on terraform bulk endpoint, integer→string DORA type flip).
+
+### Fuzz harness: multi-file grammar (covers this session's resolver work)
+New `GenerateMultiFile` + `CompareMultiFile`: main spec references a sibling file via relative
+external $refs (responses/requestBodies); sibling entries nest internal refs. Invariants added:
+- MultiFile_SelfCompare_Yields_Zero_Changes (40 committed seeds)
+- MultiFile_Mutated_Pairs_Are_Deterministic_And_Never_Crash (4 mutation operators rotating
+  constraint swap / enum rewire / ref-target change / description-only drift across the two docs)
+
+### Verification (actual)
+- Deep sweep on the new grammar: **1001/1001 clean** in ~3 s (SeedCount temporarily 500,
+  restored to 40).
+- Build 0 errors / 0 warnings; full suite **359/359** (+41).
+
+### Files changed
+- tests/OpenApiSentinel.OpenApi.Tests/DifferentialFuzzTests.cs (+41 cases incl. helpers)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. The external-resolution code now has both real-world (6 vendors) and randomized
+(500-seed) coverage. Next iteration: gate re-runs unless new information arrives.

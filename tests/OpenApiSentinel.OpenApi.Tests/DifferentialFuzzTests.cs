@@ -190,6 +190,100 @@ public class DifferentialFuzzTests
         return new ComparisonEngine().Compare(Normalize(oldYaml), Normalize(newYaml));
     }
 
+    // ---------------- multi-file variant ----------------
+
+    /// <summary>Builds a MAIN spec plus a SIBLING file; the main document's response/requestBody
+    /// schemas reference the sibling via relative external $refs, and sibling entries may
+    /// reference each other internally. Same seed ⇒ byte-identical pair.</summary>
+    internal static (string MainYaml, string SharedYaml) GenerateMultiFile(int seed)
+    {
+        var rng = new Random(seed);
+        var main = new StringBuilder();
+        main.Append("""
+            openapi: 3.0.3
+            info:
+              title: FuzzMF
+              version: "1.0"
+            paths:
+            """);
+
+        var pathCount = rng.Next(1, 4);
+        for (var p = 0; p < pathCount; p++)
+        {
+            main.Append($"\n  /p{p}:");
+            main.Append("\n    get:");
+            main.Append("\n      responses:");
+            main.Append("\n        '200':");
+            main.Append("\n          description: ok");
+            if (rng.Next(2) == 0)
+            {
+                main.Append("\n          content:");
+                main.Append("\n            application/json:");
+                main.Append($"\n              schema:");
+                main.Append($"\n                $ref: 'shared.yaml#/Thing{rng.Next(3)}'");
+            }
+            if (rng.Next(3) == 0)
+            {
+                main.Append("\n      requestBody:");
+                main.Append("\n        content:");
+                main.Append("\n          application/json:");
+                main.Append("\n            schema:");
+                main.Append($"\n              $ref: 'shared.yaml#/Wrap{rng.Next(2)}'");
+            }
+        }
+
+        var shared = new StringBuilder();
+        for (var i = 0; i < 3; i++)
+        {
+            shared.Append($"\nThing{i}:");
+            AppendSchema(shared, rng, 2, depth: 0);
+        }
+        for (var w = 0; w < 2; w++)
+        {
+            shared.Append($"\nWrap{w}:");
+            shared.Append($"\n  type: object");
+            shared.Append($"\n  properties:");
+            shared.Append($"\n    inner:");
+            shared.Append($"\n      $ref: '#/Thing{rng.Next(3)}'");
+        }
+
+        return (main.ToString(), shared.ToString());
+    }
+
+    /// <summary>Writes a generated pair to a fresh temp dir and compares through the full
+    /// disk-based resolution pipeline (external $refs + cross-document cache).</summary>
+    public static IReadOnlyList<SemanticChange> CompareMultiFile(
+        (string MainYaml, string SharedYaml) oldPair,
+        (string MainYaml, string SharedYaml) newPair)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "sentinel-fuzz", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "old-main.yaml"), oldPair.MainYaml);
+            File.WriteAllText(Path.Combine(dir, "old-shared.yaml"), oldPair.SharedYaml);
+            File.WriteAllText(Path.Combine(dir, "new-main.yaml"), newPair.MainYaml);
+            File.WriteAllText(Path.Combine(dir, "new-shared.yaml"), newPair.SharedYaml);
+
+            var limits = ProcessingLimits.Default();
+            ApiDocument Normalize(string fileName)
+            {
+                var root = DocumentParser.Parse(fileName,
+                    File.ReadAllText(Path.Combine(dir, fileName)), limits);
+                new RefResolver(limits, RemoteFetchPolicy.Disabled())
+                    .Resolve(root, dir);
+                return OpenApiNormalizer.Normalize(root);
+            }
+
+            return new ComparisonEngine().Compare(
+                Normalize("old-main.yaml"), Normalize("new-main.yaml"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     public static IEnumerable<object[]> Seeds()
     {
         for (var s = 1; s <= SeedCount; s++) yield return [s];
@@ -201,6 +295,42 @@ public class DifferentialFuzzTests
     {
         var doc = Generate(seed);
         Assert.Empty(CompareDocs(doc, doc));
+    }
+
+    [Theory]
+    [MemberData(nameof(Seeds))]
+    public void MultiFile_SelfCompare_Yields_Zero_Changes(int seed)
+    {
+        var pair = GenerateMultiFile(seed);
+        Assert.Empty(CompareMultiFile(pair, pair));
+    }
+
+    [Fact]
+    public void MultiFile_Mutated_Pairs_Are_Deterministic_And_Never_Crash()
+    {
+        for (var seed = 1; seed <= SeedCount; seed++)
+        {
+            var oldPair = GenerateMultiFile(seed);
+            // Rotate mutations across the two documents: constraint swap in the sibling,
+            // enum rewire in the sibling, ref-target change and description-only drift
+            // in the main document.
+            var newPair = (seed % 4) switch
+            {
+                0 => (oldPair.MainYaml, oldPair.SharedYaml.Replace("maxLength:", "minLength:")),
+                1 => (oldPair.MainYaml, oldPair.SharedYaml.Replace("enum: [a", "enum: [z")),
+                2 => (oldPair.MainYaml.Replace("Thing", "Wrap"), oldPair.SharedYaml),
+                _ => (oldPair.MainYaml.Replace("description: ok", "description: ok #"), oldPair.SharedYaml),
+            };
+
+            var first = CompareMultiFile(oldPair, newPair);
+            var second = CompareMultiFile(oldPair, newPair);
+
+            var a = System.Text.Json.JsonSerializer.Serialize(
+                first.Select(c => new { c.Kind, c.Path, c.Location, c.OldValue, c.NewValue }));
+            var b = System.Text.Json.JsonSerializer.Serialize(
+                second.Select(c => new { c.Kind, c.Path, c.Location, c.OldValue, c.NewValue }));
+            Assert.True(a == b, $"seed {seed}: multi-file engine output was not deterministic");
+        }
     }
 
     [Fact]
