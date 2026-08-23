@@ -691,3 +691,22 @@ public class MissingOptionValueTests
         Assert.Equal(ExitCodes.InvalidConfiguration, code);
     }
 }
+
+public class PrSummaryArtifactTests
+{
+    [Fact]
+    public async Task PrSummary_ContainsVerdict_Counts_AndBump()
+    {
+        using var specs = SpecPair.Create(CommandLineRunnerTests.BaseV1, CommandLineRunnerTests.BreakingV2);
+        var outPath = Path.Combine(Path.GetDirectoryName(specs.OldPath)!, "pr.md");
+        var console = new RecordingConsole();
+        var code = await Task.Run(() => CommandLineRunner.Run(
+            ["compare", specs.OldPath, specs.NewPath, "--pr-summary", outPath, "--no-color"], console));
+
+        Assert.Equal(ExitCodes.PolicyViolated, code);
+        var md = File.ReadAllText(outPath);
+        Assert.Contains("policy failed", md, StringComparison.Ordinal);
+        Assert.Contains("CG1001", md, StringComparison.Ordinal); // top breaking finding listed
+        Assert.Contains("MAJOR", md, StringComparison.Ordinal);
+    }
+}
