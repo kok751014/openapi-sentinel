@@ -34,6 +34,11 @@ public sealed record SentinelConfiguration
     /// <summary>Overrides for the built-in safety budgets (giant legitimate specs);
     /// null = defaults. See ProcessingLimits.</summary>
     public ProcessingLimits? Limits { get; init; }
+
+    /// <summary>Permit relative external file references that climb above the main
+    /// document's directory (e.g. Azure resource-manager specs sharing common-types).
+    /// Absolute paths outside the document tree stay blocked in every mode.</summary>
+    public bool AllowAboveDocumentTree { get; init; }
 }
 
 public sealed class SentinelConfigException(string message) : Exception(message);
@@ -49,6 +54,7 @@ public static class SentinelConfigLoader
     {
         "failOn", "rules", "ignore", "remoteReferences", "headerEnv",
         "suppressions", "baseline", "output", "reportUnknownKinds", "limits",
+        "externalReferences",
     };
 
     private static readonly Dictionary<string, HashSet<string>> NestedKeys = new(StringComparer.Ordinal)
@@ -60,6 +66,8 @@ public static class SentinelConfigLoader
             { "console", "json", "markdown", "html", "sarif", "junit", "changelog", "pr-summary" },
         ["limits"] = new(StringComparer.Ordinal)
             { "maxDocumentBytes", "maxDepth", "maxNodes", "maxResolvedRefs", "maxRefChainDepth" },
+        ["externalReferences"] = new(StringComparer.Ordinal)
+            { "allowAboveDocumentTree" },
     };
 
     private const string SuppressKeyRule = "rule";
@@ -236,6 +244,16 @@ public static class SentinelConfigLoader
             reportUnknownKinds = GetBool(root, "reportUnknownKinds")
                 ?? throw new SentinelConfigException("'reportUnknownKinds' must be true or false.");
 
+        // ---- externalReferences ----
+        var allowAboveDocumentTree = false;
+        if (root.TryGetValue("externalReferences", out var extRefRaw) &&
+            extRefRaw is Dictionary<object, object> extRefMap)
+        {
+            if (extRefMap.TryGetValue("allowAboveDocumentTree", out var aboveRaw))
+                allowAboveDocumentTree = GetBool(extRefMap, "allowAboveDocumentTree")
+                    ?? throw new SentinelConfigException("'externalReferences.allowAboveDocumentTree' must be true or false.");
+        }
+
         // ---- baseline ----
         string? baselinePath = null;
         if (root.TryGetValue("baseline", out var baselineRaw))
@@ -289,6 +307,7 @@ public static class SentinelConfigLoader
             ReportUnknownKinds = reportUnknownKinds,
             Output = output,
             Limits = limits,
+            AllowAboveDocumentTree = allowAboveDocumentTree,
         };
     }
 

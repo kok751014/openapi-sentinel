@@ -331,6 +331,45 @@ ignore:
     }
 
     [Fact]
+    public async Task ConfigFile_ExternalReferences_Section_Accepted_And_Wired()
+    {
+        using var specs = SpecPair.Create(BaseV1, SafeV2);
+        var dir = Path.GetDirectoryName(specs.OldPath)!;
+        var configPath = Path.Combine(dir, "sentinel.yml");
+        await File.WriteAllTextAsync(configPath, """
+externalReferences:
+  allowAboveDocumentTree: true
+""");
+
+        var console = new RecordingConsole();
+        var code = await Task.Run(() =>
+            CommandLineRunner.Run(["compare", specs.OldPath, specs.NewPath, "--config", configPath, "--no-color"], console));
+
+        Assert.Equal(ExitCodes.Ok, code);
+        // No unknown-key warning: the section is fully supported.
+        Assert.DoesNotContain("Unknown configuration key", console.OutText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConfigFile_ExternalReferences_BadValue_FailsWithConfigError()
+    {
+        using var specs = SpecPair.Create(BaseV1, SafeV2);
+        var dir = Path.GetDirectoryName(specs.OldPath)!;
+        var configPath = Path.Combine(dir, "sentinel.yml");
+        await File.WriteAllTextAsync(configPath, """
+externalReferences:
+  allowAboveDocumentTree: maybe
+""");
+
+        var console = new RecordingConsole();
+        var code = await Task.Run(() =>
+            CommandLineRunner.Run(["compare", specs.OldPath, specs.NewPath, "--config", configPath, "--no-color"], console));
+
+        Assert.Equal(ExitCodes.InvalidConfiguration, code);
+        Assert.Contains("allowAboveDocumentTree", console.ErrorText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task BaselineWorkflow_UpdateThenAdopt_SuppressesFindings()
     {
         using var specs = SpecPair.Create(BaseV1, BreakingV2);

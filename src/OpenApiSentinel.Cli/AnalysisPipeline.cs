@@ -18,6 +18,7 @@ public static class AnalysisPipeline
         IReadOnlyList<EnvHeader> envHeaders,
         bool allowRemoteOverride = false,
         ProcessingLimits? limits = null,
+        bool allowAboveDocumentTree = false,
         CancellationToken ct = default)
     {
         var policy = allowRemoteOverride && !remotePolicy.Enabled
@@ -46,7 +47,7 @@ public static class AnalysisPipeline
             throw; // mapped to exit code 2
         }
 
-        var resolver = new RefResolver(effectiveLimits, policy);
+        var resolver = new RefResolver(effectiveLimits, policy, allowAboveDocumentTree);
         resolver.Resolve(root, loaded.BaseDirectoryOrNull, loaded.BaseUriOrNull);
 
         return new AnalysisOutcome(

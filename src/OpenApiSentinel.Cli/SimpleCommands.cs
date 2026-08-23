@@ -20,7 +20,8 @@ public static class SimpleCommands
         IConsoleWriter console, CancellationToken ct)
     {
         var outcome = await AnalysisPipeline.LoadDocumentAsync(
-            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, config.Limits, ct);
+            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, config.Limits,
+            config.AllowAboveDocumentTree, ct);
         var doc = outcome.Document;
         var paths = doc.Paths.Count;
         var operations = doc.Paths.Sum(p => p.Value.Operations.Count);
@@ -162,6 +163,12 @@ suppressions:
 #   maxNodes: 2000000
 #   maxResolvedRefs: 200000
 #   maxRefChainDepth: 64
+
+# Allow external file $refs to climb above the main document's directory
+# (e.g. Azure resource-manager specs sharing common-types across trees).
+# Absolute paths outside the document tree stay blocked regardless.
+# externalReferences:
+#   allowAboveDocumentTree: false
 
 headerEnv: {}   # Authorization: SENTINEL_SWAGGER_TOKEN
 

@@ -935,3 +935,58 @@ OpenAPI 2.0 cross-version pair). Next iteration: gate re-runs unless new informa
 ### Exact next recommended action
 Steady state: five vendors validated, defect queue empty, CI green. Next iteration: gate
 re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 4) — AZURE UNBLOCKED: OPT-IN ABOVE-TREE EXTERNAL REFS
+
+### Real-world validation #6: Azure resource-manager specs (largest ecosystem)
+- Remote sibling resolution verified live: Compute virtualMachineScaleSet.json (2024-07-01)
+  validates via URL with --allow-remote → OK, 45 paths / 56 ops, ~82 s (sequential fetch of
+  many small siblings), 100 MB RSS.
+- Cross-version diff attempt (2023-07-01 → 2024-07-01, from disk) hit a REAL blocker:
+  Azure's standard layout references `../../common-types/v1/common.json` — climbing ABOVE the
+  main document's directory into a sibling tree. Root-tree containment (DECISIONS 29) rejected
+  it with exit 2.
+
+### Feature: externalReferences.allowAboveDocumentTree (opt-in escape hatch)
+- Relative external $refs may now climb ABOVE the root document's tree when
+  `externalReferences.allowAboveDocumentTree: true` is set in openapi-sentinel.yml.
+- **Absolute filesystem paths outside the root tree stay rejected in every mode** (a crafted
+  spec must not exfiltrate readable files into report values).
+- The rejection error message names the exact config key for discoverability; remote sibling
+  fetches keep their full per-fetch policy gates regardless of the flag.
+- Wired: SentinelConfiguration.AllowAboveDocumentTree + loader validation (unknown keys warn,
+  bad values → exit 3) → AnalysisPipeline → RefResolver ctor flag.
+
+### Defects found in my own fixture during TDD (test-only, no product impact)
+- Wrong climb depth twice (../../.. vs ../../) produced misleading missing-file markers;
+  root-caused via temporary env-gated instrumentation printing the wrapped inner exception
+  and effective baseDir/docPart/combined. Instrumentation removed after use.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **318/318** (+3: resolver above-tree reject/allow/
+  absolute-still-blocked; CLI config section accepted-without-warnings + bad-value exit 3).
+- Azure pair end-to-end with the flag: **289 findings, MAJOR recommendation** (110 additive
+  properties CG5020, 95 response enum additions CG5004, 26 array-item notes CG5008,
+  9 critical type changes CG5001, 8 high property removals CG5017, new endpoints CG1003…)
+  where it previously failed at exit 2.
+- Canonical samples exit 1 / exit 0 unchanged; Twilio/K8s/Stripe baselines untouched this round.
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/RefResolver.cs (flag + two-tier containment)
+- src/OpenApiSentinel.Cli/{SentinelConfig.cs, AnalysisPipeline.cs, CompareWorkflow.cs,
+  SimpleCommands.cs (init template)}
+- tests/{OpenApiSentinel.OpenApi.Tests/PipelineSmokeTests.cs (+1),
+  OpenApiSentinel.Cli.Tests/CommandLineRunnerTests.cs (+2)}
+- docs/{configuration.md, security.md, troubleshooting.md, DECISIONS.md entry 31}
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Six vendor ecosystems validated (GitHub, Stripe, DigitalOcean, Kubernetes, Twilio, Azure);
+defect queue empty again. Next iteration: gate re-runs unless new information arrives.

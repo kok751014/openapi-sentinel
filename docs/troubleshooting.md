@@ -20,7 +20,9 @@ Start from the exit code — they are stable (see [cli-reference](cli-reference.
   `validate` reports `Warning: N external reference(s) could not be resolved` and still
   exits 0; comparisons surface differing unresolved references as `CG5022` Verify findings.
   Multi-file layouts may reach shared files via `../` anywhere inside the main document's
-  directory tree. Documents loaded from URLs resolve sibling files relative to their own URL.
+  directory tree; layouts that also climb ABOVE it (e.g. Azure resource-manager common-types)
+  need `externalReferences.allowAboveDocumentTree: true`. Documents loaded from URLs resolve
+  sibling files relative to their own URL.
 - Swagger 2.0 documents missing `info`/`paths` fail version detection with an actionable
   message.
 

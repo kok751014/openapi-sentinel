@@ -23,15 +23,17 @@ public sealed class RefResolver
     private readonly ProcessingLimits _limits;
     private readonly RemoteFetchPolicy _remotePolicy;
     private readonly SpecLoader _loader;
+    private readonly bool _allowAboveDocumentTree;
     private long _clonedNodes;
     private int _documentCounter;
 
     public int ResolvedRefCount { get; private set; }
 
-    public RefResolver(ProcessingLimits limits, RemoteFetchPolicy remotePolicy)
+    public RefResolver(ProcessingLimits limits, RemoteFetchPolicy remotePolicy, bool allowAboveDocumentTree = false)
     {
         _limits = limits;
         _remotePolicy = remotePolicy;
+        _allowAboveDocumentTree = allowAboveDocumentTree;
         _loader = new SpecLoader(remotePolicy);
     }
 
@@ -258,18 +260,25 @@ public sealed class RefResolver
                 }
 
                 var combined = Path.GetFullPath(Path.Combine(currentDoc.BaseDirectory, docPart));
-                // Containment is anchored to the ROOT document's tree: sub-documents may
-                // reference siblings anywhere inside it (including via ../ into shared/),
-                // but nothing may escape it.
+                // Containment policy:
+                // - Absolute filesystem paths outside the root tree are ALWAYS rejected
+                //   (a crafted spec must not be able to pull /etc/passwd into report values).
+                // - Relative paths may climb via ../ within the root tree by default; with
+                //   externalReferences.allowAboveDocumentTree enabled they may also reach
+                //   sibling trees above it (Azure resource-manager style shared common-types).
                 if (ctx.RootBaseDirectory is null)
                     throw new SpecParseException(
                         $"Cannot resolve external file reference '{reference}': no root document directory is available.");
                 var normalizedBase = Path.TrimEndingDirectorySeparator(Path.GetFullPath(ctx.RootBaseDirectory)) +
                                      Path.DirectorySeparatorChar;
-                if (!combined.StartsWith(normalizedBase, StringComparison.Ordinal))
+                var isRelative = !Path.IsPathRooted(docPart);
+                if (!(isRelative && _allowAboveDocumentTree) &&
+                    !combined.StartsWith(normalizedBase, StringComparison.Ordinal))
                     throw new SpecParseException(
                         $"Refusing to resolve reference '{reference}': path escapes the base directory of the specification. " +
-                        "External file references must stay within the document's directory tree.");
+                        "External file references must stay within the document's directory tree. " +
+                        "Specifications that legitimately share files across directory trees (e.g. Azure resource-manager " +
+                        "common-types) can set 'externalReferences.allowAboveDocumentTree: true' in configuration.");
 
                 var key = combined.ToLowerInvariant();
                 if (ctx.RemoteCache.TryGetValue(key, out var cached))

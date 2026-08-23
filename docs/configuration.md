@@ -46,6 +46,13 @@ remoteReferences:
   timeoutSeconds: 30
   maxResponseBytes: 20971520  # 20 MB
 
+# ── External file references across directory trees ────────────────────────
+externalReferences:
+  allowAboveDocumentTree: false  # permit ../ climbs ABOVE the main document's
+                                 # directory (Azure resource-manager specs that
+                                 # share common-types across trees). Absolute
+                                 # paths outside the tree stay blocked either way.
+
 # ── URL authentication via environment variables ──────────────────────────
 headerEnv: {}
   # Authorization: SENTINEL_SWAGGER_TOKEN

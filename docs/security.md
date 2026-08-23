@@ -12,7 +12,7 @@ abused to reach places you did not intend.
 | Excessive nesting | JSON `MaxDepth` enforced; depth guards in schema comparison (48) and ref chains (64) |
 | Reference bombs ($ref expansion) | hard cap on resolved references (200k) plus node budget during materialization |
 | Billion-laughs style entity tricks | YamlDotNet representation model without custom type resolution; no runtime polymorphic deserialization |
-| Path traversal via external $ref (`../../etc/passwd`) | external file references must stay inside the root document's directory tree; absolute-path escapes rejected |
+| Path traversal via external $ref (`../../etc/passwd`) | external file references must stay inside the root document's directory tree by default; absolute-path escapes rejected even when `allowAboveDocumentTree` is enabled |
 | Remote sibling `$ref`s of URL-loaded documents | resolved against the document's own URL; each fetch re-passes the scheme gate, host allowlist, SSRF DNS guard, size and timeout caps |
 | Unsafe URI schemes (`file://`) in remote docs | only http(s) allowed for remote documents; everything else rejected explicitly |
 | SSRF via remote refs/URL specs | disabled by default. When enabled: HTTPS enforced (HTTP opt-in), DNS-resolved private/loopback/link-local/CGNAT ranges blocked unless explicitly permitted, per-hop revalidation across redirects (≤5), host allowlist support, timeout + response-size caps |

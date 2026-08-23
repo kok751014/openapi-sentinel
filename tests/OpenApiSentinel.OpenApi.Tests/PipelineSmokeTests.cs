@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using OpenApiSentinel.Core;
 using OpenApiSentinel.OpenApi;
+using System.Linq;
 using OpenApiSentinel.OpenApi.Model;
 
 namespace OpenApiSentinel.OpenApi.Tests;
@@ -423,6 +424,87 @@ public class PipelineSmokeTests
         finally
         {
             Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Above_Tree_Climb_Rejected_By_Default_Allowed_With_Flag()
+    {
+        // Azure resource-manager layout: the main document lives in its own project subtree
+        // while shared definitions sit in a SIBLING tree outside it, reached via ../../ climbs.
+        var rootDir = Path.Combine(Path.GetTempPath(), "sentinel-tests", Guid.NewGuid().ToString("N"));
+        var specDir = Path.Combine(rootDir, "project", "stable", "2024");
+        Directory.CreateDirectory(specDir);
+        Directory.CreateDirectory(Path.Combine(rootDir, "common-types"));
+        try
+        {
+            File.WriteAllText(Path.Combine(specDir, "main.yaml"), """
+                openapi: 3.0.3
+                info:
+                  title: Cross-tree
+                  version: "1.0"
+                paths:
+                  /vm:
+                    get:
+                      parameters:
+                        - $ref: '../../../common-types/common.yaml#/parameters/ApiVersion'
+                      responses:
+                        '200':
+                          description: ok
+                """);
+            File.WriteAllText(Path.Combine(rootDir, "common-types", "common.yaml"), """
+                parameters:
+                  ApiVersion:
+                    name: api-version
+                    in: query
+                    required: true
+                    schema:
+                      type: string
+                """);
+
+            var limits = ProcessingLimits.Default();
+            var root = DocumentParser.Parse("cross-tree",
+                File.ReadAllText(Path.Combine(specDir, "main.yaml")), limits);
+
+            // Default: rejected with actionable guidance.
+            var ex = Assert.Throws<SpecParseException>(() =>
+                new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(root, specDir));
+            Assert.Contains("allowAboveDocumentTree", ex.Message, StringComparison.Ordinal);
+
+            // Opt-in: resolves; absolute escapes remain blocked even then.
+            var resolver = new RefResolver(limits, RemoteFetchPolicy.Disabled(), allowAboveDocumentTree: true);
+            resolver.Resolve(root, specDir);
+            Assert.Equal(0, RefResolver.CountUnresolvedMarkers(root));
+            var doc = OpenApiNormalizer.Normalize(root);
+            var param = doc.Paths["/vm"].Operations[HttpMethodKind.Get].Parameters
+                .Single(p => p.Name == "api-version");
+            Assert.True(param.Required);
+
+            const string absoluteEscape = """
+                openapi: 3.0.3
+                info:
+                  title: Evil
+                  version: "1.0"
+                paths:
+                  /x:
+                    get:
+                      responses:
+                        '200':
+                          description: ok
+                          content:
+                            application/json:
+                              schema:
+                                $ref: '/etc/passwd#/x'
+                """;
+            var evilRoot = DocumentParser.Parse("evil", absoluteEscape, limits);
+            var evilEx = Assert.Throws<SpecParseException>(() =>
+                new RefResolver(limits, RemoteFetchPolicy.Disabled(), allowAboveDocumentTree: true)
+                    .Resolve(evilRoot, specDir));
+            Assert.Contains("escapes the base directory", evilEx.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(rootDir, recursive: true);
         }
     }
 

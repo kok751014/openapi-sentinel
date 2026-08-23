@@ -301,3 +301,23 @@ Fix:
 Measured outcome: Kubernetes pair 5,824 → 3,710 findings (−36%) with every substantive
 finding (property add/remove, endpoint add/remove, required changes) preserved byte-for-byte;
 the recorded Stripe v2300→v2404 baseline (174 findings, MINOR) is unchanged.
+
+## 31. Above-tree external references are opt-in, absolute escapes never
+
+Real-world trigger: Azure resource-manager specifications reference shared definitions via
+`../../common-types/…` — climbing ABOVE the main document's directory into a sibling tree of
+the repository. The root-tree containment anchor (decision 29) correctly blocks such climbs
+by default, which locked out the largest API ecosystem's standard layout.
+
+Policy after this change:
+- **Relative** external references may climb within the root document's tree by default;
+  with `externalReferences.allowAboveDocumentTree: true` they may also cross above it into
+  sibling trees.
+- **Absolute filesystem paths outside the root tree are rejected in every mode** — a crafted
+  spec must never be able to pull arbitrary readable files into report values.
+- URL-loaded documents keep per-fetch policy gates for siblings regardless of this flag.
+
+The default stays secure; the flag is documented in configuration.md, security.md,
+troubleshooting.md and emitted directly in the rejection error message for discoverability.
+Measured outcome: Azure Compute virtualMachineScaleSet 2023-07-01 → 2024-07-01 now diffs
+end-to-end (289 findings, MAJOR recommendation) where it previously failed at exit 2.
