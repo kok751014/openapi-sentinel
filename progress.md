@@ -644,3 +644,30 @@ clean except this entry.
 Nothing concrete outstanding. Keep iterating only if new external information arrives;
 otherwise periodic gate re-runs suffice. Publication still awaits user-side credentials
 (NUGET_API_KEY secret; Docker daemon) — everything in-repo is done and verified.
+
+---
+
+## 2026-08-23 ~16:50 UTC — FULL RELEASE PIPELINE RE-VERIFIED ON CURRENT CODE
+
+Re-ran `build/release.sh` end-to-end (SENTINEL_VERSION=1.0.0) for the first time since the
+major engine/report refactors:
+- 6/6 self-contained RID artifacts built (win-x64/arm64 zip; linux-x64/arm64, osx-x64/arm64
+  tar.gz) + nupkg + RELEASE_NOTES.md.
+- SHA256SUMS verified **OK ×6** (`sha256sum -c`).
+- Extracted linux-x64 archive on a clean path **without any .NET installed**: reports
+  version 1.0.0 and produces the correct exit-1 policy verdict on the breaking sample.
+- dist/ output confirmed gitignored (working tree stays clean).
+
+### Verification (actual)
+- Local suite 257/257; CI green on last runs; packaging (nupkg) verified last iteration;
+  full RID release flow verified this iteration.
+
+### Git status
+- main @ 9a5aa0b + this entry commit; no source changes this iteration (verification only).
+
+### Exact next recommended action
+Everything in-repo remains complete and verified: defects closed, CI green, real-world
+validation (GitHub + Stripe incl. cross-version), input surfaces, packaging, and now the
+full multi-RID release script all re-confirmed post-refactor. Publication awaits only
+user-side credentials (NUGET_API_KEY secret; Docker daemon). Next iteration: gate re-run
+only unless new information arrives.
