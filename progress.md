@@ -423,3 +423,30 @@ Optional candidates only: console ANSI control-char sanitization (hypothetical, 
 content-parameter multi-media limitation fix (deferred on demand), docs screenshot refresh.
 If none chosen: re-run gates and keep repo healthy; the release is publication-ready
 pending user-side credentials (NuGet/Docker).
+
+---
+
+## 2026-08-23 ~14:50 UTC — TERMINAL ESCAPE INJECTION CLOSED (PoC-verified) — commit 3359037
+
+**Security defect found & fixed (console output):** a spec path containing raw ESC
+sequences (`/items\x1b]0;PWNED\x1b[2J`) printed through finding lines rewrote the terminal
+title and cleared the screen — even under `--no-color` (that flag only gates Sentinel's own
+colorization, not content). PoC produced 4 raw ESC bytes in output pre-fix; 0 post-fix,
+with the stripped text still visible (`/items]0;PWNED[2J`) for inspection.
+
+Fix: ConsoleReporter.Clean() strips C0 controls (keeps \n/\t), DEL and C1 from every
+spec-derived string it prints (paths, locations, explanations, verbose values, impact/
+action, suppressed reasons, contract names). Console-only by design: JSON/SARIF keep raw
+values behind their encoders for machine consumers; HTML/Markdown covered by entries 25/§30.
+DECISIONS entry 26. 4 new regression tests incl. color-enabled path.
+
+### Verification (actual)
+- Build 0/0; suite **250/250** (Core 21, Reporting 45, OpenApi 58, Rules 85, Cli 38, Integration 3).
+- Live PoC re-run: ESC bytes = 0.
+- Commit `3359037` pushed to origin/main; working tree clean except this entry.
+
+### Exact next recommended action
+All identified concrete defects are now closed. Remaining optional: content-parameter
+multi-media limitation fix (deferred until real demand); docs screenshot refresh. Next
+iteration should re-run quality gates and keep the repo healthy; release stays ready
+pending user-side NuGet/Docker credentials.
