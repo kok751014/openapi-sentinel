@@ -595,3 +595,31 @@ Nothing concrete outstanding: defects closed, CI green on 3 OSes, real-world val
 covers GitHub + Stripe pairs (incl. cross-version diff), docs consistent. Next iteration:
 re-run gates and keep healthy unless new information arrives. Release ready pending
 user-side NuGet/Docker credentials.
+
+---
+
+## 2026-08-23 ~16:05 UTC — PACKAGING GATE RE-VERIFIED POST-EVOLUTION
+
+Re-ran the full NuGet-tool packaging flow after the last ~10 iterations of engine/report
+changes (callbacks, header schemas, discriminator granularity, degradation, injection
+hardening, limits config):
+
+1. `dotnet pack -c Release` → OpenApiSentinel.**1.0.0**.nupkg created cleanly.
+2. Installed into an isolated tool location (`--add-source artifacts/packages`).
+3. Installed CLI verified end-to-end:
+   - `openapi-sentinel version` → 1.0.0
+   - breaking sample → exit 1; safe sample → exit 0
+   - `rules --format json` → **81 rules** shipped in the package (incl. CG5022)
+   - `explain CG5022` renders the new rule correctly.
+
+Note for future probes: the tool apphost needs DOTNET_ROOT when the SDK lives outside
+/usr/share/dotnet (environment setup detail, not a product defect).
+
+### Verification (actual)
+- Build 0/0 warnings/errors; suite 257/257 (unchanged code this iteration).
+- Git status: clean except this entry (committed next). main @ 5963404 → this commit.
+
+### Exact next recommended action
+All gates green and packaging verified again. Nothing concrete outstanding — publication
+remains blocked only on user-side credentials (NUGET_API_KEY secret for ci.yml release job;
+Docker daemon/registry creds). Next iteration: gate re-run unless new information arrives.
