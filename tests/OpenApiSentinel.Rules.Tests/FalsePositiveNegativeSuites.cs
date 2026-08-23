@@ -1700,3 +1700,176 @@ public class ServersDirectionTests
         Assert.Contains("added", f.Title, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+// ---------------- wildcard masking (status codes & content types) ----------------
+
+public class WildcardMaskingTests
+{
+    private static ApiDocument Normalize(string yaml)
+    {
+        var limits = ProcessingLimits.Default();
+        var root = DocumentParser.Parse("test", yaml, limits);
+        new RefResolver(limits, RemoteFetchPolicy.Disabled()).Resolve(root, null);
+        return OpenApiNormalizer.Normalize(root);
+    }
+
+    private static IReadOnlyList<Finding> Evaluate(string oldSpec, string newSpec)
+    {
+        var oldDoc = Normalize(oldSpec);
+        var newDoc = Normalize(newSpec);
+        var changes = new ComparisonEngine().Compare(oldDoc, newDoc);
+        return new RulesEngine(RuleRegistry.CreateDefault(), new FakeClock(FakeClock.Fixed))
+            .Evaluate(changes, new EngineOptions { OldContractName = "old", NewContractName = "new" })
+            .Result.Findings;
+    }
+
+    [Fact]
+    public void StatusRemoval_CoveredByDefault_IsMasked()
+    {
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '404': {description: missing}
+                    default: {description: error}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    default: {description: error}
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        Assert.DoesNotContain(findings, f => f.RuleId == "CG4001");
+    }
+
+    [Fact]
+    public void StatusRemoval_WithoutCoveringWildcard_IsReported()
+    {
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '404': {description: missing}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '200': {description: ok}
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        Assert.Contains(findings, f => f.RuleId == "CG4001");
+    }
+
+    [Fact]
+    public void StatusRemoval_CoveredBy2XXRange_IsMasked()
+    {
+        // '201' sits inside the '2XX' range — the range response still documents it.
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '201': {description: created}
+                    '2XX': {description: any success}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '2XX': {description: any success}
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        Assert.DoesNotContain(findings, f => f.RuleId == "CG4001");
+    }
+
+    [Fact]
+    public void StatusRemoval_OutsideRemainingRange_IsReported()
+    {
+        // '404' is NOT covered when only a '2XX' range remains.
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '404': {description: missing}
+                    '2XX': {description: any success}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                get:
+                  operationId: listOrders
+                  responses:
+                    '2XX': {description: any success}
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        Assert.Contains(findings, f => f.RuleId == "CG4001");
+    }
+
+    [Fact]
+    public void RequestContentTypeRemoved_WhileWildcardPresent_IsStillBreaking()
+    {
+        // Content-type removal is NOT masked by */* — clients sending the dropped
+        // media type get 415 regardless of what else is accepted.
+        const string oldSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "1.0"}
+            paths:
+              /orders:
+                post:
+                  operationId: createOrder
+                  requestBody:
+                    content:
+                      application/json:
+                        schema: {type: object}
+                  responses:
+                    '201': {description: created}
+            """;
+        const string newSpec = """
+            openapi: 3.0.3
+            info: {title: T, version: "2.0"}
+            paths:
+              /orders:
+                post:
+                  operationId: createOrder
+                  requestBody:
+                    content:
+                      text/plain:
+                        schema: {type: string}
+                  responses:
+                    '201': {description: created}
+            """;
+        var findings = Evaluate(oldSpec, newSpec);
+        Assert.Contains(findings, f => f.RuleId == "CG3005" && f.Compatibility == Compatibility.Breaking);
+    }
+}
