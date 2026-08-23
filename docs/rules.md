@@ -1,6 +1,8 @@
 # Rule catalog
 
-OpenAPI Sentinel ships **77 built-in rules** with stable IDs (`CGxxxx`).
+OpenAPI Sentinel ships **74 built-in rules** with stable IDs (`CGxxxx`)
+plus **3 engine meta-checks** (`CG9001`, `CG9002`, `CG9003`)
+that document engine-emitted process findings.
 Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the
 rule registry (`openapi-sentinel rules --format json`), so it cannot drift from the binary.
 

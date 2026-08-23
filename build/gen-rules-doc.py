@@ -31,10 +31,15 @@ def render(rules: list[dict]) -> str:
     for rule in rules:
         cats.setdefault(rule["category"], []).append(rule)
 
+    core = [r for r in rules if not r["id"].startswith("CG9")]
+    meta = [r for r in rules if r["id"].startswith("CG9")]
+
     lines = [
         "# Rule catalog",
         "",
-        f"OpenAPI Sentinel ships **{len(rules)} built-in rules** with stable IDs (`CGxxxx`).",
+        f"OpenAPI Sentinel ships **{len(core)} built-in rules** with stable IDs (`CGxxxx`)",
+        f"plus **{len(meta)} engine meta-checks** ({', '.join('`' + m['id'] + '`' for m in sorted(meta, key=lambda x: x['id']))})",
+        "that document engine-emitted process findings.",
         "Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the",
         "rule registry (`openapi-sentinel rules --format json`), so it cannot drift from the binary.",
         "",

@@ -32,13 +32,21 @@ public class RulesCatalogDocTests
     [Fact]
     public void DocsRulesMarkdown_RuleCount_MatchesRegistry()
     {
-        var expected = RuleRegistry.CreateDefault().All.Count;
+        var all = RuleRegistry.CreateDefault().All.ToList();
+        var coreCount = all.Count(r => !r.Descriptor.Id.StartsWith("CG9"));
+        var metaCount = all.Count - coreCount;
         var markdown = File.ReadAllText(Path.Combine(RepoRoot(), "docs", "rules.md"));
 
-        var declared = Regex.Match(markdown, @"\*\*(\d+) built-in rules\*\*");
-        Assert.True(declared.Success, "catalog header does not declare a rule count");
+        var declaredCore = Regex.Match(markdown, @"\*\*(\d+) built-in rules\*\*");
+        Assert.True(declaredCore.Success, "catalog header does not declare a rule count");
+        Assert.Equal(coreCount.ToString(), declaredCore.Groups[1].Value);
 
-        Assert.Equal(expected.ToString(), declared.Groups[1].Value);
+        if (metaCount > 0)
+        {
+            // Engine meta-checks are listed separately from classification rules.
+            foreach (var id in all.Where(r => r.Descriptor.Id.StartsWith("CG9")).Select(r => r.Descriptor.Id))
+                Assert.Contains(id, markdown, StringComparison.Ordinal);
+        }
     }
 
     private static string RepoRoot()
