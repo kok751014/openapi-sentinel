@@ -1,0 +1,39 @@
+────────────────────────────────────────────────────────────────────────
+OpenAPI Sentinel  1.2.3
+  old.yaml  →  new.yaml   (generated 2026-03-01 10:30:00 UTC)
+  versions: 3.0.3  →  3.1.0
+────────────────────────────────────────────────────────────────────────
+
+Result: FAILED
+
+
+Summary
+  Findings: 3
+  Severity: critical: 1 high: 1 medium: 0 low: 0 info: 1 verify: 0
+  Compatibility: 2 breaking, 0 potentially breaking, 1 non-breaking, 0 informational, 0 unknown
+  Suppressed: 1 (acknowledged — see list below)
+  Recommended version bump: MAJOR — 2 breaking finding(s) at high or critical severity require a major version.
+
+Findings
+[CRITICAL] CG1001  GET /orders
+        Endpoint removed: clients calling this endpoint will be affected.
+        impact: Existing integrations stop working.
+        action: Coordinate the removal with consumers.
+[HIGH] CG2003  POST /orders/{id}
+        Parameter became required: clients calling this endpoint will be affected.
+        values: false → true
+        impact: Existing integrations stop working.
+        action: Coordinate the removal with consumers.
+[INFO] CG1003  GET /webhooks
+        Endpoint added: clients calling this endpoint will be affected.
+        impact: Existing integrations stop working.
+        action: Coordinate the removal with consumers.
+
+Affected endpoints
+  [Removed] GET /orders — 1 finding(s)
+  [Changed] POST /orders/{id} — 2 finding(s)
+
+Suppressed (1) — acknowledged, not counted
+  [INFO] CG5004 GET /orders — suppression: Planned extension; consumers informed.
+
+────────────────────────────────────────────────────────────────────────

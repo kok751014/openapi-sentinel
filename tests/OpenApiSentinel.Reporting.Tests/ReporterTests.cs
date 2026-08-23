@@ -391,6 +391,42 @@ public class JunitReporterTests
     }
 }
 
+public class GoldenConsoleTests
+{
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "OpenApiSentinel.slnx")))
+            dir = dir.Parent!;
+        return dir!.FullName;
+    }
+
+    /// <summary>
+    /// Locks the primary terminal UX byte-for-byte for the deterministic fixture.
+    /// Regenerate via SENTINEL_ACCEPT_GOLDEN=1 dotnet test.
+    /// </summary>
+    [Fact]
+    public void Console_MatchesGoldenSnapshot()
+    {
+        var goldenPath = Path.Combine(RepoRoot(), "tests", "OpenApiSentinel.Reporting.Tests", "GoldenFiles", "console.txt");
+        var text = new ConsoleReporter(supportsColor: false).Render(TestResults.Failing(), new ReporterOptions { NoColor = true, Verbose = true });
+
+        if (Environment.GetEnvironmentVariable("SENTINEL_ACCEPT_GOLDEN") == "1")
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(goldenPath)!);
+            File.WriteAllText(goldenPath, text);
+            return;
+        }
+
+        Assert.True(File.Exists(goldenPath),
+            $"Golden file missing: {goldenPath}. Run SENTINEL_ACCEPT_GOLDEN=1 dotnet test once to create it.");
+        var golden = File.ReadAllText(goldenPath);
+        Assert.True(text == golden,
+            "Console report diverged from the golden snapshot. " +
+            "If the change is intentional, rerun with SENTINEL_ACCEPT_GOLDEN=1 and commit the updated file.");
+    }
+}
+
 public class GoldenHtmlTests
 {
     /// <summary>
