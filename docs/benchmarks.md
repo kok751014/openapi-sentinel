@@ -47,3 +47,18 @@ dotnet run -c Release --project bench/OpenApiSentinel.Bench
   which keeps CI usage effectively free.
 
 These are not BenchmarkDotNet microbenchmarks; treat absolute numbers as indicative and rerun on your hardware.
+
+## Real-world spot checks
+
+Measured on the same machine as the synthetic benches above (defaults, no config tweaks):
+
+| Spec pair | Size | Wall time | Peak RSS | Outcome |
+|-----------|------|----------:|---------:|---------|
+| GitHub REST API (validate) | ~10 MB JSON, 809 paths / 1221 ops | 4.9 s | — | OK |
+| GitHub REST API (self-compare) | 2 × ~10 MB fetched remotely | 13.6 s | — | passed, 0 findings |
+| Stripe spec3.yaml (validate) | ~6 MB YAML, 416 paths / 589 ops | 3.8 s | — | OK |
+| **Stripe v2300 → v2404 diff** (~100 weekly releases) | 2 × ~6 MB YAML | **4.3 s** | **0.68 GB** | 174 findings (73 additive properties, 59 response enum additions, 1 unresolved-reference Verify), MINOR recommendation |
+
+The Stripe pair exercises the safety-budget degradation path: exactly one `CG5022` Verify
+finding marks the single subtree that could not be resolved within default budgets;
+everything else is fully classified. Absolute numbers are indicative — rerun on your hardware.
