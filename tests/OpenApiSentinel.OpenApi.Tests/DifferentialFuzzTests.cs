@@ -28,8 +28,9 @@ public class DifferentialFuzzTests
     {
         var rng = new Random(seed);
         var sb = new StringBuilder();
+        var is31 = rng.Next(3) == 0; // some seeds exercise 3.1 (webhooks, type arrays)
+        sb.Append(is31 ? "openapi: 3.1.0\n" : "openapi: 3.0.3\n");
         sb.Append("""
-            openapi: 3.0.3
             info:
               title: Fuzz
               version: "1.0"
@@ -43,6 +44,12 @@ public class DifferentialFuzzTests
             var method = Methods[rng.Next(Methods.Length)];
             sb.Append($"\n    {method}:");
             if (rng.Next(2) == 0) sb.Append($"\n      operationId: op{p}");
+            if (rng.Next(4) == 0)
+            {
+                // Exercise effective-security diffing (operation-level requirement).
+                sb.Append("\n      security:");
+                sb.Append("\n        - bearerAuth: []");
+            }
             sb.Append("\n      responses:");
             var code = rng.Next(2) == 0 ? 200 : 204;
             sb.Append($"\n        '{code}':");
@@ -53,12 +60,38 @@ public class DifferentialFuzzTests
                 sb.Append("\n            application/json:");
                 AppendSchema(sb, rng, 14, depth: 0);
             }
+            if (rng.Next(3) == 0)
+            {
+                // Exercise response-header diffing.
+                sb.Append("\n          headers:");
+                sb.Append($"\n            X-Trace-{p}:");
+                sb.Append("\n              schema:");
+                AppendSchema(sb, rng, 16, depth: 1);
+            }
             if (method == "post" && rng.Next(3) == 0)
             {
                 sb.Append("\n      requestBody:");
                 sb.Append("\n        content:");
                 sb.Append("\n          application/json:");
                 AppendSchema(sb, rng, 12, depth: 0);
+            }
+            if (method == "post" && rng.Next(3) == 0)
+            {
+                // Exercise the newest diff surface: operation-level callbacks.
+                sb.Append($"\n      callbacks:");
+                sb.Append($"\n        event{p}:");
+                sb.Append("\n          '{$request.body#/callbackUrl}':");
+                sb.Append("\n            post:");
+                sb.Append("\n              responses:");
+                sb.Append("\n                '200':");
+                sb.Append("\n                  description: received");
+                if (rng.Next(2) == 0)
+                {
+                    sb.Append("\n              requestBody:");
+                    sb.Append("\n                content:");
+                    sb.Append("\n                  application/json:");
+                    AppendSchema(sb, rng, 18, depth: 0);
+                }
             }
 
             var paramCount = rng.Next(0, 3);
@@ -75,6 +108,23 @@ public class DifferentialFuzzTests
                 }
             }
         }
+
+        if (is31 && rng.Next(2) == 0)
+        {
+            // Exercise webhook diffing on 3.1 seeds.
+            sb.Append("\nwebhooks:");
+            sb.Append("\n  hookA:");
+            sb.Append("\n    post:");
+            sb.Append("\n      responses:");
+            sb.Append("\n        '200':");
+            sb.Append("\n          description: ok");
+        }
+
+        sb.Append("\ncomponents:");
+        sb.Append("\n  securitySchemes:");
+        sb.Append("\n    bearerAuth:");
+        sb.Append("\n      type: http");
+        sb.Append("\n      scheme: bearer");
 
         return sb.ToString();
     }
