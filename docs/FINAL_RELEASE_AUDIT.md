@@ -113,7 +113,7 @@ Reason: all quality gates are green, primary flows and semantics verified trustw
 - Response-side constraint *additions* (e.g., maxLength appearing from nothing) classify as `verify/unknown` rather than a directional non-breaking note — conservative and visible, but coarser than the request-side matrices.
 - Format changes nested inside composition branches are not compared (top-level `format` only) — a niche false-negative surface, unchanged by this audit.
 - Windows/macOS archives are produced by trusted .NET RID compilation and checksummed, but only the Linux-x64 binary could be executed in this environment.
-- Remote CI evidence for commits after this audit does not exist yet (push happens with the audit commit).
+- Remote CI evidence: the audit commit itself ran green on GitHub Actions (run 32683002520: build/test matrix on ubuntu/windows/macos + samples job, 1m58s), verified after push.
 
 None of these are release blockers.
 
