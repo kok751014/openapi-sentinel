@@ -112,7 +112,7 @@ openapi-sentinel compare old.yaml new.yaml --html report.html
 ## CI example (GitHub Actions)
 
 ```yaml
-- uses: openapi-sentinel/openapi-sentinel-action@v1
+- uses: ./action                      # in-repo composite (Marketplace listing pending)
   with:
     base: git:origin/main:openapi.yaml
     head: openapi.yaml

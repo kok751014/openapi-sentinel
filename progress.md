@@ -1281,3 +1281,38 @@ Steady state. Next iteration: gate re-runs unless new information arrives.
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 13) — FULL RELEASE PIPELINE RE-VERIFIED POST-SESSION + ACTION DOCS TRUTHED
+
+### Full multi-RID release run on current code (first since the resolver/refactor wave)
+`SENTINEL_VERSION=1.0.0 bash build/release.sh`:
+- 6/6 self-contained RID archives + nupkg + RELEASE_NOTES.md; **SHA256SUMS verified OK ×6**.
+- Extracted linux-x64 binary runs WITHOUT any .NET installed: version → 1.0.0; canonical
+  breaking sample → exit 1.
+
+### Action docs truthed
+README CI example and docs/github-actions.md still led with
+`uses: openapi-sentinel/openapi-sentinel-action@v1` — a Marketplace listing that does not
+exist (publication never requested). Both now lead with `uses: ./action` plus an explicit
+note about switching to the marketplace reference once published. The remaining v1 mentions
+are intentional annotations in those two spots.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362** (docs-only source change this iteration);
+  full release flow green end-to-end post-refactors.
+
+### Files changed
+- README.md, docs/github-actions.md
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Every deliverable class has now been re-verified after this session's engine,
+pipeline, action, sample, and doc work. Next iteration: gate re-runs unless new information
+arrives.

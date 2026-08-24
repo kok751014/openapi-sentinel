@@ -7,9 +7,9 @@ Two integration levels are provided:
 `action/action.yml` in this repository wraps install + compare + outputs.
 
 ```yaml
-- uses: openapi-sentinel/openapi-sentinel-action@v1
-  with:
-    base: git:origin/main:openapi.yaml
+- uses: ./action                      # in-repo composite; once published to the
+  with:                               # Marketplace, switch to
+    base: git:origin/main:openapi.yaml  # openapi-sentinel/openapi-sentinel-action@v1
     head: openapi.yaml
     fail-on: high          # critical|high|medium|low|verify|info|all
     report-dir: sentinel-reports
