@@ -629,13 +629,6 @@ public sealed class SchemaComparer
     private static bool HasItems(JsonNode node) =>
         node is JsonObject o && o.TryGetPropertyValue("items", out var i) && i is not null;
 
-    private static bool NodesEquivalent(SchemaInfo a, SchemaInfo b, string keyword)
-    {
-        a.TryGetKeyword(keyword, out var av);
-        b.TryGetKeyword(keyword, out var bv);
-        return JsonDeepEquals(av, bv);
-    }
-
     private static readonly string[] ProseKeys = ["description", "title", "example", "examples"];
 
     /// <summary>Deep clone without documentation-only keywords. Used to keep prose-only

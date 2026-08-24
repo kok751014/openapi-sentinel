@@ -1347,3 +1347,26 @@ exit 0 via the installed apphost. Tool uninstalled after the probe.
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 15) — SELF-AUDIT DEAD-CODE SWEEP (NodesEquivalent)
+
+Audited this session's own diff surface for leftovers, same discipline applied to
+LooksLikeAbsoluteUnixPath in iteration 12: the items-gate rewrite (prose-noise fix) removed
+the only caller of SchemaComparer.NodesEquivalent — removed. No behavior change.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362**.
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/SchemaComparer.cs (dead helper removal only)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.
