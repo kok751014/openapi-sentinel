@@ -1212,3 +1212,42 @@ fails the guard as designed.
 ### Exact next recommended action
 Steady state; the action is now structurally guarded by CI even though runners can't execute
 it. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 11) — SAMPLE CI WORKFLOWS FIXED (audit of never-executed deliverables)
+
+Continued the "audit what CI never executes" pattern on the sample pipelines. Three real
+defects in samples/github-actions/workflow.yml and one in azure-devops/pipeline.yml:
+
+1. **GitHub sample referenced a marketplace action that does not exist**
+   (`uses: openapi-sentinel/openapi-sentinel-action@v1`) while its own header comment claimed
+   it uses the in-repo composite. A user copying the file gets "action not found".
+   Fixed: `uses: ./action`.
+2. **`git:origin/main:` could never resolve**: default shallow checkout (fetch-depth 1)
+   doesn't fetch branch refs, so the git: source fails with a missing-revision error.
+   Fixed: explicit `fetch-depth: 0` (GitHub) / `checkout: self fetchDepth: 0` (Azure);
+   GitLab sample already had GIT_DEPTH: 0.
+3. **Redundant/misleading PR-summary step** removed from the GitHub sample — the action
+   appends the compact pr-summary.md to $GITHUB_STEP_SUMMARY itself; the example instead
+   re-posted the full report via an unnecessary python heredoc. The unneeded
+   `pull-requests: write` permission was dropped with it.
+4. Azure casing inconsistency (`$(BUILD_ARTIFACTSTAGINGDIRECTORY)` vs
+   `$(Build.ArtifactStagingDirectory)` — harmless macro-insensitivity, normalized anyway).
+
+### Verification (actual)
+- All four workflow YAMLs parse clean; scripted consistency checks assert local-action path,
+  full-history checkout hints present, no stale references.
+- Build 0/0; suite **362/362** (docs-only change).
+
+### Files changed
+- samples/github-actions/workflow.yml, samples/azure-devops/pipeline.yml
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.

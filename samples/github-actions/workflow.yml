@@ -13,16 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write   # post the PR summary comment
     steps:
+      # Full history so the git: source can resolve origin/main.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Typical flow: generate the current swagger.json first.
       # - run: dotnet run --project src/My.Api -- generate-swagger > swagger.json
 
       - name: Compare contracts
         id: sentinel
-        uses: openapi-sentinel/openapi-sentinel-action@v1
+        uses: ./action
         with:
           base: git:origin/main:contracts/openapi.yaml
           head: contracts/openapi.yaml
@@ -36,13 +38,4 @@ jobs:
           name: api-compatibility-report
           path: sentinel-reports/
 
-      - name: Post PR summary
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 - <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
-          import json, pathlib
-          p = pathlib.Path("sentinel-reports/api-diff.md")
-          print(p.read_text(encoding="utf-8") if p.exists() else "No report generated.")
-          PYEOF
+      # The action already appends the compact PR summary to $GITHUB_STEP_SUMMARY.

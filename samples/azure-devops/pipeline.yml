@@ -14,6 +14,10 @@ variables:
   dotnetVersion: "10.0.x"
 
 steps:
+  # Full history so the git: source can resolve origin/main.
+  - checkout: self
+    fetchDepth: 0
+
   - task: UseDotNet@2
     inputs:
       version: $(dotnetVersion)
@@ -35,7 +39,7 @@ steps:
         --fail-on high \
         --json $(Build.ArtifactStagingDirectory)/sentinel/api-diff.json \
         --markdown $(Build.ArtifactStagingDirectory)/sentinel/api-diff.md \
-        --html $(BUILD_ARTIFACTSTAGINGDIRECTORY)/sentinel/api-diff.html \
+        --html $(Build.ArtifactStagingDirectory)/sentinel/api-diff.html \
         --no-color
       code=$?
       breaking=$(python3 -c "import json;d=json.load(open('$(Build.ArtifactStagingDirectory)/sentinel/api-diff.json'));print(d['summary']['breaking'])")
