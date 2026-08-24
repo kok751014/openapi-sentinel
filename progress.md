@@ -1552,3 +1552,9 @@ docs/FINAL_RELEASE_AUDIT.md.
 ### Exact next recommended action
 User release decision. Repository is release-ready; publishing/tagging v1.0 awaits explicit
 user authorization plus the credentials above.
+
+### FINAL RELEASE AUDIT addendum — remote CI verified green on the audit commit
+GitHub Actions run 32683002520 (commit 7569c46): completed success, 1m58s — build/test matrix
+on ubuntu-latest / windows-latest / macos-latest plus the samples scenario job. The last
+"remaining risk" line in docs/FINAL_RELEASE_AUDIT.md was updated accordingly. Release
+recommendation unchanged: **GO WITH KNOWN LIMITATIONS**.
