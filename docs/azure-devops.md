@@ -6,6 +6,10 @@ A complete pipeline is available at [samples/azure-devops/pipeline.yml](../sampl
 
 ```yaml
 steps:
+  # Full history so the git: source can resolve origin/main.
+  - checkout: self
+    fetchDepth: 0
+
   - task: UseDotNet@2
     inputs:
       version: "10.0.x"

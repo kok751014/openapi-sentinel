@@ -1316,3 +1316,34 @@ are intentional annotations in those two spots.
 Steady state. Every deliverable class has now been re-verified after this session's engine,
 pipeline, action, sample, and doc work. Next iteration: gate re-runs unless new information
 arrives.
+
+---
+
+## 2026-08-24 (iteration 14) — AZURE DOC FIX + ACTION INSTALL-FALLBACK SIMULATED
+
+### docs/azure-devops.md: same shallow-checkout defect as the sample had
+The "Minimal usage" example used `git:origin/main:` without a full-fetch checkout — would
+fail on default shallow checkouts. Fixed with explicit `checkout: self / fetchDepth: 0`
+(matching the corrected sample and the GitLab doc's GIT_DEPTH note). Snippet parses as YAML.
+
+### Composite action install-fallback branch simulated
+Last iteration's simulation short-circuited on the already-installed tool. This time the
+fallback path was exercised exactly as written (`GITHUB_ACTION_PATH`-relative build →
+`dotnet pack --no-build -o $RUNNER_TEMP/pkg` → `dotnet tool install --add-source`):
+build OK, pack OK, install OK, `openapi-sentinel version` → 1.0.0, safe-sample compare
+exit 0 via the installed apphost. Tool uninstalled after the probe.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362**; action fallback path proven working.
+
+### Files changed
+- docs/azure-devops.md
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.
