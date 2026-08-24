@@ -1370,3 +1370,22 @@ the only caller of SchemaComparer.NodesEquivalent — removed. No behavior chang
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 16) — STEADY-STATE VERIFICATION (no changes)
+
+All quality gates re-run and green; no defects found, no code changed this iteration.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings.
+- Suite **362/362**.
+- Canonical CLI behavior: breaking sample exit 1, safe sample exit 0, callbacks pair exit 1.
+
+### Git status
+- main @ af0b4b4 (unchanged); working tree clean.
+
+### Exact next recommended action
+Steady state. The repository is release-ready pending user-side credentials
+(NUGET_API_KEY secret for the automated NuGet push; Docker daemon/registry creds).
+Next iteration: gate re-runs unless new information arrives.
