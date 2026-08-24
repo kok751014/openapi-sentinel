@@ -14,7 +14,7 @@ this page states the verified current state only.
   document's directory tree; URL-loaded documents resolve siblings against their own URL
   under the full fetch policy; opt-in `allowAboveDocumentTree` for Azure-style shared trees;
   missing/unfetchable references degrade instead of aborting.
-- **80 rules + 3 engine meta-checks** (`CGxxxx`), stable IDs, human explanations,
+- **85 rules + 3 engine meta-checks** (`CGxxxx`), stable IDs, human explanations,
   impact and remediation text; aspect-aware discriminator classification; direction-aware
   formats, numeric types/unions, nullability, requiredness, additionalProperties,
   readOnly/writeOnly; callback diffing (CG1011–13); response-header payload diffing;
@@ -81,9 +81,9 @@ python3 build/gen-rules-doc.py   # regenerate docs/rules.md from the registry
 |---------|------:|
 | Core | 21 |
 | Reporting (incl. golden snapshots, injection hardening) | 48 |
-| OpenApi (pipeline, robustness, callbacks, degradation, multi-file & remote siblings, seeded differential fuzzing) | 115 |
-| Rules (engine, FP/FN suites, coverage & catalog guards) | 85 |
-| Cli (runner, config loader, workflows) | 38 |
+| OpenApi (pipeline, robustness, callbacks, degradation, multi-file & remote siblings, seeded differential fuzzing) | 171 |
+| Rules (engine, FP/FN suites, coverage & catalog guards) | 91 |
+| Cli (runner, config loader, workflows) | 50 |
 | Integration (end-to-end scenarios) | 3 |
 
 Remote CI: green across ubuntu-latest / windows-latest / macos-latest.

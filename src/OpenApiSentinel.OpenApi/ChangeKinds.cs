@@ -30,6 +30,9 @@ public static class ChangeKinds
     public const string ParameterFormatChanged = "parameter.format.changed";
     public const string ParameterEnumValueAdded = "parameter.enum.value.added";
     public const string ParameterEnumValueRemoved = "parameter.enum.value.removed";
+
+    /// <summary>An enum appeared where the parameter previously accepted any value.</summary>
+    public const string ParameterEnumConstraintIntroduced = "parameter.enum.constraint.introduced";
     public const string ParameterDefaultChanged = "parameter.default.changed";
     public const string ParameterNullableChanged = "parameter.nullable.changed";
     public const string ParameterItemsChanged = "parameter.items.changed";
@@ -70,7 +73,23 @@ public static class ChangeKinds
     public const string SchemaFormatChanged = "schema.format.changed";
     public const string EnumValueAdded = "schema.enum.value.added";
     public const string EnumValueRemoved = "schema.enum.value.removed";
+
+    /// <summary>The whole enum keyword appeared (previously unconstrained) — a narrowing,
+    /// unlike single value additions which widen an existing set.</summary>
+    public const string EnumConstraintIntroduced = "schema.enum.constraint.introduced";
+
+    /// <summary>The whole enum keyword disappeared (now unconstrained) — a widening,
+    /// unlike single value removals which contract an existing set.</summary>
+    public const string EnumConstraintRemoved = "schema.enum.constraint.removed";
+
     public const string ConstChanged = "schema.const.changed";
+
+    /// <summary>A const keyword appeared where no fixed value was declared before.</summary>
+    public const string ConstConstraintIntroduced = "schema.const.constraint.introduced";
+
+    /// <summary>The const keyword disappeared; the value is no longer pinned.</summary>
+    public const string ConstConstraintRemoved = "schema.const.constraint.removed";
+
     public const string ConstraintChanged = "schema.constraint.changed";
     public const string NullableChanged = "schema.nullable.changed";
     public const string ItemsChanged = "schema.items.changed";

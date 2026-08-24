@@ -343,6 +343,126 @@ internal static class SchemaRules
                 "Coordinate the change via a new versioned field or endpoint."),
         };
 
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG5023", Title = "Enum constraint introduced",
+                Category = FindingCategory.Schema,
+                DefaultSeverity = Severity.High,
+                DefaultCompatibility = Compatibility.Breaking,
+                ChangeKinds = [ChangeKinds.EnumConstraintIntroduced],
+                Description = "A schema that previously accepted any value is now restricted to a fixed enum set. Direction-aware: request-side restriction breaks existing senders; response-side narrowing is usually safe.",
+                Impact = "Request: every caller sending values outside the new set is rejected. Response: outputs narrow to the declared cases.",
+                Remediation = "Accept the previous free-form values during a migration window, or introduce the restriction on a new optional field first.",
+                BreakingExample = "# before: any string\nname:\n  type: string\n# after:\nname:\n  type: string\n  enum: [a, b]",
+            },
+            Build = c =>
+            {
+                var isRequest = c.Direction == ApiDirection.Request;
+                return FindingFactory.Create("CG5023", isRequest ? "Request values now restricted to a fixed set" : "Response output restricted to a fixed set",
+                    isRequest ? Severity.High : Severity.Low,
+                    isRequest ? Compatibility.Breaking : Compatibility.NonBreaking, c,
+                    $"An enum constraint was introduced at {Where(c)}; previously any value of the type was accepted. Allowed now: {c.NewValue}.",
+                    isRequest
+                        ? "Clients already sending other values will fail validation."
+                        : "Narrowing possible outputs; readers are unaffected unless they depended on non-enumerated cases.",
+                    isRequest
+                        ? "Expand the accepted set or version the restriction; do not constrain an existing free-form field in place."
+                        : "Update documentation/UI enumerations accordingly.");
+            },
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG5024", Title = "Enum constraint removed",
+                Category = FindingCategory.Schema,
+                DefaultSeverity = Severity.Medium,
+                DefaultCompatibility = Compatibility.PotentiallyBreaking,
+                ChangeKinds = [ChangeKinds.EnumConstraintRemoved],
+                Description = "The enum keyword disappeared; the schema accepts (or produces) arbitrary values again. Direction-aware: accepting more input is safe; producing new outputs can break strict readers.",
+                Impact = "Request: purely additive. Response: clients may receive values outside the previously documented set.",
+                Remediation = "Announce widened outputs; ensure consumers use default branches for unknown values.",
+                NonBreakingExample = "# request enum dropped -> server accepts more inputs",
+            },
+            Build = c =>
+            {
+                var isResponse = c.Direction == ApiDirection.Response;
+                return FindingFactory.Create("CG5024", isResponse ? "Response may produce values outside the old set" : "Enum constraint removed",
+                    isResponse ? Severity.Medium : Severity.Info,
+                    isResponse ? Compatibility.PotentiallyBreaking : Compatibility.NonBreaking, c,
+                    $"The enum constraint at {Where(c)} was removed (was: {c.OldValue}); any value of the type is valid again.",
+                    isResponse
+                        ? "Strict consumers without default handling may fail on unexpected values."
+                        : "Relaxing: the server accepts more inputs than before.",
+                    isResponse
+                        ? "Keep documenting produced values and verify consumer default handling."
+                        : "No action required.");
+            },
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG5025", Title = "Const constraint introduced",
+                Category = FindingCategory.Schema,
+                DefaultSeverity = Severity.High,
+                DefaultCompatibility = Compatibility.Breaking,
+                ChangeKinds = [ChangeKinds.ConstConstraintIntroduced],
+                Description = "A fixed const value appeared where no constant was declared before. Direction-aware: requests must now send exactly that value; responses are pinned to it.",
+                Impact = "Request: callers sending anything else fail validation. Response: output pinned to one value.",
+                Remediation = "Introduce fixed values as a new field instead of constraining an existing free-form one.",
+                BreakingExample = "# before: any string\nkind: {type: string}\n# after:\nkind: {type: string, const: legacy}",
+            },
+            Build = c =>
+            {
+                var isRequest = c.Direction == ApiDirection.Request;
+                return FindingFactory.Create("CG5025", isRequest ? "Request value pinned to a constant" : "Response value pinned to a constant",
+                    isRequest ? Severity.High : Severity.Low,
+                    isRequest ? Compatibility.Breaking : Compatibility.NonBreaking, c,
+                    $"A const constraint ({c.NewValue}) was introduced at {Where(c)}.",
+                    isRequest
+                        ? "Every caller not sending exactly this value will be rejected."
+                        : "Output narrowed to a single case; readers depending on variation are affected.",
+                    isRequest
+                        ? "Version the pinning; accept the old free-form values during migration."
+                        : "Document the pinned value.");
+            },
+        };
+
+        yield return new RuleDefinition
+        {
+            Descriptor = new RuleDescriptor
+            {
+                Id = "CG5026", Title = "Const constraint removed",
+                Category = FindingCategory.Schema,
+                DefaultSeverity = Severity.Medium,
+                DefaultCompatibility = Compatibility.PotentiallyBreaking,
+                ChangeKinds = [ChangeKinds.ConstConstraintRemoved],
+                Description = "The const keyword disappeared; values other than the previous constant become valid. Direction-aware: accepting more input is safe; producing new outputs can break strict readers.",
+                Impact = "Request: purely additive. Response: consumers assuming the constant may encounter other values.",
+                Remediation = "Verify consumers do not hard-assume the previous constant on responses.",
+                NonBreakingExample = "# request const dropped -> server accepts more inputs",
+            },
+            Build = c =>
+            {
+                var isResponse = c.Direction == ApiDirection.Response;
+                return FindingFactory.Create("CG5026", isResponse ? "Response no longer pinned to its constant" : "Const constraint removed",
+                    isResponse ? Severity.Medium : Severity.Info,
+                    isResponse ? Compatibility.PotentiallyBreaking : Compatibility.NonBreaking, c,
+                    $"The const constraint at {Where(c)} (was: {c.OldValue}) was removed.",
+                    isResponse
+                        ? "Consumers hard-coding the previous constant may mis-handle new values."
+                        : "Relaxing: the server accepts more inputs than before.",
+                    isResponse
+                        ? "Confirm consumers treat the value dynamically."
+                        : "No action required.");
+            },
+        };
+
         // ---------- constraints (direction aware) ----------
         yield return new RuleDefinition
         {

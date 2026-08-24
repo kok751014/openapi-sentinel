@@ -26,6 +26,7 @@ internal static class ParameterRules
         yield return DeprecatedFlag();
         yield return ContentAdded();
         yield return ContentRemoved();
+        yield return ParameterEnumConstraintIntroduced();
     }
 
     private static string Where(SemanticChange c) =>
@@ -487,6 +488,27 @@ internal static class ParameterRules
             $"Parameter '{ParamName(c)}' no longer accepts '{c.OldValue}'.",
             "Requests using this media type will fail validation.",
             "Support both formats during a transition or migrate consumers first."),
+    };
+
+    private static RuleDefinition ParameterEnumConstraintIntroduced() => new()
+    {
+        Descriptor = new RuleDescriptor
+        {
+            Id = "CG2019", Title = "Parameter enum constraint introduced",
+            Category = FindingCategory.Parameter,
+            DefaultSeverity = Severity.High,
+            DefaultCompatibility = Compatibility.Breaking,
+            ChangeKinds = [ChangeKinds.ParameterEnumConstraintIntroduced],
+            Description = "A parameter that previously accepted any value is now restricted to a fixed enum set.",
+            Impact = "Callers sending values outside the new set are rejected with validation errors.",
+            Remediation = "Expand the accepted set, or introduce the restriction on a new parameter and deprecate the old one.",
+            BreakingExample = "# before: any string\n- {name: mode, in: query, schema: {type: string}}\n# after:\n- {name: mode, in: query, schema: {type: string, enum: [fast, slow]}}",
+        },
+        Build = c => FindingFactory.Create("CG2019", "Parameter values now restricted to a fixed set",
+            Severity.High, Compatibility.Breaking, c,
+            $"An enum constraint was introduced on parameter '{ParamName(c)}'; previously any value of the type was accepted. Allowed now: {c.NewValue}.",
+            "Clients already sending other values will fail validation.",
+            "Accept legacy values during a migration window or version the restriction."),
     };
 
 }

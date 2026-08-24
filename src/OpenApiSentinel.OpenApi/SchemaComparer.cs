@@ -88,8 +88,8 @@ public sealed class SchemaComparer
     private void CompareType(SchemaInfo oldS, SchemaInfo newS, JsonObject o, JsonObject n,
         string path, HttpMethodKind method, ApiDirection direction, string location)
     {
-        var oldTypes = oldS.Types();
-        var newTypes = newS.Types();
+        var oldTypes = oldS.EffectiveTypes();
+        var newTypes = newS.EffectiveTypes();
 
         var oldCore = oldTypes.Where(t => t != "null").ToHashSet(StringComparer.Ordinal);
         var newCore = newTypes.Where(t => t != "null").ToHashSet(StringComparer.Ordinal);
@@ -129,31 +129,55 @@ public sealed class SchemaComparer
 
         if (oldEnum is not null || newEnum is not null)
         {
-            var removed = oldEnum?.Except(newEnum ?? [], ValueEqualityComparer.Instance).ToList() ?? [];
-            var added = newEnum?.Except(oldEnum ?? [], ValueEqualityComparer.Instance).ToList() ?? [];
+            if (oldEnum is null && newEnum is not null)
+            {
+                // Previously unconstrained, now restricted to a fixed set: narrowing,
+                // not an expansion. Direction-aware classification happens in the rules.
+                Emit(ChangeKinds.EnumConstraintIntroduced, direction, path, method, location,
+                    null, JoinEnumValues(newEnum));
+            }
+            else if (oldEnum is not null && newEnum is null)
+            {
+                // Constraint dropped entirely: widening, not per-value removals.
+                Emit(ChangeKinds.EnumConstraintRemoved, direction, path, method, location,
+                    JoinEnumValues(oldEnum), null);
+            }
+            else if (oldEnum is not null && newEnum is not null)
+            {
+                var removed = oldEnum.Except(newEnum, ValueEqualityComparer.Instance).ToList();
+                var added = newEnum.Except(oldEnum, ValueEqualityComparer.Instance).ToList();
 
-            foreach (var v in removed)
-                Emit(ChangeKinds.EnumValueRemoved, direction, path, method, location,
-                    SemanticChange.ValueToString(v), null);
-            foreach (var v in added)
-                Emit(ChangeKinds.EnumValueAdded, direction, path, method, location,
-                    null, SemanticChange.ValueToString(v));
+                foreach (var v in removed)
+                    Emit(ChangeKinds.EnumValueRemoved, direction, path, method, location,
+                        SemanticChange.ValueToString(v), null);
+                foreach (var v in added)
+                    Emit(ChangeKinds.EnumValueAdded, direction, path, method, location,
+                        null, SemanticChange.ValueToString(v));
+            }
         }
 
         System.Text.Json.Nodes.JsonNode? oldConst = null, newConst = null;
         var oldHas = oldS.TryGetKeyword("const", out oldConst);
         var newHas = newS.TryGetKeyword("const", out newConst);
-        if (oldHas || newHas)
+        if (!oldHas && newHas)
         {
-            var oc = oldConst?.DeepClone();
-            var nc = newConst?.DeepClone();
-            if (!ValueEqualityComparer.Instance.Equals(oc, nc))
-            {
-                Emit(ChangeKinds.ConstChanged, direction, path, method, location,
-                    SemanticChange.ValueToString(oc), SemanticChange.ValueToString(nc));
-            }
+            Emit(ChangeKinds.ConstConstraintIntroduced, direction, path, method, location,
+                null, SemanticChange.ValueToString(newConst?.DeepClone()));
+        }
+        else if (oldHas && !newHas)
+        {
+            Emit(ChangeKinds.ConstConstraintRemoved, direction, path, method, location,
+                SemanticChange.ValueToString(oldConst?.DeepClone()), null);
+        }
+        else if (oldHas && newHas && !ValueEqualityComparer.Instance.Equals(oldConst?.DeepClone(), newConst?.DeepClone()))
+        {
+            Emit(ChangeKinds.ConstChanged, direction, path, method, location,
+                SemanticChange.ValueToString(oldConst?.DeepClone()), SemanticChange.ValueToString(newConst?.DeepClone()));
         }
     }
+
+    private static string JoinEnumValues(List<JsonNode> values) =>
+        string.Join(", ", values.Select(SemanticChange.ValueToString));
 
     // ---------------- scalar constraints ----------------
 

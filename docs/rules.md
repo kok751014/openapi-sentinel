@@ -1,6 +1,6 @@
 # Rule catalog
 
-OpenAPI Sentinel ships **80 built-in rules** with stable IDs (`CGxxxx`)
+OpenAPI Sentinel ships **85 built-in rules** with stable IDs (`CGxxxx`)
 plus **3 engine meta-checks** (`CG9001`, `CG9002`, `CG9003`)
 that document engine-emitted process findings.
 Rule IDs never change meaning; new rules get fresh IDs. This file is generated from the
@@ -114,6 +114,7 @@ The runtime expression or URI template that determines where callback requests a
 | `CG2016` | Parameter deprecated | medium | PotentiallyBreaking |
 | `CG2017` | Parameter content type added | info | NonBreaking |
 | `CG2018` | Parameter content type removed | high | Breaking |
+| `CG2019` | Parameter enum constraint introduced | high | Breaking |
 
 ### `CG2001` — Parameter removed
 
@@ -258,6 +259,14 @@ A media type declared by a 3.x content-based parameter was removed.
 - **Default severity:** high  
 - **Classification:** Breaking  
 - **Change kinds:** `parameter.content.removed`
+
+### `CG2019` — Parameter enum constraint introduced
+
+A parameter that previously accepted any value is now restricted to a fixed enum set.
+
+- **Default severity:** high  
+- **Classification:** Breaking  
+- **Change kinds:** `parameter.enum.constraint.introduced`
 
 ## RequestBody
 
@@ -409,6 +418,10 @@ The required flag of a response header changed.
 | `CG5018` | Property renamed | medium | Breaking |
 | `CG5020` | Optional property added | info | NonBreaking |
 | `CG5022` | Unresolved reference changed | verify | Unknown |
+| `CG5023` | Enum constraint introduced | high | Breaking |
+| `CG5024` | Enum constraint removed | medium | PotentiallyBreaking |
+| `CG5025` | Const constraint introduced | high | Breaking |
+| `CG5026` | Const constraint removed | medium | PotentiallyBreaking |
 
 ### `CG5001` — Schema type changed
 
@@ -561,6 +574,38 @@ A subtree was left un-resolved because a processing-safety budget (limits.maxNod
 - **Default severity:** verify  
 - **Classification:** Unknown  
 - **Change kinds:** `schema.unresolved.changed`
+
+### `CG5023` — Enum constraint introduced
+
+A schema that previously accepted any value is now restricted to a fixed enum set. Direction-aware: request-side restriction breaks existing senders; response-side narrowing is usually safe.
+
+- **Default severity:** high  
+- **Classification:** Breaking  
+- **Change kinds:** `schema.enum.constraint.introduced`
+
+### `CG5024` — Enum constraint removed
+
+The enum keyword disappeared; the schema accepts (or produces) arbitrary values again. Direction-aware: accepting more input is safe; producing new outputs can break strict readers.
+
+- **Default severity:** medium  
+- **Classification:** PotentiallyBreaking  
+- **Change kinds:** `schema.enum.constraint.removed`
+
+### `CG5025` — Const constraint introduced
+
+A fixed const value appeared where no constant was declared before. Direction-aware: requests must now send exactly that value; responses are pinned to it.
+
+- **Default severity:** high  
+- **Classification:** Breaking  
+- **Change kinds:** `schema.const.constraint.introduced`
+
+### `CG5026` — Const constraint removed
+
+The const keyword disappeared; values other than the previous constant become valid. Direction-aware: accepting more input is safe; producing new outputs can break strict readers.
+
+- **Default severity:** medium  
+- **Classification:** PotentiallyBreaking  
+- **Change kinds:** `schema.const.constraint.removed`
 
 ## Security
 

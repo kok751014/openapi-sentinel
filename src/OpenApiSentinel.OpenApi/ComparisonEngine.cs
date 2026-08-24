@@ -459,9 +459,31 @@ public sealed class ComparisonEngine
         var oldByKey = oldParams.GroupBy(Key).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var newByKey = newParams.GroupBy(Key).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
+        // A parameter that vanished from one location and re-appeared under the same name in
+        // another is a relocation (CG2015), not an unrelated remove + add. Pair leftovers 1:1
+        // by name; anything ambiguous falls back to plain removed/added reporting.
+        var movedPairs = new List<(ParameterInfo Old, ParameterInfo New)>();
+        var unmatchedOldKeys = oldByKey.Keys.Where(k => !newByKey.ContainsKey(k)).ToList();
+        foreach (var group in unmatchedOldKeys.GroupBy(k => oldByKey[k].Name, StringComparer.Ordinal)
+                     .OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            var matchingNewKeys = newByKey.Keys
+                .Where(k => !oldByKey.ContainsKey(k) && newByKey[k].Name == group.Key)
+                .OrderBy(k => k, StringComparer.Ordinal)
+                .ToList();
+            var oldKeys = group.OrderBy(k => k, StringComparer.Ordinal).ToList();
+            if (oldKeys.Count != 1 || matchingNewKeys.Count != 1) continue;
+            movedPairs.Add((oldByKey[oldKeys[0]], newByKey[matchingNewKeys[0]]));
+        }
+        var consumedOldKeys = movedPairs.Select(p => $"{p.Old.In}:{p.Old.Name}").ToHashSet(StringComparer.Ordinal);
+        var movedNewKeys = movedPairs.Select(p => $"{p.New.In}:{p.New.Name}").ToHashSet(StringComparer.Ordinal);
+
+        foreach (var pair in movedPairs)
+            CompareParameterPair(pair.Old, pair.New, path, method, locPrefix, changes);
+
         foreach (var key in oldByKey.Keys.OrderBy(k => k, StringComparer.Ordinal))
         {
-            if (!newByKey.ContainsKey(key))
+            if (!newByKey.ContainsKey(key) && !consumedOldKeys.Contains(key))
             {
                 changes.Add(new SemanticChange
                 {
@@ -485,6 +507,7 @@ public sealed class ComparisonEngine
         {
             if (!oldByKey.TryGetValue(key, out var oldP))
             {
+                if (movedNewKeys.Contains(key)) continue;
                 var newP = newByKey[key];
                 changes.Add(new SemanticChange
                 {
@@ -666,7 +689,11 @@ public sealed class ComparisonEngine
     private static IEnumerable<SemanticChange> FilterParamSubChanges(IEnumerable<SemanticChange> changes) =>
         changes.Where(c => c.Kind is not (ChangeKinds.SchemaTypeChanged or ChangeKinds.SchemaFormatChanged
             or ChangeKinds.EnumValueAdded or ChangeKinds.EnumValueRemoved or ChangeKinds.NullableChanged
-            or ChangeKinds.DefaultChanged));
+            or ChangeKinds.DefaultChanged
+            // Parameter enums are owned by CompareEnumAndDefaults (CG2019 introduction /
+            // intentional silence on relaxation); avoid duplicate reporting from the
+            // schema-comparer pass.
+            or ChangeKinds.EnumConstraintIntroduced or ChangeKinds.EnumConstraintRemoved));
 
     /// <summary>Compares enum values / defaults / nullable at parameter level with precise change kinds.</summary>
     private static void CompareEnumAndDefaults(SchemaInfo? oldS, SchemaInfo? newS, Action<string, string?, string?> add)
@@ -678,12 +705,26 @@ public sealed class ComparisonEngine
         if (wasNullable != nowNullable)
             add(ChangeKinds.ParameterNullableChanged, wasNullable ? "nullable" : "not-nullable", nowNullable ? "nullable" : "not-nullable");
 
-        if ((oldS.Node as System.Text.Json.Nodes.JsonObject)?.TryGetPropertyValue("enum", out var oe) == true &&
-            (newS.Node as System.Text.Json.Nodes.JsonObject)?.TryGetPropertyValue("enum", out var ne) == true &&
-            oe is System.Text.Json.Nodes.JsonArray oa && ne is System.Text.Json.Nodes.JsonArray na)
+        var oldEnumNode = (oldS.Node as System.Text.Json.Nodes.JsonObject);
+        var newEnumNode = (newS.Node as System.Text.Json.Nodes.JsonObject);
+        System.Text.Json.Nodes.JsonNode? oe = null, ne = null;
+        oldEnumNode?.TryGetPropertyValue("enum", out oe);
+        newEnumNode?.TryGetPropertyValue("enum", out ne);
+        var oldVals = oe as System.Text.Json.Nodes.JsonArray is { } oa
+            ? oa.Where(x => x is not null).Select(x => x!).ToList()
+            : null;
+        var newVals = ne as System.Text.Json.Nodes.JsonArray is { } na
+            ? na.Where(x => x is not null).Select(x => x!).ToList()
+            : null;
+
+        if (oldVals is null && newVals is not null)
         {
-            var oldVals = oa.Where(x => x is not null).Select(x => x!).ToList();
-            var newVals = na.Where(x => x is not null).Select(x => x!).ToList();
+            // Previously unconstrained, now restricted: a request-side narrowing.
+            add(ChangeKinds.ParameterEnumConstraintIntroduced, null,
+                string.Join(", ", newVals.Select(SemanticChange.ValueToString)));
+        }
+        else if (oldVals is not null && newVals is not null)
+        {
             foreach (var v in oldVals)
                 if (!newVals.Any(nv => SchemaComparer.JsonDeepEquals(nv, v)))
                     add(ChangeKinds.ParameterEnumValueRemoved, SemanticChange.ValueToString(v), null);
@@ -691,6 +732,8 @@ public sealed class ComparisonEngine
                 if (!oldVals.Any(ov => SchemaComparer.JsonDeepEquals(ov, v)))
                     add(ChangeKinds.ParameterEnumValueAdded, null, SemanticChange.ValueToString(v));
         }
+        // old constrained -> new unconstrained is a relaxation (any value accepted again):
+        // additive for request senders, so it stays unreported to avoid false positives.
 
         var oldObj = oldS.Node as System.Text.Json.Nodes.JsonObject;
         var newObj = newS.Node as System.Text.Json.Nodes.JsonObject;

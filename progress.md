@@ -1477,3 +1477,78 @@ file) but absent from docs/configuration.md's output example. Documented; behavi
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (FINAL RELEASE AUDIT) — 3 SEMANTIC DEFECT FAMILIES FIXED; RECOMMENDATION: GO WITH KNOWN LIMITATIONS
+
+Executed FINAL_RELEASE_AUDIT_PROMPT.md as a single bounded audit. Full report:
+docs/FINAL_RELEASE_AUDIT.md.
+
+### Baseline at start
+- main @ 14f4d4eb349d13ec60399eab3a29df6e221da9db, in sync with origin/main; clean tree.
+- SDK 10.0.400 / runtime 10.0.11. Build 0 errors / 0 warnings; suite 369/369.
+
+### Defects found and fixed (all with regression tests)
+1. **CG2015 unreachable — parameter location moves reported as remove+add** (HIGH).
+   Parameters were keyed `in:name`, so a same-named query→header move never reached
+   CompareParameterPair; the dedicated rule could never fire and messaging/severity degraded
+   (removed=medium-breaking + added=info instead of CG2015 high-breaking).
+   Fix: 1:1 pairing of leftover same-named parameters across locations before falling back to
+   remove/add; ambiguous cases (>1 candidate on either side) stay conservative remove/add.
+2. **Composition-restructure false positive** (HIGH, false-positive crying wolf).
+   `{type:string}` restructured into `{allOf:[{type:string}]}` was reported as CG5001
+   "Schema type changed" at CRITICAL breaking (`string → ""`). Fix: SchemaInfo.EffectiveTypes()
+   derives types from composition when no local `type` is declared (allOf = intersection of
+   declaring branches; anyOf/oneOf = union); used by SchemaComparer.CompareType for type and
+   nullability deltas. Genuine type changes under compositions still detected.
+3. **Enum/const constraint introduction & removal misclassified** (HIGH, both FN and FP).
+   - Request enum introduced from nothing → was `CG5004 info nonBreaking` ×N (clients now
+     restricted!); now CG5023 high breaking.
+   - Request enum dropped → was `CG5003 high breaking` ×N (pure relaxation!); now CG5024 info
+     nonBreaking. Response drop → CG5024 medium potentiallyBreaking.
+   - Const introduced/dropped had no direction handling; new CG5025/CG5026 mirror the above.
+   - Parameter enum introduction was silent entirely; new CG2019 high breaking (parameter
+     enums owned by CompareEnumAndDefaults; schema-level duplicates filtered).
+
+### Files changed
+- src/OpenApiSentinel.OpenApi/{ChangeKinds,ComparisonEngine,SchemaComparer}.cs,
+  src/OpenApiSentinel.OpenApi/Model/ApiDocument.cs (EffectiveTypes)
+- src/OpenApiSentinel.Rules/{SchemaRules,ParameterRules}.cs (+CG2019, +CG5023–CG5026)
+- tests/OpenApiSentinel.OpenApi.Tests/ComparisonRegressionTests.cs (+6),
+  tests/OpenApiSentinel.Rules.Tests/EnumConstConstraintRuleTests.cs (NEW, 6)
+- docs/rules.md (regenerated via build/gen-rules-doc.py), README.md,
+  docs/engineering-report.md, docs/commercial/product-positioning.md (85-rule count + test counts)
+- docs/FINAL_RELEASE_AUDIT.md (NEW)
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **384/384** (+15 vs 369 baseline).
+- ~25 independent semantic probes exercised directionality: requiredness both directions,
+  nullability, enum expand/contract/introduce/drop per direction, numeric/string constraints,
+  additionalProperties, content-type add/remove, body/header requiredness, wildcard/default
+  coverage, security tighten/loosen, discriminator, readOnly, Swagger2 formData normalization,
+  docs-only zero-finding invariant, allOf wrap/unwrap/multi-branch.
+- CLI: exit codes 0/1/2/3/4 verified incl. malformed spec, bad config, remote-disabled and
+  HTTP-refusal paths; stdin input; overrides/baselines/expiring suppressions (CG9001);
+  SARIF valid JSON (levels error/warning/note), JUnit XML valid (16 policy findings),
+  changelog + pr-summary generated; file outputs ANSI-free; JSON byte-identical across runs
+  modulo generatedAtUtc (determinism); HTML offline-safe (zero external refs), search/filters/
+  suppressed/version-rec present, XSS escape probe (`<script>` in enum value) properly escaped.
+- Dependencies: zero vulnerable, zero deprecated (dotnet list package, incl. transitive).
+- No committed secrets; no TODO/FIXME placeholders in src/.
+- Benchmark (this machine): large 455 KB pair → parse median 406 ms, compare 68 ms, rules 1.7 ms,
+  reports 6 ms, ≈87 MB allocations — healthy, no pathological behavior.
+- Release pipeline re-run end-to-end on this code: SENTINEL_VERSION=1.0.0 bash build/release.sh
+  → 6/6 RID archives, SHA256SUMS verified 6×OK, self-contained linux-x64 binary runs without
+  .NET (version → 1.0.0; breaking sample exit 1, safe sample exit 0), nupkg + RELEASE_NOTES built.
+
+### External blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon; GitHub Marketplace listing
+  not published (docs correctly lead with ./action).
+
+### Git status
+- See commit following this entry; pushed to origin/main.
+
+### Exact next recommended action
+User release decision. Repository is release-ready; publishing/tagging v1.0 awaits explicit
+user authorization plus the credentials above.

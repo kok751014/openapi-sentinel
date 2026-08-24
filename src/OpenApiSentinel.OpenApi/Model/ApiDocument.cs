@@ -235,6 +235,50 @@ public sealed class SchemaInfo
         return (IReadOnlySet<string>)set;
     }
 
+    /// <summary>
+    /// Declared types, falling back to JSON-Schema composition semantics when the schema
+    /// itself declares no <c>type</c>: allOf intersects the types declared by its branches
+    /// (constraint-only mixins do not narrow), anyOf/oneOf union them. Restructuring
+    /// <c>{"type": "X"}</c> into an equivalent composition must therefore not register as a
+    /// type change, while genuine type differences under compositions stay detectable.
+    /// </summary>
+    public IReadOnlySet<string> EffectiveTypes()
+    {
+        var direct = Types();
+        if (direct.Count > 0 || Node is not System.Text.Json.Nodes.JsonObject obj) return direct;
+
+        if (obj.TryGetPropertyValue("allOf", out var allNode) &&
+            allNode is System.Text.Json.Nodes.JsonArray { Count: > 0 } allBranches)
+            return ComposeBranchTypes(allBranches, intersect: true);
+
+        foreach (var keyword in (ReadOnlySpan<string>)["anyOf", "oneOf"])
+        {
+            if (!obj.TryGetPropertyValue(keyword, out var unionNode) ||
+                unionNode is not System.Text.Json.Nodes.JsonArray { Count: > 0 } unionBranches)
+                continue;
+            return ComposeBranchTypes(unionBranches, intersect: false);
+        }
+
+        return direct;
+    }
+
+    private HashSet<string> ComposeBranchTypes(System.Text.Json.Nodes.JsonArray branches, bool intersect)
+    {
+        HashSet<string>? composed = null;
+        foreach (var branch in branches)
+        {
+            if (branch is not System.Text.Json.Nodes.JsonObject branchObj) continue;
+            var branchTypes = new SchemaInfo { Node = branchObj, Spec = Spec }.Types();
+            if (branchTypes.Count == 0) continue; // a branch without a declared type neither narrows nor widens
+
+            if (composed is null) composed = new HashSet<string>(branchTypes, StringComparer.Ordinal);
+            else if (intersect) composed.IntersectWith(branchTypes);
+            else composed.UnionWith(branchTypes);
+        }
+
+        return composed ?? [];
+    }
+
     public bool IsNullable() => Types().Contains(NullType);
 
     public string? PrimaryType()
