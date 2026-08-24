@@ -1418,3 +1418,28 @@ periodically as part of release checks.
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 19) — CLI-REFERENCE DOC-DRIFT GUARD
+
+New CliReferenceDocTests (4) mirror the rules-catalog guard for the command surface:
+- every `--flag` advertised by `compare/rules/init --help` must appear in
+  docs/cli-reference.md (compare currently advertises 18 flags — all documented);
+- every subcommand has a section in the reference.
+Manual pre-check found zero current drift; the guard makes future drift a CI failure.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **366/366** (+4).
+
+### Files changed
+- tests/OpenApiSentinel.Cli.Tests/CliReferenceDocTests.cs (NEW, 4)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.
