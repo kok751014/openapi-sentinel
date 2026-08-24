@@ -1443,3 +1443,37 @@ Manual pre-check found zero current drift; the guard makes future drift a CI fai
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 20) — CONFIG-DOCS DRIFT GUARD + output.console DOCUMENTED
+
+ConfigDocTests (3) mirror the flag/catalog guards for the configuration surface:
+- every top-level and nested key accepted by SentinelConfigLoader must appear in
+  docs/configuration.md (reflection over the loader's allowed-key sets);
+- `output.console` additionally pinned as a REAL wired feature: a compare run with
+  `output.console: <path>` must write an ANSI-free console-format artifact containing the
+  expected findings — so the documented key can never silently become an ignored no-op.
+
+### Defect found during guard authoring (documentation gap, now closed)
+`output.console` was accepted by the loader AND fully functional (writes console-format to
+file) but absent from docs/configuration.md's output example. Documented; behavior pinned.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **369/369** (+3).
+- Manual CLI reproduction confirmed the artifact path/ANSI-free/content semantics before
+  pinning (also re-confirmed: breaking sample's critical finding is CG1002 method-removed,
+  not CG1001 — assertion corrected accordingly).
+
+### Files changed
+- docs/configuration.md (console key documented)
+- tests/OpenApiSentinel.Cli.Tests/ConfigDocTests.cs (NEW, 3)
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.

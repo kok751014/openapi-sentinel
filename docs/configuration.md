@@ -89,6 +89,7 @@ baseline: sentinel-baseline.json   # CLI --baseline/--update-baseline override t
 
 # ── Output artifacts ──────────────────────────────────────────────────────
 output:
+  console: artifacts/api-diff.txt       # console-format report written to a file (ANSI-free)
   json: artifacts/api-diff.json
   markdown: artifacts/api-diff.md
   html: artifacts/api-diff.html
