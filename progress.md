@@ -1389,3 +1389,32 @@ All quality gates re-run and green; no defects found, no code changed this itera
 Steady state. The repository is release-ready pending user-side credentials
 (NUGET_API_KEY secret for the automated NuGet push; Docker daemon/registry creds).
 Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 18) — §30 DEPENDENCY SECURITY REVIEW EXECUTED (clean)
+
+First run of the MASTER_PROMPT §30 obligation "perform dependency security review" as an
+actual command, not a statement:
+- `dotnet list package --vulnerable --include-transitive` → **zero vulnerable packages**
+  across all 11 projects.
+- `dotnet list package --deprecated` → zero deprecated packages.
+- YamlDotNet 18.1.0 == current upstream latest release (NuGet flat-container index).
+
+Result recorded with date in docs/security.md "Dependency posture" plus a note to re-run
+periodically as part of release checks.
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362**.
+
+### Files changed
+- docs/security.md
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.

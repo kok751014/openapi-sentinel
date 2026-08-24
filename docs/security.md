@@ -40,6 +40,11 @@ detected and replaced with deterministic marker nodes instead of recursing forev
 The entire product depends on exactly one third-party runtime library: **YamlDotNet (MIT)**.
 Everything else is the BCL. See [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
+Dependency review (2026-08-24, `dotnet list package --vulnerable/--deprecated
+--include-transitive` against the NuGet.org advisory database): **zero vulnerable and zero
+deprecated packages** across all projects; YamlDotNet 18.1.0 is the current upstream release.
+Re-run periodically as part of release checks.
+
 ## Reporting vulnerabilities
 
 See SECURITY contact section in the repository root when published; until then, open a
