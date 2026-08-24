@@ -1,4 +1,6 @@
 # Generic PowerShell usage of OpenAPI Sentinel (Azure DevOps / PowerShell CI steps).
+# Note: the git: source below needs full clone history (e.g. Azure DevOps
+# checkout with fetchDepth: 0) so origin/main refs can resolve.
 $ErrorActionPreference = "Stop"
 
 $old = "git:origin/main:contracts/openapi.yaml"
@@ -7,7 +9,8 @@ $threshold = if ($env:SENTINEL_FAIL_ON) { $env:SENTINEL_FAIL_ON } else { "high" 
 
 New-Item -ItemType Directory -Force -Path artifacts | Out-Null
 
-$args = @(
+# Do not name this $args — that is PowerShell's automatic variable.
+$sentinelArgs = @(
   "compare", $old, $new,
   "--fail-on", $threshold,
   "--json",     "artifacts/api-diff.json",
@@ -16,7 +19,7 @@ $args = @(
   "--no-color"
 )
 
-& openapi-sentinel @args
+& openapi-sentinel @sentinelArgs
 $code = $LASTEXITCODE
 
 if (Test-Path "artifacts/api-diff.json") {

@@ -1251,3 +1251,33 @@ defects in samples/github-actions/workflow.yml and one in azure-devops/pipeline.
 
 ### Exact next recommended action
 Steady state. Next iteration: gate re-runs unless new information arrives.
+
+---
+
+## 2026-08-24 (iteration 12) — POWERSHELL SAMPLE HARDENED + CATALOG DOC DRIFT CHECK
+
+### samples/generic/compare.ps1 (static review; pwsh unavailable here)
+- Renamed `$args` → `$sentinelArgs`: `$args` is PowerShell's automatic variable; shadowing it
+  in script scope works but is a known fragility trap in a shipped example.
+- Added the full-clone note matching the other samples (git: sources need fetchDepth 0).
+- All flags verified against the current CLI surface. release.ps1 flag skim: current
+  (--no-build/--no-restore publish + SentinelVersion pack property), no stale options.
+
+### Catalog drift check
+- `python3 build/gen-rules-doc.py` regenerated docs/rules.md — zero diff against committed
+  file (catalog consistent with registry).
+
+### Verification (actual)
+- Build 0 errors / 0 warnings; suite **362/362**.
+
+### Files changed
+- samples/generic/compare.ps1
+
+### Unfinished / external blockers (unchanged)
+- NuGet.org push needs NUGET_API_KEY; Docker image needs a daemon.
+
+### Git status
+- main @ <this commit>, pushed; tree clean after commit.
+
+### Exact next recommended action
+Steady state. Next iteration: gate re-runs unless new information arrives.
