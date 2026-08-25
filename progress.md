@@ -2155,3 +2155,15 @@ main @ 574544f — terminal state holds.
 Gates green on current HEAD: build 0/0; suite **472/472**; diff-check clean; tree clean.
 Remote CI still billing-blocked (external, unchanged). No defects found, no code changes.
 main @ 632b1d9 — terminal state holds.
+
+---
+
+## 2026-08-25 (iteration 31) — DEEPEST FUZZ VALIDATION: 1000 SEEDS WITH EXAMPLES ENABLED
+
+Ran the deepest sweep yet on current HEAD — 1001/1001 cases clean in ~4 s with the fuzz
+harness now covering the examples-generation path (the previous 500-seed examples-enabled
+sweep was the prior best; 1000-seed sweeps predate that coverage). All three differential
+invariants hold across randomized structure space on the exact code that would ship.
+
+Remote CI still billing-blocked (external, unchanged). Full suite green. No code changes.
+main @ 47a37b5.
