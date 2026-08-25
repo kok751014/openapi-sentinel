@@ -1774,3 +1774,17 @@ at 500 seeds clean. Suite **450/450**; build 0/0; diff-check clean. Pushed.
 Still blocked by owner-account billing (runs never start) — external, unchanged.
 ### Last verified commit
 <this commit> on main, pushed.
+
+---
+
+## 2026-08-25 (iteration 5b) — SURFACE PROBES: SWAGGER 2.0 SOURCES + CORRUPT COLLECTIONS
+
+- Swagger 2.0 source end-to-end: host/basePath folded into request URLs
+  (`https://api.example.com/v2/things`), 2.0 body param normalized into a JSON request
+  body, first-sync exit 0, examples generated. No 2.0-specific defects.
+- Corrupted (non-YAML) existing collection → actionable error + exit 2; original file left
+  untouched (parse-before-write holds). Earlier "exit 0" reading was a shell pipeline
+  artifact in the probe itself, not a product bug.
+
+No code changes this addendum. Gates remain: build 0/0, suite 450/450, diff-check clean.
+main @ 7badd61 pushed.
