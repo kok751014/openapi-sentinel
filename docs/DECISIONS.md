@@ -321,3 +321,36 @@ The default stays secure; the flag is documented in configuration.md, security.m
 troubleshooting.md and emitted directly in the rejection error message for discoverability.
 Measured outcome: Azure Compute virtualMachineScaleSet 2023-07-01 → 2024-07-01 now diffs
 end-to-end (289 findings, MAJOR recommendation) where it previously failed at exit 2.
+
+## 32. Bruno sync: single-file OpenCollection YAML, x-sentinel ownership, prose-free fingerprints
+
+The Bruno integration (bruno sync / bruno examples) required four foundational choices:
+
+**Format.** Bruno's directory layout (`bruno.json` + `*.bru`) uses a block-based custom
+format that is not YAML; a lossy parser would risk silent corruption of user scripts and
+tests. Sentinel therefore reads/writes the single-file OpenCollection YAML variant
+(`opencollection: "1.0.0"` with nested `items:`), which Bruno imports natively. Directory
+targets are refused with an actionable error (exit 3) instead of being "best-effort"
+converted. YAML I/O bypasses `YamlStream.Save` because it anchors every repeated scalar
+VALUE with random ids — nondeterministic output; a custom event-level emitter reproduces
+original scalar styles exactly (plain stays plain, quoted stays quoted).
+
+**Ownership.** Each managed request carries an `x-sentinel:` block recording its identity
+(operationId preferred, else method+normalized path), contract-derived content hash, and
+which params/headers/body were sentinel-managed. Everything else is user territory:
+values inside known fields survive merges, scripts/tests/auth/docs/examples authored by
+humans are never rewritten, and unmarked requests that uniquely match method+path are
+adopted rather than duplicated. Deleted operations default to stale-marking;
+`removeDeletedOperations` is the only path to deletion.
+
+**Change detection.** The incremental fingerprint hashes a prose-stripped projection of
+each operation (schemas minus description/summary/title/x-*). Documentation-only edits do
+not churn the collection — matching how the sync treats docs as user-owned after creation.
+
+**Scenario philosophy.** Layer-1 scenarios derive only from machine-checkable schema
+facts, ranked then capped by maxPerOperation; pattern violations are generated only when
+provably violable candidates exist; declared response statuses never become assertions.
+Layer-2 business scenarios live exclusively in openapi-sentinel.scenarios.yml with load-time
+validation (duplicate names, unknown operationIds, status ranges) — the generator never
+invents business behavior. Authentication scenarios are out of scope by design; existing
+auth configuration is untouched.

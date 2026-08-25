@@ -62,6 +62,42 @@ examples and limitations — the same source of truth as [docs/rules.md](rules.m
 Write a commented starter `openapi-sentinel.yml` in the current directory.
 Refuses to overwrite without `--force`.
 
+### `bruno <sync|examples> [options]`
+
+Sync an OpenAPI contract into a single-file Bruno OpenCollection YAML collection,
+preserving user-maintained values/scripts/tests/docs/auth, and generate
+Traditional-Chinese test scenarios. Full guides: docs/bruno-sync.md and
+docs/bruno-scenarios.md.
+
+```
+openapi-sentinel bruno sync [options]
+openapi-sentinel bruno examples [options]
+```
+
+| Option | Applies to | Meaning |
+|--------|------------|---------|
+| `--source <file-or-url>` | both | OpenAPI/Swagger source (overrides `bruno.source`) |
+| `--collection <path.yml>` | both | Collection target; must be `.yml`/`.yaml` (directory targets are refused) |
+| `--report-dir <dir>` | sync | Report output directory (default `./api-contract/reports`) |
+| `--config <path>` | both | Explicit configuration file |
+| `--dry-run` | sync | Analyze and print planned changes without writing anything |
+| `--remove-deleted` | sync | Delete requests whose operations were removed (default: mark stale) |
+| `--no-examples` | sync | Skip scenario generation for this run |
+| `--operation <operationId>` | examples | Process only this operation |
+| `--path <api-path>` | examples | Process only operations under this API path prefix |
+| `--verbose` | both | Per-operation change/preservation details |
+| `--no-color` | both | Plain text output |
+
+Behavior notes:
+
+- Incremental skip: when the contract fingerprint, bruno config, example config and
+  business-scenario file are unchanged since the last successful sync, the run prints
+  `No API contract changes detected.` / `Nothing to update.` and exits 0 immediately.
+- Reports `bruno-sync-report.html` (zh-TW, offline) and `bruno-sync-report.json`
+  (schema `bruno-sync/1.0`) are written after every non-skipped sync.
+- Exit codes follow the shared contract below; conflicts surface as report entries and
+  warnings without changing the exit code.
+
 ### `version`
 
 Print the tool version.

@@ -46,11 +46,17 @@ Load (file | stdin | http(s) | git-rev) → Parse → Resolve $refs → Normaliz
 ```
 
 Projects: `Core` (model/policy/glob) · `OpenApi` (parse/resolve/normalize/compare) ·
-`Rules` (catalog + engine) · `Reporting` (7 formats) · `Cli` (workflows/config).
+`Rules` (catalog + engine) · `Reporting` (7 formats) · `Bruno` (collection sync +
+scenario generator) · `Cli` (workflows/config).
 Only runtime dependency: YamlDotNet (MIT). Fully offline core; no telemetry.
 
+Bruno integration (2026-08-25): `openapi-sentinel bruno sync|examples` syncs contracts
+into single-file OpenCollection YAML collections with preservation-first incremental
+merging, zh-TW auto scenarios, business-scenario file support, HTML/JSON sync reports,
+and an incremental hash-state fast path. See DECISIONS 32 and docs/bruno-sync.md.
+
 See [architecture/overview.md](architecture/overview.md), [DECISIONS.md](DECISIONS.md)
-(31 entries), [compatibility-model.md](compatibility-model.md).
+(32 entries), [compatibility-model.md](compatibility-model.md).
 
 ## Commands
 

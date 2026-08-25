@@ -57,6 +57,7 @@ OpenAPI Sentinel tells you:
 | **CI-native** | Stable exit codes, SARIF/JUnit, baselines, suppressions, and machine-readable output |
 | **Professional reports** | Console, JSON, Markdown, PR summary, and single-file HTML with filtering and search |
 | **Release guidance** | Semantic version recommendation and generated API changelog support |
+| **Bruno collection sync** | Incrementally sync a contract into a Bruno OpenCollection YAML file with preservation of manual values/scripts/tests/docs/auth — plus auto-generated Traditional-Chinese test scenarios per operation |
 
 See the [compatibility model](docs/compatibility-model.md) and
 [rule catalog](docs/rules.md) for the detailed semantics.
@@ -400,6 +401,9 @@ Current distribution work that is intentionally separate from the GitHub Release
 - [Configuration](docs/configuration.md)
 - [Rule catalog](docs/rules.md)
 - [Compatibility model](docs/compatibility-model.md)
+- [Bruno sync](docs/bruno-sync.md)
+- [Bruno scenarios (zh-TW)](docs/bruno-scenarios.md)
+- [Visual Studio / MSBuild integration](docs/visual-studio-integration.md)
 - [Architecture overview](docs/architecture/overview.md)
 - [Example outputs](docs/examples/)
 - [Benchmarks](docs/benchmarks.md)

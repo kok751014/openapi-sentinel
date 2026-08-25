@@ -660,11 +660,50 @@ public sealed class BrunoSyncEngine
         {
             foreach (var part in tag.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             {
-                segments.Add(part);
+                var sanitized = SanitizeFolderSegment(part);
+                if (sanitized.Length > 0)
+                {
+                    segments.Add(sanitized);
+                }
             }
         }
 
         return segments;
+    }
+
+    /// <summary>
+    /// Folder names live only inside YAML values, but they must never look like relative
+    /// path segments (".."), contain control characters, or grow unbounded — otherwise a
+    /// crafted spec could produce confusing or hostile-looking collection structures.
+    /// </summary>
+    public static string SanitizeFolderSegment(string raw)
+    {
+        var text = raw.Trim();
+        if (text.Length == 0)
+        {
+            return "";
+        }
+
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var ch in text)
+        {
+            sb.Append(char.IsControl(ch) ? '_' : ch);
+        }
+
+        text = sb.ToString();
+
+        // Collapse dot-runs that would read as traversal segments.
+        while (text.Contains("..", StringComparison.Ordinal))
+        {
+            text = text.Replace("..", "_", StringComparison.Ordinal);
+        }
+
+        if (text.Length > 100)
+        {
+            text = text[..100];
+        }
+
+        return text.Trim().Length == 0 ? "untitled" : text.Trim();
     }
 
     private static string? BuildDocs(Operation operation) =>
