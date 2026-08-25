@@ -183,6 +183,13 @@ public static class BrunoWorkflow
         var engine = new BrunoSyncEngine(settings, examples, toolVersion, generator, businessScenarios);
         var (collection, syncOutcome) = engine.Sync(existing, document, filter);
 
+        // A filter that matches nothing is almost always a typo — say so instead of
+        // reporting a silent "success".
+        if (filtering && syncOutcome.Operations.Count == 0)
+        {
+            warnings.Add("指定的 --operation/--path 過濾條件未符合任何操作；未做任何變更。");
+        }
+
         var allWarnings = warnings.Concat(syncOutcome.Warnings).ToList();
         var finalOutcome = syncOutcome.Warnings.SequenceEqual(allWarnings)
             ? syncOutcome

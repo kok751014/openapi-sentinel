@@ -339,6 +339,21 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void Zero_Match_Filter_Warns_Instead_Of_Silent_Success()
+    {
+        WriteFile("spec.yaml", Spec);
+        _ = Config();
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "examples", "--config", Path.Combine(root, "openapi-sentinel.yml"),
+             "--operation", "noSuchOp"], console);
+
+        Assert.Equal(0, exit);
+        Assert.Contains(console.ErrorLines, l =>
+            l.Contains("過濾條件未符合任何操作", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void StatePath_Colliding_With_Collection_Is_Refused_And_Non_Destructive()
     {
         WriteFile("spec.yaml", Spec);

@@ -24,7 +24,7 @@ export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 
 ```bash
 dotnet build -c Release                 # 0 errors 0 warnings expected
-dotnet test -c Release                  # all projects; ~457 tests green
+dotnet test -c Release                  # all projects; ~458 tests green
 dotnet test -c Release tests/OpenApiSentinel.Rules.Tests          # single project
 dotnet test -c Release --filter "FullyQualifiedName~GlobMatcher"  # single test class
 

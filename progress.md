@@ -1962,3 +1962,17 @@ Probed the two remaining collision variants after last iteration's statePath fix
 
 No code changes needed. Gates re-run: build 0/0; suite **457/457**; diff-check clean.
 Remote CI still billing-blocked (external). main @ <this commit> pushed.
+
+---
+
+# 2026-08-25 (iteration 16) — UX: ZERO-MATCH FILTERS WARN INSTEAD OF SILENT SUCCESS
+
+**Gap found by probe:** a typo'd `--operation`/`--path` filter matched zero operations and
+the run reported a clean "success" — violating the clear-diagnostics principle.
+
+**Fix:** when a filtered run matches zero operations, sync emits an explicit zh-TW warning
+(「指定的 --operation/--path 過濾條件未符合任何操作；未做任何變更。」) to stderr and the
+report's warnings list; exit stays 0 (nothing went wrong mechanically).
+
+Tests: Zero_Match_Filter_Warns_Instead_Of_Silent_Success. Suite **458/458**;
+build 0/0; diff-check clean. Pushed.
