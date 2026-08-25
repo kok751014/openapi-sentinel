@@ -10,6 +10,21 @@ public static class SafeFileWriter
     public static void Write(string path, string contents)
     {
         var fullPath = Path.GetFullPath(path);
+
+        // If the final path component is a symlink (common when collections live in
+        // dotfiles-managed trees), write THROUGH it: replace the resolved target
+        // atomically so the user's link survives. Replacing the link itself would
+        // silently destroy their setup.
+        var info = new FileInfo(fullPath);
+        if (info.Exists)
+        {
+            var final = info.ResolveLinkTarget(returnFinalTarget: true);
+            if (final is not null)
+            {
+                fullPath = final.FullName;
+            }
+        }
+
         var dir = Path.GetDirectoryName(fullPath);
         if (string.IsNullOrEmpty(dir))
         {

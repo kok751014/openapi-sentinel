@@ -123,3 +123,8 @@ Nothing to update.
 - 不解析 OpenAPI 的 response examples 來合成回應斷言；Sentinel 產生的範例不附
   response 區塊——規格上的 declared status 不代表該輸入「必然」得到該狀態。
 - query 參數的 style/explode 序列化差異未反映到 URL（文件化限制）。
+
+## Symlink 行為
+
+若 `collectionPath` 指向的是**符號連結**（例如 dotfiles 管理的集合），Sentinel 會
+解析到實際目標檔並對其進行原子寫入——連結本身永遠不會被取代或破壞。

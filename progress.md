@@ -1857,3 +1857,19 @@ docs/cli-reference.md.
 drives a real loopback HTTP server through the full opt-in chain and syncs end-to-end
 (zh-TW scenarios land in the collection). Fuzz re-validated at 200 seeds.
 Suite **451/451**; build 0/0; diff-check clean. Pushed.
+
+---
+
+# 2026-08-25 (iteration 9) — SYMLINK-SAFE COLLECTION WRITES (§18 item closed)
+
+**Defect:** syncing through a symlinked collection silently REPLACED the symlink with a
+regular file — destroying dotfiles-style setups. Data survived; the link did not.
+
+**Fix:** SafeFileWriter resolves the final-path symlink chain (ResolveLinkTarget) and
+performs the atomic temp+replace on the RESOLVED target. Links survive; atomicity and
+same-filesystem semantics preserved.
+
+Tests: SymlinkCollectionTests (2 — write-through keeps link + updates target; regular-file
+path unchanged). End-to-end CLI probe confirms `file` reports "symbolic link" after sync.
+docs/bruno-sync.md documents the behavior; CHANGELOG unreleased entry extended.
+Suite **453/453**; build 0/0; diff-check clean. Pushed.

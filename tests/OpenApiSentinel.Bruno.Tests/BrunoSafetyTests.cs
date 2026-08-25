@@ -318,3 +318,54 @@ public class BrunoPathRobustnessTests
             Path.Combine(Path.GetTempPath(), "COLLECTION.YAML"));
     }
 }
+
+/// <summary>§18 symlink behavior: collections reached through a symlink keep the link;
+/// content is written atomically to the resolved target.</summary>
+public class SymlinkCollectionTests : IDisposable
+{
+    private readonly string root = Directory.CreateTempSubdirectory("sentinel-symlink").FullName;
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        try { Directory.Delete(root, recursive: true); }
+        catch (IOException) { }
+    }
+
+    [Fact]
+    public void Write_Through_Symlink_Preserves_Link_And_Updates_Target()
+    {
+        var realDir = Path.Combine(root, "real");
+        Directory.CreateDirectory(realDir);
+        var realPath = Path.Combine(realDir, "collection.yml");
+        File.WriteAllText(realPath, "old: content\n");
+
+        var linkDir = Path.Combine(root, "link");
+        Directory.CreateDirectory(linkDir);
+        var linkPath = Path.Combine(linkDir, "collection.yml");
+        File.CreateSymbolicLink(linkPath, Path.GetRelativePath(linkDir, realPath));
+
+        const string updated = "opencollection: \"1.0.0\"\ninfo:\n  name: synced\n";
+        SafeFileWriter.Write(linkPath, updated);
+
+        // The link itself survives...
+        Assert.True(new FileInfo(linkPath).LinkTarget is not null, "symlink was destroyed by write");
+        // ...the resolved target carries the new content...
+        Assert.Equal(updated.Replace("\\n", Environment.NewLine), File.ReadAllText(realPath));
+        // ...and reading back through the link sees it too.
+        Assert.Equal(File.ReadAllText(realPath), File.ReadAllText(linkPath));
+    }
+
+    [Fact]
+    public void Regular_Files_Are_Replaced_Atomicly_As_Before()
+    {
+        var plain = Path.Combine(root, "plain", "collection.yml");
+        Directory.CreateDirectory(Path.GetDirectoryName(plain)!);
+        File.WriteAllText(plain, "old\n");
+
+        SafeFileWriter.Write(plain, "new\n");
+
+        Assert.Null(new FileInfo(plain).LinkTarget);
+        Assert.Equal("new" + Environment.NewLine, File.ReadAllText(plain));
+    }
+}

@@ -37,6 +37,10 @@ report format or exit code changed behavior.
 - **MSBuild integration sample** — `samples/bruno-sync/OpenApiSentinel.targets`
   (design-time-build safe, single-project import recommended).
 - New project `OpenApiSentinel.Bruno`; YamlDotNet remains the only runtime dependency.
+- Symlink-safe writes: a collection reached through a symbolic link is updated at its
+  resolved target atomically; the link itself is never replaced.
+- Bruno commands honor the same remote-fetch security model as compare: `--allow-remote`
+  or a fully opted-in `remoteReferences:` config is required for URL sources.
 
 Quality evidence at time of writing: 450/450 tests green across 7 test projects
 (incl. a seeded differential fuzz harness for sync invariants, validated clean at 500
