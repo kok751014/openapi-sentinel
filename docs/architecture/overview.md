@@ -32,6 +32,7 @@ Reporters: Console · JSON · Markdown(+PR summary) · HTML · SARIF · JUnit ·
 | `OpenApi` | Loading, parsing, $ref resolution, normalization, comparison. | Core |
 | `Rules` | Rule definitions/registry, engine configuration pipeline. | Core, OpenApi |
 | `Reporting` | Renderers consuming **only** `ComparisonResult`. | Core |
+| `Bruno` | OpenCollection YAML I/O (fidelity-preserving), sync engine with preservation semantics, scenario generator, business-scenario loader, sync reports/state. | Core, OpenApi |
 | `Cli` | Arg parsing, config loading, orchestration, exit codes. Thin `Program.cs`. | all |
 
 Extension points kept open by design:

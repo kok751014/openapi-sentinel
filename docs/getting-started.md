@@ -93,3 +93,7 @@ The typical flow:
 - Browse the [rule catalog](rules.md) and tune severities via config overrides.
 - Read the [compatibility model](compatibility-model.md) to understand direction-aware classification.
 - Skim [configuration](configuration.md) for remote-reference security settings.
+- **Frontend/testing teams?** Sync the contract into a Bruno collection with
+  auto-generated Traditional-Chinese test scenarios — [Bruno sync](bruno-sync.md) and
+  [scenarios](bruno-scenarios.md); wire it to build via
+  [Visual Studio integration](visual-studio-integration.md).

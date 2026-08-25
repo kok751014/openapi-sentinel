@@ -396,6 +396,7 @@ Current distribution work that is intentionally separate from the GitHub Release
 
 ## Documentation
 
+- [Changelog](CHANGELOG.md)
 - [Getting started](docs/getting-started.md)
 - [CLI reference](docs/cli-reference.md)
 - [Configuration](docs/configuration.md)

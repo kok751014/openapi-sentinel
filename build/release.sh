@@ -106,6 +106,8 @@ breaking-change detection tool for engineering teams and CI/CD pipelines.
 - Security contract change detection.
 - Suppressions, suppression expiration, and baseline workflows.
 - Semantic version recommendations and API changelog generation.
+- Bruno collection sync with preservation-first incremental merging and
+  auto-generated Traditional-Chinese test scenarios (see docs/bruno-sync.md).
 - Stable CI-friendly exit codes.
 - Human-readable and machine-readable reports.
 - See docs/rules.md for the complete compatibility rule catalog.

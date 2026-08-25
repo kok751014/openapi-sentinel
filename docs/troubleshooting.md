@@ -62,3 +62,22 @@ Rerun with `--debug` to see the stack trace, then report the spec snippet that t
 
 Parsing dominates; see [benchmarks.md](benchmarks.md). If a huge spec is slow, check that
 references resolve locally rather than over the network, and consider splitting the contract.
+
+## Bruno sync
+
+- **"collection 目標是一個目錄" / exit 3** — Sentinel syncs single-file OpenCollection YAML
+  only. Point `bruno.collectionPath` at a `.yml` file; convert a `.bru` directory via
+  Bruno's OpenCollection export first (see [bruno-sync](bruno-sync.md#支援格式)).
+- **`No API contract changes detected.` but you expected changes** — the incremental state
+  hashes the contract surface sync derives from; documentation-only edits intentionally do
+  not trigger churn. Delete the hidden `<collection>.yml.sentinel-state.json` to force a
+  full rebuild (it is safe: state corruption always degrades to a full sync).
+- **Examples missing** — check `bruno.examples.enabled` is not false. Note that an explicit
+  `openapi-sentinel bruno examples` command overrides `enabled: false`, while plain
+  `sync` respects it (`--no-examples` suppresses everywhere).
+- **Manual values reverted?** They should not be — preservation is tested end-to-end.
+  Verify you are editing the same file the config resolves to (paths resolve against the
+  CONFIG FILE's directory, not your shell's cwd) and that `preserveManualValues` is true.
+- **Header/cookie parameters in examples** — declared header params and a composite Cookie
+  row are included automatically; if they are absent, the examples predate this feature —
+  re-run `bruno examples`.

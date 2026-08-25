@@ -1788,3 +1788,36 @@ Still blocked by owner-account billing (runs never start) — external, unchange
 
 No code changes this addendum. Gates remain: build 0/0, suite 450/450, diff-check clean.
 main @ 7badd61 pushed.
+
+---
+
+# 2026-08-25 (iteration 6) — RELEASE READINESS: CHANGELOG + SEMVER + DOC COVERAGE + PACKAGING GATE
+
+§22/§20 gaps closed for the Bruno feature:
+
+- **CHANGELOG.md** created (Keep-a-Changelog format) with the full Bruno feature entry and
+  an explicit SemVer assessment: backward-compatible new functionality → **release as 1.1.0**
+  (MINOR). No tag created; default package version stays 1.0.0 until the user's release
+  decision. Linked from README doc index.
+- **Release-notes source updated**: build/release.sh template Highlights now include Bruno
+  sync + zh-TW scenarios.
+- **Doc coverage completed** (all §20 surfaces now mention Bruno where relevant):
+  troubleshooting.md gains a "Bruno sync" section (directory-target refusal, state-file
+  force-rebuild, examples-enabled semantics, preservation debugging, header/cookie note);
+  getting-started.md Next steps links Bruno docs for frontend/testing teams;
+  architecture/overview.md project table now includes `OpenApiSentinel.Bruno`.
+
+### Packaging gate re-run post-project-addition
+- `dotnet pack -c Release` clean — OpenApiSentinel.1.0.0.nupkg (+ new OpenApiSentinel.Bruno
+  library package) built.
+- Isolated global-tool install from pack source: `openapi-sentinel version` → 1.0.0;
+  `bruno sync` from the installed apphost reproduces samples/bruno-sync expected output
+  byte-for-byte modulo timestamp.
+
+### Gates
+Build 0/0; suite **450/450**; git diff --check clean.
+
+### Remote CI status
+Owner-account billing still blocks runner start — external, unchanged.
+### Last verified commit
+<this commit> on main, pushed.
