@@ -2102,3 +2102,17 @@ build 0/0; suite **463/463**; diff-check clean; tree clean.
 
 Remote CI still blocked by the owner-account billing issue — external, unchanged.
 No code changes this iteration. main @ 6c205e5.
+
+---
+
+## 2026-08-25 (iteration 26) — FULL DOCUMENTED LIFECYCLE RE-VERIFIED ON FINAL HEAD
+
+Re-ran the complete two-round flow documented in samples/bruno-sync/README.md against
+current HEAD (last full-flow check predated the header/cookie, symlink, tag-divergence,
+and parse-validation changes):
+- round 1 (v1): exit 0;
+- manual edit survives round 2 (人工備忘 intact);
+- round 2 (v2): POST /orders Updated with 保留 notes, GET /promotions Added,
+  third-run skip verified previously — all as documented.
+No code changes; docs claims remain accurate. Gates were green at iteration start.
+Remote CI still billing-blocked (external). main @ df76a2c.
