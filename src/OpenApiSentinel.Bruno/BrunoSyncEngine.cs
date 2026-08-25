@@ -331,7 +331,7 @@ public sealed class BrunoSyncEngine
             return;
         }
 
-        var baseSnapshot = BuildBaseSnapshot(identity, operation, request, baseUrl);
+        var baseSnapshot = BuildScenarioBaseSnapshot(operation, baseUrl);
         if (baseSnapshot is null)
         {
             return;
@@ -525,16 +525,18 @@ public sealed class BrunoSyncEngine
 
     /// <summary>
     /// Builds the canonical base snapshot used for scenario generation (成功－完整參數 shape).
+    /// Carries schema-declared query/path parameters AND header/cookie parameters so the
+    /// generated examples are genuinely sendable without hand-editing. Public because the
+    /// scenario tests exercise exactly this production plumbing.
     /// </summary>
-    private static ScenarioRequest BuildBaseSnapshot(
-        OperationIdentity identity,
-        Operation operation,
-        BrunoRequestView request,
-        string baseUrl)
+    public static ScenarioRequest BuildScenarioBaseSnapshot(Operation operation, string baseUrl)
     {
+        var identity = OperationIdentity.From(operation);
         var url = BuildUrl(baseUrl, identity.NormalizedPath);
 
         var parameters = new List<(string Name, string Value, string Type, bool Enabled)>();
+        var headers = new List<(string Name, string Value, bool Enabled)>();
+        var cookieParts = new List<string>();
         foreach (var parameter in operation.Parameters)
         {
             switch (parameter.In)
@@ -544,25 +546,31 @@ public sealed class BrunoSyncEngine
                     parameters.Add((parameter.Name, SampleText(parameter),
                         parameter.In == ParameterLocation.Path ? "path" : "query", true));
                     break;
+                case ParameterLocation.Header:
+                    headers.Add((parameter.Name, HeaderSample(parameter), true));
+                    break;
+                case ParameterLocation.Cookie:
+                    cookieParts.Add($"{parameter.Name}={SampleText(parameter)}");
+                    break;
             }
         }
 
-        var headers = new List<(string Name, string Value, bool Enabled)>();
         string? body = null;
         if (operation.RequestBody is { } requestBody &&
             SchemaLooksLikeJson(requestBody) &&
             ScenarioGenerator.PrimaryBodySchema(requestBody) is { } schema)
         {
-            headers.Add(("Content-Type", "application/json", true));
+            headers.Insert(0, ("Content-Type", "application/json", true));
             var sample = SampleValueFactory.Sample(schema, SampleValueFactory.Depth.Full, level: 2);
-            if (sample is JsonObject)
+            if (sample is not null)
             {
                 body = sample.ToJsonString(JsonWriterOptionsIndented);
             }
-            else if (sample is not null)
-            {
-                body = sample.ToJsonString(JsonWriterOptionsIndented);
-            }
+        }
+
+        if (cookieParts.Count > 0)
+        {
+            headers.Add(("Cookie", string.Join("; ", cookieParts.Order(StringComparer.Ordinal)), true));
         }
 
         return new ScenarioRequest(identity.Method, url, parameters, headers, body);

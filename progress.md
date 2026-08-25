@@ -1747,3 +1747,30 @@ Local gates authoritative. Do NOT merge the open Dependabot Test.Sdk→18.9.0 PR
 
 ### Last verified commit
 <this commit> on main, pushed.
+
+---
+
+# 2026-08-25 (iteration 5) — GENERATED EXAMPLES NOW CARRY HEADER + COOKIE PARAMETERS
+
+**Defect (§4 completeness):** example request snapshots were built with only Content-Type —
+schema-declared header parameters and cookie parameters were missing from EVERY generated
+example, breaking 「可直接在 Bruno 點擊 Send」 for APIs that require headers. The base
+request item had them; the examples did not.
+
+**Fix:** BuildScenarioBaseSnapshot (extracted public factory, now the single source used by
+both sync and the scenario tests) includes declared header params (HeaderSample values,
+declaration order), a composite Cookie row for cookie params, Content-Type first when a
+JSON body exists. RequiredOnly examples filter to required headers (+Content-Type), optional
+headers/cookies dropped — mirroring param filtering.
+
+Also removed the test helper's duplicated snapshot construction (the drift that hid this
+defect); generator tests now exercise the exact production plumbing.
+
+Tests: HeaderCookieScenarioTests (3: full carries X-Request-Id/X-Trace/Cookie composite;
+required-only filtering; maxLength violation mutates the header row). Deep fuzz re-validated
+at 500 seeds clean. Suite **450/450**; build 0/0; diff-check clean. Pushed.
+
+### Remote CI status
+Still blocked by owner-account billing (runs never start) — external, unchanged.
+### Last verified commit
+<this commit> on main, pushed.

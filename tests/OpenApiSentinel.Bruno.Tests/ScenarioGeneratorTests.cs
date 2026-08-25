@@ -8,39 +8,21 @@ namespace OpenApiSentinel.Bruno.Tests;
 /// </summary>
 public class ScenarioGeneratorTests
 {
-    private static (ScenarioRequest Base, IReadOnlyList<GeneratedScenario> Scenarios) Generate(
+    internal static (ScenarioRequest Base, IReadOnlyList<GeneratedScenario> Scenarios) Generate(
         string spec,
         BrunoExampleSettings? settings = null)
     {
         var doc = TestSupport.NormalizeSpec(spec);
         var pathItem = doc.Paths.Values.Single();
         var operation = pathItem.Operations.Values.Single();
-        var identity = OperationIdentity.From(operation);
         var baseUrl = BrunoSyncEngine.ResolveBaseUrl(doc);
-        var url = BrunoSyncEngine.BuildUrl(baseUrl, identity.NormalizedPath);
-        var parameters = new List<(string Name, string Value, string Type, bool Enabled)>();
-        foreach (var parameter in operation.Parameters)
-        {
-            if (parameter.In is ParameterLocation.Query or ParameterLocation.Path)
-            {
-                parameters.Add((parameter.Name,
-                    SampleValueFactory.ParameterSampleText(parameter),
-                    parameter.In == ParameterLocation.Path ? "path" : "query", true));
-            }
-        }
 
-        string? body = null;
-        if (operation.RequestBody is { } requestBody &&
-            ScenarioGenerator.PrimaryBodySchema(requestBody) is { } schema)
-        {
-            body = JsonBodyMerger.Merge(null, schema).Json;
-        }
-
-        var baseSnapshot = new ScenarioRequest(identity.Method, url, parameters,
-            operation.RequestBody is null ? [] : [("Content-Type", "application/json", true)], body);
+        // Production plumbing: the engine's own snapshot builder, so tests cannot drift
+        // from what sync actually generates.
+        var baseSnapshot = BrunoSyncEngine.BuildScenarioBaseSnapshot(operation, baseUrl);
 
         var generator = new ScenarioGenerator(settings ?? new BrunoExampleSettings());
-        return (baseSnapshot, generator.Generate(identity, operation, baseSnapshot));
+        return (baseSnapshot, generator.Generate(OperationIdentity.From(operation), operation, baseSnapshot));
     }
 
     [Fact]
@@ -372,4 +354,106 @@ public static class Spec
 
     public static string Indent(string text, int spaces) =>
         string.Join("\n", text.Split('\n').Select(l => l.Length == 0 ? l : new string(' ', spaces) + l));
+}
+
+/// <summary>Generated examples must be genuinely sendable: schema-declared header and
+/// cookie parameters ride along in every example request.</summary>
+public class HeaderCookieScenarioTests
+{
+    private const string Spec = """
+        openapi: 3.0.3
+        info:
+          title: t
+          version: "1"
+        paths:
+          /orders:
+            post:
+              operationId: createOrder
+              parameters:
+                - name: X-Request-Id
+                  in: header
+                  required: true
+                  schema:
+                    type: string
+                - name: X-Trace
+                  in: header
+                  schema:
+                    type: string
+                - name: session
+                  in: cookie
+                  schema:
+                    type: string
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [id]
+                      properties:
+                        id:
+                          type: integer
+              responses:
+                '200':
+                  description: OK
+        """;
+
+    [Fact]
+    public void Full_Example_Carries_Header_And_Cookie_Parameters()
+    {
+        var (_, scenarios) = ScenarioGeneratorTests.Generate(Spec);
+
+        var full = scenarios.Single(s => s.Id == "success-full");
+        var names = full.Request.Headers.Select(h => h.Name).ToList();
+
+        Assert.Contains("X-Request-Id", names);
+        Assert.Contains("X-Trace", names);
+        Assert.Contains("Cookie", names);
+        Assert.Equal("session=sample", full.Request.Headers.Single(h => h.Name == "Cookie").Value);
+        // Content-Type stays first (deterministic), declared headers follow in declaration order.
+        Assert.Equal("Content-Type", names[0]);
+    }
+
+    [Fact]
+    public void RequiredOnly_Example_Keeps_Required_Headers_Drops_Optional_And_Cookie()
+    {
+        var (_, scenarios) = ScenarioGeneratorTests.Generate(Spec);
+
+        var minimal = scenarios.Single(s => s.Id == "success-required-only");
+        var names = minimal.Request.Headers.Select(h => h.Name).ToList();
+
+        Assert.Contains("X-Request-Id", names);
+        Assert.DoesNotContain("X-Trace", names);
+        Assert.DoesNotContain("Cookie", names); // session is optional
+    }
+
+    [Fact]
+    public void Header_Constraint_Violation_Mutates_The_Header_Row()
+    {
+        const string spec = """
+            openapi: 3.0.3
+            info:
+              title: t
+              version: "1"
+            paths:
+              /orders:
+                post:
+                  operationId: createOrder
+                  parameters:
+                    - name: X-Request-Id
+                      in: header
+                      required: true
+                      schema:
+                        type: string
+                        maxLength: 5
+                  responses:
+                    '200':
+                      description: OK
+            """;
+
+        var (_, scenarios) = ScenarioGeneratorTests.Generate(spec);
+        var overMax = scenarios.Single(s => s.Name == "失敗－X-Request-Id 超過最大長度");
+        var row = overMax.Request.Headers.Single(h => h.Name == "X-Request-Id");
+        Assert.Equal(6, row.Value.Length);
+    }
 }
