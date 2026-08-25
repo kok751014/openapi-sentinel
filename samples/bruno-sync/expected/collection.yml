@@ -1,0 +1,343 @@
+opencollection: 1.0.0
+info:
+  name: 訂單管理 API（範例）
+extensions:
+  x-sentinel:
+    generator: openapi-sentinel
+items:
+- info:
+    name: 訂單
+    type: folder
+  items:
+  - info:
+      name: 建立訂單
+      type: http
+      seq: 1
+    http:
+      method: POST
+      url: https://api.example.com/v1/orders
+      body:
+        type: json
+        data: |-
+          {
+            "customerId": 1,
+            "orderType": "NORMAL",
+            "quantity": 1,
+            "note": "sample"
+          }
+    x-sentinel:
+      managedBody: true
+      operationId: createOrder
+      method: POST
+      path: /orders
+      identityKey: opid:createOrder
+      contentHash: b03b9a8ef6d5efdd5c2b820943f3c015c939a54d113afa47e4e96670165bf1bc
+      generatorVersion: 1.0.0
+      requiresAuth: false
+      examples:
+      - id: success-full
+        name: 成功－完整參數
+      - id: success-required-only
+        name: 成功－僅輸入必填參數
+      - id: invalid-enum-orderType
+        name: 失敗－orderType 使用無效列舉值
+      - id: missing-customerId
+        name: 失敗－缺少 customerId
+      - id: missing-orderType
+        name: 失敗－缺少 orderType
+      - id: missing-quantity
+        name: 失敗－缺少 quantity
+      - id: below-min-customerId
+        name: 失敗－customerId 低於允許最小值
+      - id: below-min-quantity
+        name: 失敗－quantity 低於允許最小值
+      - id: biz-cee36e3451acb114
+        name: 成功－一般訂單
+      - id: biz-786fef48cc891fe5
+        name: 失敗－客戶不存在
+    docs: 建立訂單
+    examples:
+    - name: 成功－完整參數
+      description: 此範例使用 OpenAPI 規格中可推導的完整有效參數，用於驗證 API 在一般有效輸入下的回應。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "orderType": "NORMAL",
+              "quantity": 1,
+              "note": "sample"
+            }
+    - name: 成功－僅輸入必填參數
+      description: 此範例僅填入 API 規格中標示為必填的欄位，用於確認最小必要輸入是否可正常處理。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "orderType": "NORMAL",
+              "quantity": 1
+            }
+    - name: 失敗－orderType 使用無效列舉值
+      description: 此範例將 `orderType` 設定為 OpenAPI 規格允許範圍以外的值，用於確認後端是否正確執行列舉值驗證。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "orderType": "__sentinel_invalid_enum__",
+              "quantity": 1,
+              "note": "sample"
+            }
+    - name: 失敗－缺少 customerId
+      description: 此範例刻意不傳入必填欄位 `customerId`，用於確認 API 的必填欄位驗證行為。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "orderType": "NORMAL",
+              "quantity": 1,
+              "note": "sample"
+            }
+    - name: 失敗－缺少 orderType
+      description: 此範例刻意不傳入必填欄位 `orderType`，用於確認 API 的必填欄位驗證行為。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "quantity": 1,
+              "note": "sample"
+            }
+    - name: 失敗－缺少 quantity
+      description: 此範例刻意不傳入必填欄位 `quantity`，用於確認 API 的必填欄位驗證行為。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "orderType": "NORMAL",
+              "note": "sample"
+            }
+    - name: 失敗－customerId 低於允許最小值
+      description: 此範例將 `customerId` 設定為低於規格允許最小值的數值，用於確認後端的最小值驗證行為。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 0,
+              "orderType": "NORMAL",
+              "quantity": 1,
+              "note": "sample"
+            }
+    - name: 失敗－quantity 低於允許最小值
+      description: 此範例將 `quantity` 設定為低於規格允許最小值的數值，用於確認後端的最小值驗證行為。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": 1,
+              "orderType": "NORMAL",
+              "quantity": 0,
+              "note": "sample"
+            }
+    - name: 成功－一般訂單
+      description: 使用有效客戶與一般付款方式建立訂單，預期成功建立資料。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": "10001",
+              "orderType": "NORMAL",
+              "quantity": "1"
+            }
+    - name: 失敗－客戶不存在
+      description: 使用不存在的 customerId，確認後端查無客戶時的回應。
+      request:
+        url: https://api.example.com/v1/orders
+        method: POST
+        headers:
+        - name: Content-Type
+          value: application/json
+        body:
+          type: json
+          data: |-
+            {
+              "customerId": "999999999",
+              "orderType": "NORMAL",
+              "quantity": "1"
+            }
+- info:
+    name: 使用者
+    type: folder
+  items:
+  - info:
+      name: 查詢使用者
+      type: http
+      seq: 2
+    http:
+      method: GET
+      url: https://api.example.com/v1/users/:id
+      params:
+      - name: id
+        value: 1
+        type: path
+      - name: verbose
+        value: false
+    x-sentinel:
+      managedParams:
+      - id
+      - verbose
+      operationId: getUser
+      method: GET
+      path: /users/{id}
+      identityKey: opid:getUser
+      contentHash: 8124d957fd9079dc079d671309846dcd7f29ed81ec2b3ecaeebbfccbfce11310
+      generatorVersion: 1.0.0
+      requiresAuth: false
+      examples:
+      - id: success-full
+        name: 成功－完整參數
+      - id: success-required-only
+        name: 成功－僅輸入必填參數
+      - id: below-min-id
+        name: 失敗－id 低於允許最小值
+      - id: wrong-type-id
+        name: 失敗－id 型別錯誤
+      - id: wrong-type-verbose
+        name: 失敗－verbose 型別錯誤
+      - id: boundary-min-id
+        name: 邊界值－id 使用最小允許值
+      - id: biz-e531c3fdab94c6f1
+        name: 失敗－使用者存在但已停用
+    docs: 查詢使用者
+    examples:
+    - name: 成功－完整參數
+      description: 此範例使用 OpenAPI 規格中可推導的完整有效參數，用於驗證 API 在一般有效輸入下的回應。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 1
+          type: path
+        - name: verbose
+          value: false
+    - name: 成功－僅輸入必填參數
+      description: 此範例僅填入 API 規格中標示為必填的欄位，用於確認最小必要輸入是否可正常處理。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 1
+          type: path
+    - name: 失敗－id 低於允許最小值
+      description: 此範例將 `id` 設定為低於規格允許最小值的數值，用於確認後端的最小值驗證行為。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 0
+          type: path
+        - name: verbose
+          value: false
+    - name: 失敗－id 型別錯誤
+      description: 此範例將 `id` 設定為與規格宣告不符的資料型別，用於確認後端的型別驗證行為。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: not-a-number
+          type: path
+        - name: verbose
+          value: false
+    - name: 失敗－verbose 型別錯誤
+      description: 此範例將 `verbose` 設定為與規格宣告不符的資料型別，用於確認後端的型別驗證行為。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 1
+          type: path
+        - name: verbose
+          value: not-a-boolean
+    - name: 邊界值－id 使用最小允許值
+      description: 此範例將 `id` 設定為規格允許的最小邊界值，用於驗證邊界輸入可被後端正確處理。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 1
+          type: path
+        - name: verbose
+          value: false
+    - name: 失敗－使用者存在但已停用
+      description: 以有效格式但已停用的 id 查詢，確認後端回傳語意。
+      request:
+        url: https://api.example.com/v1/users/:id
+        method: GET
+        params:
+        - name: id
+          value: 1
+          type: path
+        - name: verbose
+          value: false

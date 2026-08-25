@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "bruno-sync/1.0",
+  "toolVersion": "1.0.0",
+  "generatedAtUtc": "2026-08-25T03:21:55Z",
+  "dryRun": false,
+  "skipped": false,
+  "source": "./openapi-v1.yaml",
+  "collectionPath": "./api-contract/bruno/collection.yml",
+  "summary": {
+    "operationsAdded": 2,
+    "operationsUpdated": 0,
+    "operationsStale": 0,
+    "operationsRemoved": 0,
+    "operationsUnchanged": 0,
+    "examplesAdded": 0,
+    "examplesUpdated": 0,
+    "operationsWithManualPreserved": 0,
+    "conflicts": 0,
+    "warnings": 0
+  },
+  "operations": [
+    {
+      "action": "added",
+      "method": "POST",
+      "path": "/orders",
+      "operationId": "createOrder",
+      "requestName": "建立訂單",
+      "changes": [
+        "新增範例：成功－完整參數",
+        "新增範例：成功－僅輸入必填參數",
+        "新增範例：失敗－orderType 使用無效列舉值",
+        "新增範例：失敗－缺少 customerId",
+        "新增範例：失敗－缺少 orderType",
+        "新增範例：失敗－缺少 quantity",
+        "新增範例：失敗－customerId 低於允許最小值",
+        "新增範例：失敗－quantity 低於允許最小值",
+        "新增範例：成功－一般訂單",
+        "新增範例：失敗－客戶不存在"
+      ],
+      "preserved": [],
+      "examples": [],
+      "warnings": []
+    },
+    {
+      "action": "added",
+      "method": "GET",
+      "path": "/users/{id}",
+      "operationId": "getUser",
+      "requestName": "查詢使用者",
+      "changes": [
+        "新增範例：成功－完整參數",
+        "新增範例：成功－僅輸入必填參數",
+        "新增範例：失敗－id 低於允許最小值",
+        "新增範例：失敗－id 型別錯誤",
+        "新增範例：失敗－verbose 型別錯誤",
+        "新增範例：邊界值－id 使用最小允許值",
+        "新增範例：失敗－使用者存在但已停用"
+      ],
+      "preserved": [],
+      "examples": [],
+      "warnings": []
+    }
+  ],
+  "conflicts": [],
+  "warnings": []
+}

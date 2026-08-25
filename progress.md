@@ -1629,3 +1629,56 @@ NuGet push needs NUGET_API_KEY; Docker build needs a daemon. Bruno feature needs
 ## Last verified commit
 
 <the commit carrying this entry> on main; pushed to origin/main.
+
+---
+
+# 2026-08-25 (iteration 2) — BRUNO FINAL SELF-AUDIT (§26/§27) — COMPLETE
+
+## Sample completion (§21/§13 gaps closed)
+- `samples/bruno-sync/expected/collection.yml` + `expected/reports/bruno-sync-report.{html,json}`
+  committed. Re-verified: a fresh sync in a scratch copy produces a **byte-identical
+  collection** and a report identical modulo `generatedAtUtc` (determinism proof).
+- `samples/bruno-sync/OpenApiSentinel.targets` added and **proven live**: parses as valid
+  MSBuild XML (no `--` inside comments), properties evaluate (`SentinelSolutionDir`
+  fallback works without SolutionDir), with `-p:BuildingProject=true` the Exec fires with
+  exactly `bruno sync --config <solutiondir>/openapi-sentinel.yml` (stub-recorded), and
+  toggle=false suppresses it. DesignTimeBuild/BuildingProject guards demonstrably block
+  synthetic contexts — their intended purpose.
+- Report paths made portable: JSON report now records AS-CONFIGURED relative paths
+  (`./openapi-v1.yaml`, `./api-contract/...`) instead of machine-absolute paths; console
+  still shows resolved absolute paths for local clarity.
+
+## Audit checklist results (§26 → evidence)
+- bruno sync/examples usable — CLI runs above; exit codes per contract.
+- Round-trip safe — 9 fidelity tests incl. hostile-metadata structural safety.
+- Preservation — PreservationLifecycleTests.Full_Lifecycle (values/scripts/tests/docs/auth).
+- Deletion policy — stale default vs removeDeletedOperations=true both pinned.
+- Dry-run writes nothing — CLI test + md5-verified scratch probe this iteration.
+- Incremental skip — exact spec message; state corruption degrades to full sync.
+- HTML/JSON reports — zh-TW self-contained HTML (escaping tested); versioned deterministic JSON.
+- zh-TW names/descriptions; required/optional/enum/boundary/format/pattern/type/items cases;
+  maxPerOperation hard cap; stable ASCII ids — ScenarioGeneratorTests (10).
+- Business scenarios YAML — loader errors/warnings + merge + auto-cleanup tests.
+- Auth scenarios never generated — dedicated test asserts absence under security schemes.
+- Windows-path robustness — BrunoPathRobustnessTests (4); CI matrix covers win/linux/macOS.
+- Security — hostile opId/path/tag/title probes; traversal-segment sanitization; SSRF policy
+  inherited (URL source without permission → exit 4); no secrets in outputs/state.
+- Existing-command regression — compare/validate/rules/explain/init/version all re-run green.
+- Build 0/0 warnings-errors; **440/440 tests pass**; git diff --check clean.
+
+## Product UX walk (§27) — executed from zero
+init template mentions bruno → `bruno --help` documents every flag in zh-TW → minimal
+2-line config syncs a JSON spec → collection contains 成功－完整參數 / 失敗－缺少 name …
+→ standalone zh-TW HTML report opens offline. Flow verified again this iteration.
+
+## Known limitations (documented, accepted)
+- Only single-file OpenCollection YAML writable (.bru dirs rejected with guidance).
+- Generated examples carry no response block (declared status ≠ guaranteed outcome).
+- Query style/explode serialization not reflected in URLs.
+- preserveScripts/preserveTests accepted but inert by safety design.
+
+## External blockers (unchanged)
+NuGet push needs NUGET_API_KEY; Docker image needs a daemon. Bruno feature has none.
+
+## Last verified commit
+<the commit carrying this entry> on main, pushed to origin/main.

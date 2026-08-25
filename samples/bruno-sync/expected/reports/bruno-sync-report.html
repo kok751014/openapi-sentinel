@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenAPI Sentinel Bruno 同步報告</title>
+<style>
+:root { color-scheme: light; --bg:#f6f7f9; --card:#fff; --ink:#1c2330; --muted:#66707f;
+  --add:#0d7a3f; --upd:#8a5b00; --stale:#a12622; --same:#4b5563; --line:#e3e6ea; }
+* { box-sizing: border-box; }
+body { margin:0; padding:2rem; background:var(--bg); color:var(--ink);
+  font-family:"Segoe UI","Microsoft JhengHei","PingFang TC",system-ui,sans-serif; line-height:1.5; }
+main { max-width: 1080px; margin: 0 auto; }
+h1 { font-size: 1.45rem; margin: 0 0 .25rem; }
+.sub { color: var(--muted); font-size:.85rem; margin-bottom: 1.25rem; }
+.cards { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:1.25rem; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:.6rem;
+  padding:.75rem 1rem; min-width:130px; }
+.card .n { font-size:1.35rem; font-weight:600; }
+.card .t { color:var(--muted); font-size:.78rem; }
+.card.add .n { color:var(--add); } .card.upd .n { color:var(--upd); }
+.card.stale .n { color:var(--stale); } .card.same .n { color:var(--same); }
+.badge { display:inline-block; border-radius:.4rem; padding:.05rem .5rem; font-size:.75rem;
+  font-weight:600; color:#fff; background:var(--same); }
+.badge.add{background:var(--add);} .badge.upd{background:var(--upd);}
+.badge.stale{background:var(--stale);}
+section { background:var(--card); border:1px solid var(--line); border-radius:.6rem;
+  padding:1rem 1.25rem; margin-bottom:1.25rem; }
+h2 { font-size:1.02rem; margin:.15rem 0 .75rem; }
+table { width:100%; border-collapse:collapse; font-size:.86rem; }
+th, td { text-align:left; padding:.42rem .55rem; border-bottom:1px solid var(--line);
+  vertical-align:top; }
+th { color:var(--muted); font-weight:600; white-space:nowrap; }
+code, pre { font-family:Consolas,"Cascadia Mono",monospace; font-size:.84em; }
+pre { background:#f2f3f5; border-radius:.4rem; padding:.5rem .7rem; overflow:auto; margin:.25rem 0; }
+ul { margin:.25rem 0; padding-left:1.25rem; }
+.ok::before { content:"✓ "; color:var(--add); font-weight:700; }
+.warn { color:var(--stale); }
+.muted { color:var(--muted); }
+footer { color:var(--muted); font-size:.78rem; margin-top:1rem; text-align:center; }
+details summary { cursor:pointer; }
+</style>
+</head>
+<body>
+<main>
+<h1>OpenAPI Sentinel — Bruno 同步報告</h1>
+<div class="sub">同步完成 · 2026-08-25T03:21:55Z</div>
+<div class="cards"><div class="card add"><div class="n">2</div><div class="t">新增 API</div></div><div class="card upd"><div class="n">0</div><div class="t">更新 API</div></div><div class="card stale"><div class="n">0</div><div class="t">刪除／失效 API</div></div><div class="card same"><div class="n">0</div><div class="t">未變更 API</div></div><div class="card add"><div class="n">0</div><div class="t">新增測試範例</div></div><div class="card upd"><div class="n">0</div><div class="t">更新測試範例</div></div><div class="card same"><div class="n">0</div><div class="t">保留人工設定</div></div><div class="card same"><div class="n">0</div><div class="t">同步衝突</div></div><div class="card same"><div class="n">0</div><div class="t">警告</div></div></div>
+<section><h2>結果資訊</h2><table><tr><th>來源 OpenAPI</th><td>./openapi-v1.yaml</td></tr><tr><th>Bruno Collection 路徑</th><td>./api-contract/bruno/collection.yml</td></tr><tr><th>工具版本</th><td>1.0.0</td></tr><tr><th>模式</th><td>同步</td></tr></table></section>
+<section><h2>API 詳細項目</h2>
+<details><summary><span class="badge add">新增</span> <code>POST /orders</code> <span class="muted">createOrder</span></summary><div style="padding:.35rem .25rem 0"><tr><th>Bruno Request</th><td>建立訂單</td></tr><div style="margin-top:.35rem"><b>變更</b><ul><li>新增範例：成功－完整參數</li><li>新增範例：成功－僅輸入必填參數</li><li>新增範例：失敗－orderType 使用無效列舉值</li><li>新增範例：失敗－缺少 customerId</li><li>新增範例：失敗－缺少 orderType</li><li>新增範例：失敗－缺少 quantity</li><li>新增範例：失敗－customerId 低於允許最小值</li><li>新增範例：失敗－quantity 低於允許最小值</li><li>新增範例：成功－一般訂單</li><li>新增範例：失敗－客戶不存在</li></ul></div></div></details>
+<details><summary><span class="badge add">新增</span> <code>GET /users/{id}</code> <span class="muted">getUser</span></summary><div style="padding:.35rem .25rem 0"><tr><th>Bruno Request</th><td>查詢使用者</td></tr><div style="margin-top:.35rem"><b>變更</b><ul><li>新增範例：成功－完整參數</li><li>新增範例：成功－僅輸入必填參數</li><li>新增範例：失敗－id 低於允許最小值</li><li>新增範例：失敗－id 型別錯誤</li><li>新增範例：失敗－verbose 型別錯誤</li><li>新增範例：邊界值－id 使用最小允許值</li><li>新增範例：失敗－使用者存在但已停用</li></ul></div></div></details>
+</section>
+<footer>由 OpenAPI Sentinel 產生 · 離線單檔報告 · 繁體中文介面</footer>
+</main>
+</body>
+</html>

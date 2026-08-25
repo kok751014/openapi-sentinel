@@ -1,0 +1,50 @@
+<Project>
+
+  <!--
+    OpenAPI Sentinel — Bruno sync MSBuild integration sample.
+
+    Usage (choose ONE way to consume this file):
+
+      1) Import from a csproj (single project):
+         <Import Project="..\samples\bruno-sync\OpenApiSentinel.targets" />
+
+      2) Directory.Build.props auto-import in the repo root (applies to every project
+         under the directory — put the toggle property below in projects that opt out):
+         <Import Project="samples/bruno-sync/OpenApiSentinel.targets" />
+
+    Requirements:
+      * openapi-sentinel on PATH (dotnet tool install -g OpenApiSentinel)
+      * an openapi-sentinel.yml next to the .sln with a bruno section
+        (see samples/bruno-sync/openapi-sentinel.yml)
+
+    Behavior notes:
+      * Runs AFTER Build, once per project that imports this file. Import it in exactly
+        one project (e.g. the API project) to avoid duplicate syncs in multi-project
+        solutions.
+      * Skips design-time builds and VS solution-load metadata builds.
+      * bruno sync is incremental: unchanged contracts exit in milliseconds without
+        touching the collection, so repeated builds stay quiet and git stays clean.
+      * Set OpenApiSentinelBrunoSync=false (property or environment) to disable.
+      * A failing sync fails the build; use IgnoreExitCode=true if you prefer a
+        warning-only experience.
+  -->
+
+  <PropertyGroup>
+    <OpenApiSentinelBrunoSync Condition="'$(OpenApiSentinelBrunoSync)' == ''">true</OpenApiSentinelBrunoSync>
+    <!-- Resolve the solution folder even when imported from a project -->
+    <SentinelSolutionDir Condition="'$(SentinelSolutionDir)' == '' And '$(SolutionDir)' != ''">$(SolutionDir)</SentinelSolutionDir>
+    <SentinelSolutionDir Condition="'$(SentinelSolutionDir)' == ''">$(MSBuildThisFileDirectory)..\</SentinelSolutionDir>
+  </PropertyGroup>
+
+  <Target Name="OpenApiSentinelBrunoSync"
+          AfterTargets="Build"
+          Condition="'$(OpenApiSentinelBrunoSync)' == 'true' AND
+                     '$(DesignTimeBuild)' != 'true' AND
+                     '$(BuildingProject)' == 'true'">
+
+    <Exec Command="openapi-sentinel bruno sync --config &quot;$(SentinelSolutionDir)openapi-sentinel.yml&quot;"
+          ConsoleToMsBuild="true"
+          IgnoreExitCode="false" />
+  </Target>
+
+</Project>

@@ -80,12 +80,12 @@ public static class BrunoWorkflow
             return ExitCodes.InvalidInput;
         }
 
-        var collectionFile = BrunoPaths.Resolve(
-            request.CollectionOverride ?? bruno.CollectionPath!, baseDir);
+        var rawCollectionPath = request.CollectionOverride ?? bruno.CollectionPath!;
+        var collectionFile = BrunoPaths.Resolve(rawCollectionPath, baseDir);
         BrunoPaths.ValidateCollectionTarget(collectionFile);
 
-        var reportDir = BrunoPaths.Resolve(
-            request.ReportDirOverride ?? bruno.ReportPath ?? "./api-contract/reports", baseDir);
+        var rawReportPath = request.ReportDirOverride ?? bruno.ReportPath ?? "./api-contract/reports";
+        var reportDir = BrunoPaths.Resolve(rawReportPath, baseDir);
         BrunoPaths.ValidateReportAndCollectionDisjoint(reportDir, collectionFile);
 
         // ---- load contract ----
@@ -171,7 +171,8 @@ public static class BrunoWorkflow
             SafeFileWriter.Write(collectionFile, collection.ToYaml());
             BrunoSyncStateStore.Write(statePath, expectedState with { LastSyncUtc = DateTime.UtcNow.ToString("u") });
 
-            var report = BuildReport(finalOutcome, request, source, collectionFile, toolVersion);
+            var report = BuildReport(finalOutcome, request,
+                request.SourceOverride is null ? rawSource : source, rawCollectionPath, toolVersion);
             Directory.CreateDirectory(reportDir);
             var htmlPath = Path.Combine(reportDir, ReportHtmlName);
             var jsonPath = Path.Combine(reportDir, ReportJsonName);

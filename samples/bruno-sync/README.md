@@ -12,6 +12,9 @@ required/optional、enum、min/max、requestBody、宣告的 200/400/404 回應�
 | `openapi-v2.yaml` | 演進版：quantity 上限 100→50、orderType 新增 SCHEDULED、新增 GET /promotions |
 | `openapi-sentinel.yml` | 範例設定（bruno 區段） |
 | `scenarios.yml` | Layer 2 商業情境範例 |
+| `expected/collection.yml` | 第一輪 sync 的預期產出（OpenCollection YAML，可直接用 Bruno 開啟） |
+| `expected/reports/bruno-sync-report.{html,json}` | 對應的同步報告範例（generatedAtUtc 會隨執行時間不同） |
+| `OpenApiSentinel.targets` | Visual Studio / MSBuild 建置後自動同步的官方整合檔（用法見檔頭註解與 docs/visual-studio-integration.md） |
 
 ## 重現步驟
 
