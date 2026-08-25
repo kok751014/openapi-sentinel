@@ -2091,3 +2091,14 @@ Validated at **500 seeds: clean (~3 s)**. Committed seed count stays 40.
 
 Gates: build 0/0; suite green; diff-check clean. Pushed.
 Remote CI still billing-blocked (external, unchanged).
+
+---
+
+## 2026-08-25 (iteration 25) — DOCUMENTED-COMMAND SPOT CHECK + STEADY-STATE GATES
+
+Verified the exact `bruno sync` invocation documented in AGENTS.md's verified-commands
+block works as written (scratch-copy form, exit 0, artifacts present). Full gates green:
+build 0/0; suite **463/463**; diff-check clean; tree clean.
+
+Remote CI still blocked by the owner-account billing issue — external, unchanged.
+No code changes this iteration. main @ 6c205e5.
