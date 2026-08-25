@@ -1837,3 +1837,23 @@ definition, and interpretation.
 Combined with iteration 6 this completes §22 (changelog + SemVer assessment + releasable
 packaging) and §19 (benchmark infrastructure extended). All §20 doc surfaces now cover
 Bruno. Suite/build/diff-check green at commit time.
+
+---
+
+# 2026-08-25 (iteration 8) — SECURITY FIX: BRUNO REMOTE-FETCH GATE BYPASSED (SSRF model restored)
+
+**Defect (self-caught, §18 regression):** BrunoWorkflow hardcoded
+`allowRemoteOverride: true`, so `bruno sync/examples` fetched ANY URL — including
+private/loopback targets — with zero policy checks. The existing exit-4 test passed
+accidentally (its fake host failed DNS), masking the bypass. Compare/validate were never
+affected.
+
+**Fix:** bruno commands now mirror compare exactly — remote access requires the explicit
+`--allow-remote` flag or a fully opted-in `remoteReferences:` config (enabled / allowHttp /
+allowPrivateNetwork / allowedHosts). `--allow-remote` documented in bruno --help and
+docs/cli-reference.md.
+
+**Tests:** the old accidental test now asserts POLICY refusal wording; new positive control
+drives a real loopback HTTP server through the full opt-in chain and syncs end-to-end
+(zh-TW scenarios land in the collection). Fuzz re-validated at 200 seeds.
+Suite **451/451**; build 0/0; diff-check clean. Pushed.

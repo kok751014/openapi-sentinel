@@ -152,6 +152,7 @@ public static class CommandLineRunner
             CollectionOverride = parsed.Value("collection"),
             ReportDirOverride = parsed.Value("report-dir"),
             RemoveDeletedOperationsOverride = parsed.Has("remove-deleted") ? true : null,
+            AllowRemoteOverride = parsed.Has("allow-remote"),
             ExamplesEnabledOverride = !parsed.Has("no-examples"),
             OperationFilter = parsed.Value("operation"),
             PathFilter = parsed.Value("path"),
@@ -316,6 +317,8 @@ public static class CommandLineRunner
                       --no-examples             本次不產生測試範例
                       --operation <operationId> examples：只處理此 operation
                       --path <api-path>         examples：只處理此 API path 開頭的操作
+                      --allow-remote            允許此 run 使用遠端來源／$refs
+                                                （需符合既有 remoteReferences 安全政策）
                       --verbose                 顯示每個操作的變更與保留明細
                       --no-color                純文字輸出
 

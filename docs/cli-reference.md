@@ -85,6 +85,7 @@ openapi-sentinel bruno examples [options]
 | `--no-examples` | sync | Skip scenario generation for this run |
 | `--operation <operationId>` | examples | Process only this operation |
 | `--path <api-path>` | examples | Process only operations under this API path prefix |
+| `--allow-remote` | both | Permit remote sources/refs for this run (subject to the same `remoteReferences` security policy as compare) |
 | `--verbose` | both | Per-operation change/preservation details |
 | `--no-color` | both | Plain text output |
 

@@ -29,6 +29,10 @@ public sealed record BrunoSyncRequest
 
     public bool? RemoveDeletedOperationsOverride { get; init; }
 
+    /// <summary>Mirrors compare's --allow-remote: enables remote sources/refs for this
+    /// run ONLY when explicitly requested. Never defaulted on.</summary>
+    public bool AllowRemoteOverride { get; init; }
+
     public bool ExamplesEnabledOverride { get; init; } = true;
 
     /// <summary>Filter to a single operationId (examples command).</summary>
@@ -91,7 +95,8 @@ public static class BrunoWorkflow
         // ---- load contract ----
         var outcomeDoc = await AnalysisPipeline.LoadDocumentAsync(
             source, config.RemoteReferences, config.HeaderEnv,
-            allowRemoteOverride: true, config.Limits, config.AllowAboveDocumentTree, ct);
+            allowRemoteOverride: request.AllowRemoteOverride,
+            config.Limits, config.AllowAboveDocumentTree, ct);
         var document = outcomeDoc.Document;
 
         // ---- incremental fast path ----

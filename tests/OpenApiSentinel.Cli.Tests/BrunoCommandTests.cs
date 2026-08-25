@@ -1,4 +1,6 @@
 using OpenApiSentinel.Cli;
+using System.Text;
+using System.Net;
 
 namespace OpenApiSentinel.Cli.Tests;
 
@@ -318,8 +320,8 @@ public sealed class BrunoCommandTests : IDisposable
     [Fact]
     public void Remote_Source_Requires_Network_Permission_Path_Unchanged()
     {
-        // URL source without allow-remote → the standard network-policy failure (exit 4),
-        // proving the existing SSRF/security model applies to bruno sources too.
+        // URL source WITHOUT allow-remote must be refused by POLICY (not by a DNS
+        // failure) — the SSRF model applies to bruno sources identically to compare.
         WriteFile("openapi-sentinel.yml", """
             bruno:
               source: https://api.example.com/swagger.json
@@ -330,6 +332,35 @@ public sealed class BrunoCommandTests : IDisposable
             ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
 
         Assert.Equal(4, exit);
+        Assert.Contains(console.ErrorLines, l =>
+            l.Contains("network", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("disabled", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("remote", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Full_Remote_Policy_OptIn_Enables_Loopback_Source_End_To_End()
+    {
+        // Positive control: with the FULL remoteReferences opt-in chain (enabled +
+        // allowHttp + allowPrivateNetwork — exactly what compare requires), an http
+        // loopback source syncs for real. Proves bruno inherits the entire SSRF model.
+        using var server = LoopbackSpecServer.Start(Spec);
+        WriteFile("openapi-sentinel.yml", string.Join(Environment.NewLine,
+            "bruno:",
+            $"  source: {server.Prefix}spec.yaml",
+            "  collectionPath: ./c.yml",
+            "remoteReferences:",
+            "  enabled: true",
+            "  allowHttp: true",
+            "  allowPrivateNetwork: true"));
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")],
+            console);
+
+        Assert.True(exit == 0, "exit=" + exit + " errors=" + string.Join(" | ", console.ErrorLines));
+        Assert.Contains("成功－完整參數",
+            File.ReadAllText(Path.Combine(root, "c.yml")), StringComparison.Ordinal);
     }
 
     private sealed class RecordingConsole : IConsoleWriter
@@ -341,4 +372,60 @@ public sealed class BrunoCommandTests : IDisposable
 
         public void WriteError(string value = "") => ErrorLines.Add(value);
     }
+}
+
+/// <summary>Minimal loopback HTTP server serving one spec file (mirrors the OpenApi.Tests pattern).</summary>
+public sealed class LoopbackSpecServer : IDisposable
+{
+    private readonly HttpListener listener = new();
+    private readonly string content;
+
+    private LoopbackSpecServer(string content)
+    {
+        this.content = content;
+        var port = GetFreePort();
+        Prefix = $"http://127.0.0.1:{port}/";
+        listener.Prefixes.Add(Prefix);
+        listener.Start();
+        _ = Task.Run(AcceptLoop);
+    }
+
+    public string Prefix { get; }
+
+    public static LoopbackSpecServer Start(string specYaml) => new(specYaml);
+
+    private static int GetFreePort()
+    {
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        try
+        {
+            return ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        }
+        finally
+        {
+            l.Stop();
+        }
+    }
+
+    private async Task AcceptLoop()
+    {
+        try
+        {
+            while (listener.IsListening)
+            {
+                var ctx = await listener.GetContextAsync();
+                var bytes = Encoding.UTF8.GetBytes(content);
+                ctx.Response.ContentType = "application/yaml";
+                await ctx.Response.OutputStream.WriteAsync(bytes);
+                ctx.Response.Close();
+            }
+        }
+        catch (Exception)
+        {
+            // listener aborted during dispose — expected
+        }
+    }
+
+    public void Dispose() => listener.Stop();
 }
