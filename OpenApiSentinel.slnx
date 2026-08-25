@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/OpenApiSentinel.Bruno/OpenApiSentinel.Bruno.csproj" />
     <Project Path="src/OpenApiSentinel.Cli/OpenApiSentinel.Cli.csproj" />
     <Project Path="src/OpenApiSentinel.Core/OpenApiSentinel.Core.csproj" />
     <Project Path="src/OpenApiSentinel.OpenApi/OpenApiSentinel.OpenApi.csproj" />
@@ -7,6 +8,7 @@
     <Project Path="src/OpenApiSentinel.Rules/OpenApiSentinel.Rules.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/OpenApiSentinel.Bruno.Tests/OpenApiSentinel.Bruno.Tests.csproj" />
     <Project Path="tests/OpenApiSentinel.Cli.Tests/OpenApiSentinel.Cli.Tests.csproj" />
     <Project Path="tests/OpenApiSentinel.Core.Tests/OpenApiSentinel.Core.Tests.csproj" />
     <Project Path="tests/OpenApiSentinel.IntegrationTests/OpenApiSentinel.IntegrationTests.csproj" />

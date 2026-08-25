@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\OpenApiSentinel.Bruno\OpenApiSentinel.Bruno.csproj" />
     <ProjectReference Include="..\OpenApiSentinel.Core\OpenApiSentinel.Core.csproj" />
     <ProjectReference Include="..\OpenApiSentinel.OpenApi\OpenApiSentinel.OpenApi.csproj" />
     <ProjectReference Include="..\OpenApiSentinel.Rules\OpenApiSentinel.Rules.csproj" />
