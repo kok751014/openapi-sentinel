@@ -154,7 +154,31 @@ public sealed class ScenarioGenerator
 
         void AddBoundary(bool minimum, ScenarioCategory category)
         {
-            var value = SampleValueFactory.BoundaryValue(schema, minimum);
+            // Gate each boundary category precisely so arrays do not duplicate under
+            // length categories and vice versa.
+            var primaryType = NonNullPrimary(schema);
+            var allowed = category switch
+            {
+                ScenarioCategory.BoundaryMinimum => primaryType is "integer" or "number",
+                ScenarioCategory.BoundaryMaximum => primaryType is "integer" or "number",
+                ScenarioCategory.BoundaryMinLength => primaryType == "string" && SampleValueFactory.IntKeyword(schema, "minLength") > 0,
+                ScenarioCategory.BoundaryMaxLength => primaryType == "string" && SampleValueFactory.IntKeyword(schema, "maxLength") > 0,
+                _ => false,
+            };
+
+            if (!allowed)
+            {
+                return;
+            }
+
+            var value = category switch
+            {
+                ScenarioCategory.BoundaryItemsMin or ScenarioCategory.BoundaryItemsMax =>
+                    RepeatArray((minimum ? SampleValueFactory.IntKeyword(schema, "minItems")
+                                        : SampleValueFactory.IntKeyword(schema, "maxItems")) ?? 0),
+                _ => SampleValueFactory.BoundaryValue(schema, minimum),
+            };
+
             if (value is null)
             {
                 return;
@@ -295,7 +319,7 @@ public sealed class ScenarioGenerator
         return false;
     }
 
-    internal static SchemaInfo? PrimaryBodySchema(RequestBodyInfo body)
+    public static SchemaInfo? PrimaryBodySchema(RequestBodyInfo body)
     {
         foreach (var contentType in body.Content.Keys.Order(StringComparer.OrdinalIgnoreCase))
         {
@@ -609,7 +633,7 @@ public sealed class ScenarioGenerator
         var result = new System.Text.StringBuilder();
         foreach (var ch in text)
         {
-            if (char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_')
+            if (char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_' or '.')
             {
                 result.Append(ch);
             }

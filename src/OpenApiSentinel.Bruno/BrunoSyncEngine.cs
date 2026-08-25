@@ -75,8 +75,10 @@ public sealed class BrunoSyncEngine
         var unmarkedCandidates = new List<(BrunoItem Item, OperationIdentity Identity)>();
         foreach (var item in collection.AllRequests().Where(i => i.IsHttpRequest).ToList())
         {
+            // Sentinel-marked requests are indexed by their recorded identity regardless of
+            // whether it is operationId- or method+path-based.
             var identity = item.IdentityOf();
-            if (identity is not null && !string.IsNullOrEmpty(identity.Method))
+            if (identity is not null)
             {
                 if (!markedIndex.TryAdd(identity.StableKey, item))
                 {
@@ -119,16 +121,25 @@ public sealed class BrunoSyncEngine
                 continue;
             }
 
-            var identity = item.IdentityOf()!;
+            var identity = item.IdentityOf();
+            var method = identity?.Method;
+            var path = identity?.NormalizedPath;
+            if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(path))
+            {
+                var derived = ParseUrlIdentity(item.Http);
+                method = string.IsNullOrEmpty(method) ? derived?.Method ?? "" : method;
+                path = string.IsNullOrEmpty(path) ? derived?.NormalizedPath ?? "" : path;
+            }
+
             if (syncSettings.RemoveDeletedOperations)
             {
                 RemoveItem(collection, item);
                 outcomes.Add(new OperationSyncOutcome
                 {
                     Action = OperationAction.Removed,
-                    Method = identity.Method,
-                    Path = identity.NormalizedPath,
-                    OperationId = identity.OperationId,
+                    Method = method,
+                    Path = path,
+                    OperationId = identity?.OperationId,
                     RequestName = item.Name,
                 });
             }
@@ -138,9 +149,9 @@ public sealed class BrunoSyncEngine
                 outcomes.Add(new OperationSyncOutcome
                 {
                     Action = OperationAction.Stale,
-                    Method = identity.Method,
-                    Path = identity.NormalizedPath,
-                    OperationId = identity.OperationId,
+                    Method = method,
+                    Path = path,
+                    OperationId = identity?.OperationId,
                     RequestName = item.Name,
                     Warnings = ["此操作已從 OpenAPI 規格移除；依預設保留 Bruno Request（removeDeletedOperations=false）。"],
                 });
@@ -170,6 +181,8 @@ public sealed class BrunoSyncEngine
         var itemWarnings = new List<string>();
         var storedHash = item.StoredContentHash();
         var structuralChange = storedHash != contentHash;
+        // An unmarked (user-created) request that we adopt counts as newly managed.
+        var action = item.IsSentinelManaged ? OperationAction.Updated : OperationAction.Added;
 
         if (!structuralChange)
         {
@@ -263,7 +276,7 @@ public sealed class BrunoSyncEngine
 
         return new OperationSyncOutcome
         {
-            Action = OperationAction.Updated,
+            Action = action,
             Method = identity.Method,
             Path = identity.NormalizedPath,
             OperationId = identity.OperationId,
@@ -558,21 +571,8 @@ public sealed class BrunoSyncEngine
         return false;
     }
 
-    private static string SampleText(ParameterInfo parameter)
-    {
-        if (parameter.Schema is null)
-        {
-            return "sample";
-        }
-
-        var value = SampleValueFactory.Sample(parameter.Schema, SampleValueFactory.Depth.Full, level: 2);
-        return value switch
-        {
-            JsonValue v when v.TryGetValue<string>(out var s) => s,
-            null => "sample",
-            _ => value.ToJsonString(),
-        };
-    }
+    private static string SampleText(ParameterInfo parameter) =>
+        SampleValueFactory.ParameterSampleText(parameter);
 
     private OperationSyncOutcome CreateRequest(
         BrunoCollectionDocument collection,
@@ -1034,6 +1034,8 @@ public sealed class BrunoSyncEngine
             {
                 changes.Add("請求主體結構已依最新合約更新（既有值保留）");
             }
+
+            preserved.Add("保留既有請求主體值");
         }
         else if (existingRaw is not null)
         {
@@ -1219,7 +1221,7 @@ public sealed class BrunoSyncEngine
         return max + 1;
     }
 
-    internal static string ResolveBaseUrl(ApiDocument document)
+    public static string ResolveBaseUrl(ApiDocument document)
     {
         if (document.Servers.Count == 0 || string.IsNullOrWhiteSpace(document.Servers[0].Url))
         {
@@ -1238,7 +1240,7 @@ public sealed class BrunoSyncEngine
         return "{{baseUrl}}" + TemplateParamRegex.Replace(relative, match => "{{" + match.Groups[1].Value + "}}");
     }
 
-    internal static string BuildUrl(string baseUrl, string normalizedPath)
+    public static string BuildUrl(string baseUrl, string normalizedPath)
     {
         var suffix = normalizedPath == "/" ? "" : normalizedPath;
         return baseUrl.TrimEnd('/') + TemplateParamRegex.Replace(suffix, match => ":" + match.Groups[1].Value);

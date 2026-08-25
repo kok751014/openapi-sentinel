@@ -53,22 +53,21 @@ public static class OperationIdentityExtensions
             return null;
         }
 
-        var opId = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.OperationId));
+        var opIdRaw = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.OperationId));
+        var opId = string.IsNullOrWhiteSpace(opIdRaw) ? null : opIdRaw!.Trim();
         var method = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.Method));
         var path = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.Path));
         var identityKey = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.IdentityKey));
 
-        if (!string.IsNullOrWhiteSpace(identityKey))
+        // Explicit method/path fields are authoritative (always written together).
+        if (!string.IsNullOrWhiteSpace(method) && !string.IsNullOrWhiteSpace(path))
         {
-            return FromStoredIdentityKey(identityKey, opId);
+            return new OperationIdentity(opId, method!.ToUpperInvariant(), OperationIdentity.NormalizePath(path!));
         }
 
-        if (method is not null && path is not null)
+        if (!string.IsNullOrWhiteSpace(identityKey))
         {
-            return new OperationIdentity(
-                string.IsNullOrWhiteSpace(opId) ? null : opId,
-                method.ToUpperInvariant(),
-                OperationIdentity.NormalizePath(path));
+            return FromStoredIdentityKey(identityKey!, opId);
         }
 
         return null;

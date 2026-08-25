@@ -40,6 +40,16 @@ public static class SampleValueFactory
             return def.DeepClone();
         }
 
+        // Declared enums are authoritative: the first value is a valid sample.
+        if (HasNonEmptyEnum(schema))
+        {
+            var enumValue = FirstEnumValue(schema);
+            if (enumValue is not null)
+            {
+                return enumValue;
+            }
+        }
+
         var primary = NonNullPrimaryType(schema);
         switch (primary)
         {
@@ -343,6 +353,23 @@ public static class SampleValueFactory
         }
 
         return text;
+    }
+
+    /// <summary>Deterministic string sample for a parameter (used in URLs, params, headers).</summary>
+    public static string ParameterSampleText(ParameterInfo parameter)
+    {
+        if (parameter.Schema is null)
+        {
+            return "sample";
+        }
+
+        var value = Sample(parameter.Schema, Depth.Full, level: 2);
+        return value switch
+        {
+            System.Text.Json.Nodes.JsonValue v when v.TryGetValue<string>(out var s) => s,
+            null => "sample",
+            _ => value.ToJsonString(),
+        };
     }
 
     /// <summary>A value violating the declared string type/format for validation-failure scenarios.</summary>
