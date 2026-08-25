@@ -1888,3 +1888,17 @@ as sync-only and no test pinned the semantics.
 
 Remote CI still blocked by owner-account billing (external, unchanged — jobs never start).
 Gates: build 0/0; suite **454/454**; diff-check clean. main @ <this commit> pushed.
+
+---
+
+## 2026-08-25 (iteration 11) — 1000-SEED FUZZ SWEEP ON CURRENT HEAD: CLEAN
+
+The header/cookie snapshot change (7badd61) had only a 200-seed sweep after it. Ran the
+deepest sweep yet on current HEAD — **1001/1001 cases clean in ~4 s** (I1 resync
+idempotency + byte stability, I2 deterministic evolution, I3 user-content survival).
+No code changes. Committed seed count unchanged (40, sub-second CI).
+
+Remote CI still blocked by owner-account billing — external, unchanged.
+Gates at sweep time: build 0/0; suite 454/454; tree clean except loop prompt file.
+main @ 68a618e (no new commit needed for a verification-only iteration; this entry rides
+with the next real change or can be committed standalone).
