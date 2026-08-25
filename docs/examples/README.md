@@ -13,6 +13,11 @@ Generated from the [Order Management sample contracts](../../samples/basic/) —
 | [callbacks-api-diff.html](callbacks-api-diff.html) | The same callbacks scenario in the interactive single-file HTML report — filters, search, collapsible findings, works offline |
 | [callbacks-pr-summary.md](callbacks-pr-summary.md) | The compact PR block for the callbacks pair |
 
+For **Bruno collection sync** examples (OpenCollection YAML output, sync reports,
+business scenarios), see [`../../samples/bruno-sync/`](../../samples/bruno-sync/) — its
+`expected/` folder contains a committed collection + reports reproduced byte-for-byte by
+the documented steps.
+
 To produce an interactive HTML version locally:
 
 ```bash

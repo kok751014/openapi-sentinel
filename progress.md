@@ -1902,3 +1902,17 @@ Remote CI still blocked by owner-account billing — external, unchanged.
 Gates at sweep time: build 0/0; suite 454/454; tree clean except loop prompt file.
 main @ 68a618e (no new commit needed for a verification-only iteration; this entry rides
 with the next real change or can be committed standalone).
+
+---
+
+## 2026-08-25 (iteration 12) — EXAMPLES INDEX CROSS-REF + STEADY-STATE VERIFICATION
+
+- docs/examples/README.md now points Bruno-curious readers at samples/bruno-sync
+  (expected/ collection+reports, business scenarios) — §20 "examples" surface fully wired.
+- Steady-state gates re-run: build 0/0; all 7 test projects green (454/454);
+  git diff --check clean.
+- Remote CI remains billing-blocked (external; jobs never start) — unchanged.
+
+No defects found this iteration. Loop remains at terminal state: DoD complete, only
+external items outstanding (Actions billing, NUGET_API_KEY, Docker daemon).
+main @ <this commit> pushed.
