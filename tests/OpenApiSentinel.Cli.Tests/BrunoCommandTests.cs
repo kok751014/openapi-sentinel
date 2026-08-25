@@ -339,6 +339,30 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void ReportDir_Pointing_At_Existing_File_Fails_As_Config_Error()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./c.yml
+              reportPath: ./reports-file
+            """);
+        WriteFile("reports-file", string.Empty);
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+
+        Assert.Equal(3, exit); // config error, NOT opaque internal error
+        Assert.Contains(console.ErrorLines, l =>
+            l.Contains("reports-file", StringComparison.Ordinal) &&
+            l.Contains("檔案", StringComparison.Ordinal));
+        // nothing written anywhere: refusal precedes the collection write
+        Assert.False(File.Exists(Path.Combine(root, "c.yml")));
+        Assert.False(Directory.EnumerateFiles(root, "*.sentinel-state.json").Any());
+    }
+
+    [Fact]
     public void Zero_Match_Filter_Warns_Instead_Of_Silent_Success()
     {
         WriteFile("spec.yaml", Spec);

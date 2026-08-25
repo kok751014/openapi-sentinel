@@ -55,6 +55,36 @@ public static class BrunoPaths
         }
     }
 
+    /// <summary>
+    /// Verifies a directory we are about to create/write can actually be created:
+    /// walks the un-created tail of <paramref name="directoryPath"/> down to the nearest
+    /// EXISTING ancestor and fails clearly when that ancestor is a regular file
+    /// (otherwise users get an opaque exit-5 IOException deep inside the run).
+    /// </summary>
+    public static void EnsureDirectoryAvailable(string directoryPath)
+    {
+        // Walk from the target path upward until we find an existing ancestor.
+        // Directory.Exists is FALSE for a file path and vice versa, which makes both
+        // checks explicit; a regular file anywhere in the un-created tail is an error.
+        var current = Path.GetFullPath(directoryPath);
+        while (!Directory.Exists(current))
+        {
+            if (File.Exists(current))
+            {
+                throw new BrunoSyncException(
+                    $"無法建立目錄 '{Path.GetFullPath(directoryPath)}'：路徑上的 '{current}' 已存在且是檔案。請修正設定中的對應路徑。");
+            }
+
+            var parent = Path.GetDirectoryName(current);
+            if (string.IsNullOrEmpty(parent) || string.Equals(parent, current, StringComparison.Ordinal))
+            {
+                return; // reached the filesystem root without finding a blocking file
+            }
+
+            current = parent;
+        }
+    }
+
     /// <summary>Refuses layouts where reports could clobber the collection file.</summary>
     public static void ValidateReportAndCollectionDisjoint(string reportDir, string collectionFile)
     {

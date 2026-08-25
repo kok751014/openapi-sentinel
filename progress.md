@@ -2039,3 +2039,21 @@ claim in the sample README remains true after all post-DoD fixes.
 Gates: build 0/0; suite **463/463**; diff-check clean; tree clean (loop prompt file only).
 Remote CI still billing-blocked (external, unchanged). No code changes this iteration.
 main @ 2ca6ab9.
+
+---
+
+# 2026-08-25 (iteration 22) — UX/EXIT-CODE FIX: reportPath ON A FILE = CONFIG ERROR (3), NOT EXIT 5
+
+**Defect found by probe:** `bruno.reportPath` pointing at an existing FILE crashed with a
+raw IOException mapped to **exit 5 internal error** — and only AFTER the collection had
+already been written. Violates §15 clear diagnostics + §16 exit-code contract.
+
+**Fix:** `BrunoPaths.EnsureDirectoryAvailable` walks the un-created tail of the report dir;
+a regular file anywhere on that tail → exit 3 SentinelConfigException-style message naming
+the blocking path, BEFORE the document is even loaded (nothing written anywhere).
+Implementation note: DirectoryInfo.Exists is false for file paths — the walk must check
+File.Exists/Directory.Exists explicitly per level.
+
+Tests: ReportDir_Pointing_At_Existing_File_Fails_As_Config_Error (exit 3, named path,
+collection+state NOT written). Suite green across all projects (total 464); build 0/0;
+diff-check clean. Pushed.

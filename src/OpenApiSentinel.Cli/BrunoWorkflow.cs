@@ -91,6 +91,9 @@ public static class BrunoWorkflow
         var rawReportPath = request.ReportDirOverride ?? bruno.ReportPath ?? "./api-contract/reports";
         var reportDir = BrunoPaths.Resolve(rawReportPath, baseDir);
         BrunoPaths.ValidateReportAndCollectionDisjoint(reportDir, collectionFile);
+        // A reportDir (or one of its parents) that is an existing FILE would otherwise
+        // surface as an opaque exit-5 IOException only AFTER the collection was written.
+        BrunoPaths.EnsureDirectoryAvailable(reportDir);
 
         // ---- load contract ----
         var outcomeDoc = await AnalysisPipeline.LoadDocumentAsync(
