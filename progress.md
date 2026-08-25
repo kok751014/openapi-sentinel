@@ -2116,3 +2116,12 @@ and parse-validation changes):
   third-run skip verified previously — all as documented.
 No code changes; docs claims remain accurate. Gates were green at iteration start.
 Remote CI still billing-blocked (external). main @ df76a2c.
+
+---
+
+## 2026-08-25 (iteration 27) — STEADY-STATE VERIFICATION (no changes)
+
+All quality gates re-run and green on current HEAD: build 0/0; suite **463/463**;
+diff-check clean; tree clean. Remote CI still billing-blocked (external, unchanged).
+No defects found, no code changes. main @ 60eff9f — loop remains at its verified
+terminal state; only external items outstanding.
