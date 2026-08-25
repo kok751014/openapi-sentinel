@@ -96,7 +96,12 @@ public static class BrunoWorkflow
 
         // ---- incremental fast path ----
         var settings = bruno.Sync with { RemoveDeletedOperations = request.RemoveDeletedOperationsOverride ?? bruno.Sync.RemoveDeletedOperations };
-        var examples = bruno.Examples with { Enabled = bruno.Examples.Enabled && request.ExamplesEnabledOverride };
+        // `bruno examples` is an explicit user request to generate scenarios, so it
+        // overrides config examples.enabled=false; --no-examples suppresses everywhere.
+        var examplesEnabled = request.SubCommand == "examples"
+            ? request.ExamplesEnabledOverride
+            : bruno.Examples.Enabled && request.ExamplesEnabledOverride;
+        var examples = bruno.Examples with { Enabled = examplesEnabled };
         var toolVersion = ToolVersion.Get();
 
         var sourceHash = ContractFingerprint.Compute(document);

@@ -455,3 +455,106 @@ public class BrunoSyncEngineCoreTests
         Assert.Equal("{{baseUrl}}/api/v2/x", view.Url);
     }
 }
+
+/// <summary>
+/// §4 identity-transition matrix: operationId added/removed and method changes must
+/// update the existing request in place — never duplicate + stale.
+/// </summary>
+public class IdentityTransitionTests
+{
+    private const string WithOpId = """
+        openapi: 3.0.3
+        info: { title: t, version: "1" }
+        paths:
+          /orders:
+            post:
+              operationId: createOrder
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [id]
+                      properties:
+                        id: { type: integer }
+              responses:
+                '200': { description: OK }
+        """;
+
+    private const string WithoutOpId = """
+        openapi: 3.0.3
+        info: { title: t, version: "1.1" }
+        paths:
+          /orders:
+            post:
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [id]
+                      properties:
+                        id: { type: integer }
+              responses:
+                '200': { description: OK }
+        """;
+
+    [Fact]
+    public void Removing_OperationId_Updates_In_Place()
+    {
+        var doc1 = TestSupport.NormalizeSpec(WithOpId);
+        var doc2 = TestSupport.NormalizeSpec(WithoutOpId);
+        var engine = new BrunoSyncEngine(
+            new BrunoSyncSettings(), new BrunoExampleSettings { Enabled = false }, "t");
+
+        var (collection, first) = engine.Sync(null, doc1);
+        Assert.Single(first.Operations, o => o.Action == OperationAction.Added);
+
+        var (_, second) = engine.Sync(collection, doc2);
+        Assert.Single(second.Operations, o => o.Action == OperationAction.Updated);
+        Assert.DoesNotContain(second.Operations, o => o.Action is OperationAction.Stale or OperationAction.Added);
+        Assert.Single(collection.AllRequests());
+
+        // and back again: re-adding the operationId also updates in place
+        var (_, third) = engine.Sync(collection, doc1);
+        Assert.Single(third.Operations, o => o.Action == OperationAction.Updated);
+        Assert.DoesNotContain(third.Operations, o => o.Action == OperationAction.Stale);
+        Assert.Single(collection.AllRequests());
+    }
+
+    [Fact]
+    public void Method_Change_On_Stable_OperationId_Rewrites_Request()
+    {
+        const string asGet = """
+            openapi: 3.0.3
+            info: { title: t, version: "1" }
+            paths:
+              /orders:
+                get:
+                  operationId: createOrder
+                  parameters:
+                    - name: id
+                      in: query
+                      schema: { type: integer }
+                  responses:
+                    '200': { description: OK }
+            """;
+
+        var doc1 = TestSupport.NormalizeSpec(WithOpId);
+        var doc2 = TestSupport.NormalizeSpec(asGet);
+        var engine = new BrunoSyncEngine(
+            new BrunoSyncSettings(), new BrunoExampleSettings { Enabled = false }, "t");
+
+        var (collection, first) = engine.Sync(null, doc1);
+        Assert.Single(first.Operations, o => o.Action == OperationAction.Added);
+
+        var (_, second) = engine.Sync(collection, doc2);
+        Assert.Single(second.Operations, o => o.Action == OperationAction.Updated);
+
+        var request = Enumerable.Single(collection.AllRequests());
+        Assert.Equal("GET", new BrunoRequestView(request.Node).Method);
+        Assert.Equal("opid:createOrder", request.IdentityOf()!.StableKey);
+    }
+}

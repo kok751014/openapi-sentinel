@@ -1682,3 +1682,25 @@ NuGet push needs NUGET_API_KEY; Docker image needs a daemon. Bruno feature has n
 
 ## Last verified commit
 <the commit carrying this entry> on main, pushed to origin/main.
+
+---
+
+# 2026-08-25 (iteration 3) — AUDIT-DRIVEN DEFECT FIXES: IDENTITY TRANSITIONS + EXAMPLES UX
+
+Post-audit adversarial pass over the §4 identity matrix found and fixed two real defects:
+
+1. **Removing an operationId duplicated the request** (Added+Stale instead of Updated).
+   FindTarget's method+path fallback only ran when the INCOMING identity had an operationId;
+   the reverse transition had no bridge. Fix: marked items are additionally indexed by their
+   stored method+path, and the fallback consults that index in both directions.
+2. **Matched-via-fallback items were then flagged Stale** — the stale loop compared old
+   StableKeys. It now skips anything matched during the run (identity transitions no longer
+   produce ghost-stale entries).
+3. **`bruno examples` now overrides config `examples.enabled: false`** (the explicit command
+   is the user's request); `--no-examples` still suppresses everywhere; plain `bruno sync`
+   continues to respect config.
+
+Tests: IdentityTransitionTests (2 — opId removed/re-added round-trip in place; method change
+on stable operationId) + 2 CLI tests for the examples-enabled semantics. Suite **444/444**
+(Core 21, Reporting 48, Rules 91, OpenApi 171, Integration 3, Cli 64, Bruno 46).
+Build 0/0; git diff --check clean. Pushed to origin/main.

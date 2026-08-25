@@ -278,6 +278,44 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void Examples_Command_Overrides_Config_Disabled_Examples()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./c.yml
+              examples:
+                enabled: false
+            """);
+
+        // explicit `bruno examples` overrides config enabled=false; --no-examples suppresses.
+        var exit = CommandLineRunner.Run(
+            ["bruno", "examples", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+        Assert.True(exit == 0, "exit=" + exit + " errors=" + string.Join("\n | ", console.ErrorLines));
+        Assert.Contains("成功－完整參數",
+            File.ReadAllText(Path.Combine(root, "c.yml")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Sync_Respects_Config_Disabled_Examples_With_No_Examples_Flag_Equivalent()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./c.yml
+              examples:
+                enabled: false
+            """);
+
+        _ = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+        Assert.DoesNotContain("成功－完整參數",
+            File.ReadAllText(Path.Combine(root, "c.yml")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Remote_Source_Requires_Network_Permission_Path_Unchanged()
     {
         // URL source without allow-remote → the standard network-policy failure (exit 4),

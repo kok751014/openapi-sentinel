@@ -78,6 +78,9 @@ public sealed class BrunoSyncEngine
 
         // ---- Index the collection ----
         var markedIndex = new Dictionary<string, BrunoItem>(StringComparer.Ordinal);
+        // Secondary index: marked items by their stored method+path. Handles identity
+        // transitions in BOTH directions (operationId added since last sync AND removed).
+        var markedByMethodPath = new Dictionary<string, BrunoItem>(StringComparer.Ordinal);
         var unmarkedCandidates = new List<(BrunoItem Item, OperationIdentity Identity)>();
         foreach (var item in collection.AllRequests().Where(i => i.IsHttpRequest).ToList())
         {
@@ -91,6 +94,11 @@ public sealed class BrunoSyncEngine
                     conflicts.Add(new SyncConflict(
                         "duplicate-identity",
                         $"集合中有多個請求對應同一識別 {identity.StableKey}；僅同步第一個。"));
+                }
+
+                if (!string.IsNullOrEmpty(identity.Method) && !string.IsNullOrEmpty(identity.NormalizedPath))
+                {
+                    markedByMethodPath.TryAdd($"m+p:{identity.Method} {identity.NormalizedPath}", item);
                 }
 
                 continue;
@@ -107,7 +115,7 @@ public sealed class BrunoSyncEngine
 
         foreach (var (identity, operation, contentHash) in operations)
         {
-            var item = FindTarget(markedIndex, unmarkedCandidates, identity, matchedItems, conflicts);
+            var item = FindTarget(markedIndex, markedByMethodPath, unmarkedCandidates, identity, matchedItems, conflicts);
 
             if (item is null)
             {
@@ -119,10 +127,12 @@ public sealed class BrunoSyncEngine
         }
 
         // ---- Stale / removed handling (skipped for filtered runs) ----
+        // An item counts as alive if it was MATCHED this run — regardless of whether its
+        // stored StableKey still matches (identity may have transitioned opid ↔ m+p).
         var knownKeys = operations.Select(o => o.Identity.StableKey).ToHashSet(StringComparer.Ordinal);
         foreach (var (key, item) in markedIndex.OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
-            if (knownKeys.Contains(key) || filtering)
+            if (knownKeys.Contains(key) || filtering || matchedItems.Contains(item))
             {
                 continue;
             }
@@ -1115,6 +1125,7 @@ public sealed class BrunoSyncEngine
 
     private static BrunoItem? FindTarget(
         Dictionary<string, BrunoItem> markedIndex,
+        Dictionary<string, BrunoItem> markedByMethodPath,
         List<(BrunoItem Item, OperationIdentity Identity)> unmarkedCandidates,
         OperationIdentity identity,
         HashSet<BrunoItem> matchedItems,
@@ -1126,15 +1137,16 @@ public sealed class BrunoSyncEngine
             return direct;
         }
 
-        // operationId added since last sync: fall back to method+path match against marked items.
-        if (identity.OperationId is not null)
+        // Identity-transition fallback: match a previously-marked item by its STORED
+        // method+path. Covers operationId added since last sync (new opid:X vs stored
+        // m+p key) AND operationId removed (new m+p key vs stored opid:X).
+        var methodPathKey = $"m+p:{identity.Method} {identity.NormalizedPath}";
+        if (!string.IsNullOrEmpty(identity.Method) &&
+            markedByMethodPath.TryGetValue(methodPathKey, out var byMethodPath) &&
+            !matchedItems.Contains(byMethodPath))
         {
-            var methodPathKey = $"m+p:{identity.Method} {identity.NormalizedPath}";
-            if (markedIndex.TryGetValue(methodPathKey, out var byMethodPath) && !matchedItems.Contains(byMethodPath))
-            {
-                matchedItems.Add(byMethodPath);
-                return byMethodPath;
-            }
+            matchedItems.Add(byMethodPath);
+            return byMethodPath;
         }
 
         // Adopt an unmarked (user-created) request that uniquely matches method+path.
