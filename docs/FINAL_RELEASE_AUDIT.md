@@ -2,6 +2,10 @@
 
 Audit date: 2026-08-24 · Auditor: final release audit run per `FINAL_RELEASE_AUDIT_PROMPT.md` (single bounded pass)
 
+> Note: this snapshot predates the Bruno sync + scenario generator feature (added 2026-08-25).
+> Test counts and rule counts below reflect the codebase as of the audit date; see
+> [CHANGELOG.md](../CHANGELOG.md) for everything shipped since.
+
 ## Executive Summary
 
 A full local audit of the repository was performed against `MASTER_PROMPT.md`: clean build, complete test suite, an independent semantic compatibility review (~25 purpose-built probe contracts), CLI/exit-code exercises across every documented failure path, structural and security validation of all six report formats, determinism verification, dependency/security review, a real benchmark run, CI/sample-pipeline consistency checks, and a full end-to-end local release build with checksum verification and a no-.NET smoke test of the self-contained binary.

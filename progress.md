@@ -1986,3 +1986,16 @@ states: v1.0.1 released; main carries the Bruno feature (1.1.0 recommended); **4
 CI matrix green at v1.0.1 with remote runs currently paused by the owner-account billing
 issue; packaging gate re-verified after the Bruno project addition. Verified stdin works
 as a bruno source (probe, no defect). Gates green; docs-only commit pushed.
+
+---
+
+## 2026-08-25 (iteration 18) — AUDIT SNAPSHOT FORWARD-POINTER + HYGIENE SWEEP
+
+Hygiene sweep found one doc-currency item: docs/FINAL_RELEASE_AUDIT.md (dated 2026-08-24)
+predates the Bruno feature; added a top note pointing readers to CHANGELOG.md for later
+changes while keeping the historical counts intact. Everything else clean: help texts have
+no duplicate lines, no stale test counts outside dated snapshots, zero TODO/FIXME markers
+in shipped sources.
+
+Gates: build 0/0; diff-check clean. Remote CI still billing-blocked (external).
+main @ <this commit> pushed.
