@@ -1704,3 +1704,22 @@ Tests: IdentityTransitionTests (2 — opId removed/re-added round-trip in place;
 on stable operationId) + 2 CLI tests for the examples-enabled semantics. Suite **444/444**
 (Core 21, Reporting 48, Rules 91, OpenApi 171, Integration 3, Cli 64, Bruno 46).
 Build 0/0; git diff --check clean. Pushed to origin/main.
+
+---
+
+## 2026-08-25 (iteration 3b) — REMOTE CI BLOCKED BY ACCOUNT BILLING (external)
+
+Runs 32805205837 / 32805489505 failed before starting any job:
+"The job was not started because recent account payments have failed or your spending
+limit needs to be increased." All three OS legs + downstream jobs never executed.
+This is a GitHub Actions **billing** condition on the repository owner's account —
+nothing in-repo can change it. Local gates remain authoritative and fully green
+(build 0/0, 444/444, git diff --check clean). Action for the user: resolve Billing &
+plans → spending limit; future pushes will re-run CI automatically.
+
+⚠️ Also open: Dependabot PR bumping Microsoft.NET.Test.Sdk 17.14.1 → 18.9.0. Per
+AGENTS.md this migration BREAKS .NET 10 SDK dotnet test (v3/MSTest.Sdk-18 incident from
+the v0.x sessions) — do not merge without re-validating the full test matrix.
+
+### Last verified commit
+1c6620d pushed; this entry committed next.
