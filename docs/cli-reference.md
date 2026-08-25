@@ -80,7 +80,7 @@ openapi-sentinel bruno examples [options]
 | `--collection <path.yml>` | both | Collection target; must be `.yml`/`.yaml` (directory targets are refused) |
 | `--report-dir <dir>` | sync | Report output directory (default `./api-contract/reports`) |
 | `--config <path>` | both | Explicit configuration file |
-| `--dry-run` | sync | Analyze and print planned changes without writing anything |
+| `--dry-run` | both | Analyze and print planned changes without writing anything |
 | `--remove-deleted` | sync | Delete requests whose operations were removed (default: mark stale) |
 | `--no-examples` | sync | Skip scenario generation for this run |
 | `--operation <operationId>` | examples | Process only this operation |

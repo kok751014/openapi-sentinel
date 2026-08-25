@@ -255,6 +255,27 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void Examples_DryRun_Writes_Nothing()
+    {
+        WriteFile("spec.yaml", Spec);
+        _ = Config();
+
+        // baseline collection exists
+        Assert.Equal(0, CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml"), "--no-color"],
+            console));
+        var before = File.ReadAllText(Path.Combine(root, "api-contract/bruno/collection.yml"));
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "examples", "--config", Path.Combine(root, "openapi-sentinel.yml"), "--dry-run"],
+            console);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(before, File.ReadAllText(Path.Combine(root, "api-contract/bruno/collection.yml")));
+        Assert.Contains("(dry-run)", string.Join("\n", console.OutLines), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Business_Scenario_Errors_Block_Sync_With_Config_Exit_Code()
     {
         WriteFile("spec.yaml", Spec);

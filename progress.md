@@ -1873,3 +1873,18 @@ Tests: SymlinkCollectionTests (2 — write-through keeps link + updates target; 
 path unchanged). End-to-end CLI probe confirms `file` reports "symbolic link" after sync.
 docs/bruno-sync.md documents the behavior; CHANGELOG unreleased entry extended.
 Suite **453/453**; build 0/0; diff-check clean. Pushed.
+
+---
+
+## 2026-08-25 (iteration 10) — EXAMPLES --DRY-RUN PINNED + DOC CORRECTED
+
+§1B explicitly requires `openapi-sentinel bruno examples --dry-run`; the implementation
+already supported it (same write-guard path as sync) but cli-reference documented the flag
+as sync-only and no test pinned the semantics.
+
+- docs/cli-reference.md: `--dry-run` now marked "both".
+- New test: Examples_DryRun_Writes_Nothing (collection byte-identical after a dry run,
+  "(dry-run)" banner printed, exit 0).
+
+Remote CI still blocked by owner-account billing (external, unchanged — jobs never start).
+Gates: build 0/0; suite **454/454**; diff-check clean. main @ <this commit> pushed.
