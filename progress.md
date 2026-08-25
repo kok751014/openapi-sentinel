@@ -2074,3 +2074,20 @@ Suite **463/463**; build 0/0; diff-check clean. Pushed.
 
 The entire path-misconfiguration class is now closed: every directory Sentinel touches is
 validated before any work happens, with consistent exit codes and actionable messages.
+
+---
+
+# 2026-08-25 (iteration 24) — FUZZ HARNESS NOW EXERCISES THE EXAMPLES PATH
+
+**Coverage gap:** BrunoSyncFuzzTests ran with examples disabled, so the example-writing
+surface (registry updates, per-example node rewrites, stale-example cleanup) was never
+under the differential invariants — the same surface where the header/cookie completeness
+defect lived.
+
+**Change:** fuzz harness now runs with examples ENABLED (maxPerOperation 4). Invariants
+strengthen accordingly: I1 byte-stability now includes generated examples; I2 determinism
+covers registry + rewrite paths; I3 user content survives alongside generated examples.
+Validated at **500 seeds: clean (~3 s)**. Committed seed count stays 40.
+
+Gates: build 0/0; suite green; diff-check clean. Pushed.
+Remote CI still billing-blocked (external, unchanged).
