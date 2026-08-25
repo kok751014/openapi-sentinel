@@ -1723,3 +1723,27 @@ the v0.x sessions) — do not merge without re-validating the full test matrix.
 
 ### Last verified commit
 1c6620d pushed; this entry committed next.
+
+---
+
+# 2026-08-25 (iteration 4) — BRUNO DIFFERENTIAL FUZZ HARNESS (mirrors compare-engine practice)
+
+`BrunoSyncFuzzTests`: deterministic seeded generator (random ops/params/enums/constraints/
+tags, ~17% operations deliberately without operationId to exercise m+p identity) pinning the
+sync engine's invariants across randomized structure space:
+- I1 self-resync → all Unchanged + byte-stable serialization;
+- I2 arbitrary evolution A→B → crash-free and byte-identical across independent runs;
+- I3 user content inside x-sentinel survives on every pre-existing request.
+
+Committed seed count 40 (~0.3 s CI). Deep sweep validated at **500 seeds: clean** before
+committing; rerun anytime via `SENTINEL_BRUNO_FUZZ_SEEDS=500 dotnet test --filter Forty_Random`.
+
+Suite **447/447** (Bruno 47 incl. fuzz). Build 0/0; diff-check clean.
+
+### Remote CI status
+Still blocked by the owner-account billing issue (runs never start) — external, unchanged.
+Local gates authoritative. Do NOT merge the open Dependabot Test.Sdk→18.9.0 PR (breaks
+.NET 10 dotnet test per AGENTS.md).
+
+### Last verified commit
+<this commit> on main, pushed.
