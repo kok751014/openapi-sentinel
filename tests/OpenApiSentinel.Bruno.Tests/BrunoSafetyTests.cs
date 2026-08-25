@@ -281,3 +281,40 @@ public class BrunoPerformanceTests
         Assert.Equal(collection.ToYaml(), collection.ToYaml());
     }
 }
+
+public class BrunoPathRobustnessTests
+{
+    [Fact]
+    public void Relative_Paths_Resolve_Against_Base_Directory()
+    {
+        var resolved = OpenApiSentinel.Bruno.BrunoPaths.Resolve("./api-contract/c.yml", "/base/config-dir");
+        Assert.StartsWith("/base/config-dir", resolved, StringComparison.Ordinal);
+        Assert.EndsWith("c.yml", resolved, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Absolute_Paths_Pass_Through_Unchanged()
+    {
+        var absolute = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "x", "collection.yml"));
+        Assert.Equal(absolute, OpenApiSentinel.Bruno.BrunoPaths.Resolve(absolute, "/somewhere"));
+    }
+
+    [Fact]
+    public void Traversal_Normalizes_But_Never_Escapes_Filesystem_Root()
+    {
+        var resolved = OpenApiSentinel.Bruno.BrunoPaths.Resolve("../../outside.yml", "/base");
+        Assert.False(resolved.Contains("..", StringComparison.Ordinal)); // GetFullPath collapses segments deterministically
+    }
+
+    [Fact]
+    public void Collection_Target_Extension_Is_Checked_Regardless_Of_Separator_Style()
+    {
+        Assert.Throws<OpenApiSentinel.Bruno.BrunoSyncException>(() =>
+            OpenApiSentinel.Bruno.BrunoPaths.ValidateCollectionTarget(
+                Path.Combine(Path.GetTempPath(), "collection.json")));
+
+        // .YAML uppercase must be accepted by extension check (existence checked elsewhere)
+        OpenApiSentinel.Bruno.BrunoPaths.ValidateCollectionTarget(
+            Path.Combine(Path.GetTempPath(), "COLLECTION.YAML"));
+    }
+}

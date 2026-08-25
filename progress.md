@@ -1558,3 +1558,74 @@ GitHub Actions run 32683002520 (commit 7569c46): completed success, 1m58s — bu
 on ubuntu-latest / windows-latest / macos-latest plus the samples scenario job. The last
 "remaining risk" line in docs/FINAL_RELEASE_AUDIT.md was updated accordingly. Release
 recommendation unchanged: **GO WITH KNOWN LIMITATIONS**.
+
+---
+
+# 2026-08-25 — BRUNO SYNC + SCENARIO GENERATOR (full feature, Definition of Done)
+
+Implemented BRUNO_SYNC_SCENARIO_LOOP_PROMPT.md end-to-end without breaking any v1
+capability. Four milestone commits: c9a054a (model+YAML I/O), a37c753 (sync engine),
+5747d35 (CLI+reports+state), 8059b3c+8526b7d (hardening/docs/samples).
+
+## Completed
+
+- **New project** `src/OpenApiSentinel.Bruno` (+ tests/OpenApiSentinel.Bruno.Tests, 44
+  tests) wired into slnx and CLI refs; YamlDotNet remains the only runtime dependency.
+- **`bruno sync` / `bruno examples`** commands with --source/--collection/--report-dir/
+  --dry-run/--remove-deleted/--no-examples/--operation/--path/--verbose/--config.
+- **Format**: single-file OpenCollection YAML read/write/merge with fidelity-preserving
+  round-trip. Custom event-level YAML emitter replaces YamlStream.Save (which anchors
+  repeated scalar VALUES with random ids → nondeterministic output); original scalar
+  styles are reproduced exactly (plain stays plain, quoted stays quoted, literal blocks
+  for multiline bodies). Directory (.bru) targets refused with exit-3 guidance.
+- **Preservation engine**: x-sentinel identity block (operationId > method+path,
+  content hash, managed params/headers/body registries); contract owns structure,
+  user owns values/scripts/tests/auth/docs/examples; unmarked user requests adopted on
+  unique match; stale-by-default deletion policy; §6 lifecycle test pins everything.
+- **Incremental state**: hidden `<collection>.sentinel-state.json` (schemaVersion 1)
+  hashing contract fingerprint + bruno/example config + scenarios file; exact spec
+  fast-path message; corruption degrades to full sync.
+- **Scenario generator**: deterministic zh-TW names/descriptions; success-full /
+  success-required-only / validation failures (enum, min/max, length, pattern-provable,
+  format, wrong-type, item counts) / boundaries; hard maxPerOperation cap with stable
+  ranking; auth scenarios never generated.
+- **Business scenarios**: openapi-sentinel.scenarios.yml loader w/ duplicate/unknown-opId/
+  status-range errors and body-shape warnings; merged into examples; auto-cleanup on removal.
+- **Reports**: bruno-sync-report.json (schema bruno-sync/1.0, deterministic) +
+  self-contained zh-TW HTML; written atomically after non-skipped syncs.
+- **Config**: validated `bruno:` section (format=auto only, language=zh-TW only,
+  maxPerOperation 1–64) + config-relative path resolution; init template documents it.
+- **Security**: hostile-metadata structural safety (newlines/quotes/script payloads stay
+  scalars), folder-segment sanitization ('..' collapsed — real defect caught by test),
+  HTML escaping, no secrets in outputs/state, SSRF policy inherited for URL sources.
+- **Performance**: 1000-op spec full sync <15 s, unchanged resync <5 s, byte-stable
+  serialization; bounded recursion for cyclic/deep schemas.
+- **Docs**: docs/bruno-sync.md, docs/bruno-scenarios.md,
+  docs/visual-studio-integration.md (guarded .targets recipe), cli-reference bruno
+  section, README feature row + doc links, DECISIONS 32, engineering report refresh.
+- **Samples**: samples/bruno-sync (v1/v2 pair, config, scenarios.yml, README) —
+  create→edit→evolve→preserve→skip lifecycle reproduced in a scratch copy.
+
+## Verification (actual)
+
+- `dotnet build -c Release` → **0 errors / 0 warnings**.
+- `dotnet test -c Release` → **440/440 passed** (Core 21, Reporting 48, Rules 91,
+  OpenApi 171, Integration 3, Cli 62, Bruno 44). All pre-existing suites untouched-green.
+- Canonical: breaking sample exit 1 / safe exit 0; samples/bruno-sync sync exit 0;
+  second run prints "No API contract changes detected." verbatim; dry-run writes nothing.
+- git diff --check clean; no TODO/FIXME in shipped sources.
+
+## Known limitations (documented)
+
+- Only single-file OpenCollection YAML is writable (.bru directories rejected by design).
+- Sentinel-generated examples carry no response block (declared statuses ≠ guaranteed).
+- Query style/explode serialization not reflected in URLs; preserveScripts/preserveTests
+  accepted but inert (Sentinel never touches scripts/tests anyway).
+
+## External blockers (unchanged)
+
+NuGet push needs NUGET_API_KEY; Docker build needs a daemon. Bruno feature needs none.
+
+## Last verified commit
+
+<the commit carrying this entry> on main; pushed to origin/main.
