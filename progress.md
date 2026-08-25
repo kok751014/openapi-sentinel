@@ -2016,3 +2016,13 @@ Unknown keys remain allowed everywhere — only known list slots are guarded.
 Tests: MalformedListSlotTests ×5 (params/headers/examples rejections with path context,
 nested-folder context, well-formed still parses incl. folders). Deep fuzz 300 seeds clean.
 Suite **463/463**; build 0/0; diff-check clean. Pushed.
+
+---
+
+## 2026-08-25 (iteration 20) — .gitignore PATTERN FOR SYNC STATE FILES
+
+docs/bruno-sync.md says the incremental state file is gitignore-able, but no pattern
+existed — users following the docs had to invent one. Added `*.sentinel-state.json`
+(matches the default hidden state file at any depth; verified via git check-ignore for
+root and nested collection layouts). Committed sample artifacts unaffected.
+Gates: build 0/0. Remote CI still billing-blocked (external).

@@ -17,3 +17,6 @@ sentinel-reports/
 
 # local tooling artifacts
 /openapi-sentinel.yml
+
+# OpenAPI Sentinel incremental sync state (hashes only; safe to ignore — docs/bruno-sync.md)
+*.sentinel-state.json
