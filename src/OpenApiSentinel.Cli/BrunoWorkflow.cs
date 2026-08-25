@@ -87,6 +87,11 @@ public static class BrunoWorkflow
         var rawCollectionPath = request.CollectionOverride ?? bruno.CollectionPath!;
         var collectionFile = BrunoPaths.Resolve(rawCollectionPath, baseDir);
         BrunoPaths.ValidateCollectionTarget(collectionFile);
+        var collectionParent = Path.GetDirectoryName(collectionFile);
+        if (!string.IsNullOrEmpty(collectionParent))
+        {
+            BrunoPaths.EnsureDirectoryAvailable(collectionParent);
+        }
 
         var rawReportPath = request.ReportDirOverride ?? bruno.ReportPath ?? "./api-contract/reports";
         var reportDir = BrunoPaths.Resolve(rawReportPath, baseDir);
@@ -138,6 +143,12 @@ public static class BrunoWorkflow
         {
             throw new SentinelConfigException(
                 $"'bruno.sync.statePath' ('{statePath}') collides with a sync-report artifact path.");
+        }
+
+        var stateDir = Path.GetDirectoryName(statePath);
+        if (!string.IsNullOrEmpty(stateDir))
+        {
+            BrunoPaths.EnsureDirectoryAvailable(stateDir);
         }
 
         var filtering = request.OperationFilter is not null || request.PathFilter is not null;

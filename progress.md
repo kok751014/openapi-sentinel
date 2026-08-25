@@ -2057,3 +2057,20 @@ File.Exists/Directory.Exists explicitly per level.
 Tests: ReportDir_Pointing_At_Existing_File_Fails_As_Config_Error (exit 3, named path,
 collection+state NOT written). Suite **462/462** across all projects; build 0/0;
 diff-check clean. Pushed.
+
+---
+
+# 2026-08-25 (iteration 23) — PATH-CLASS CLOSED: collection/state PARENT-AS-FILE = EXIT 3
+
+**Sibling defect found by probe:** `collectionPath` under an existing FILE as parent
+(e.g. `./blocker/collection.yml`) crashed with opaque exit 5 — same class as iteration 22's
+reportDir case. The generalized `EnsureDirectoryAvailable` guard now runs up-front on ALL
+THREE directory locations: reportDir, the collection file's parent, and the state file's
+parent. Each fails fast with exit 3 + a zh-TW message naming the blocking path, before any
+document load or write.
+
+Tests: CollectionPath_Under_A_File_Parent_Fails_As_Config_Error_Before_Writes.
+Suite **463/463**; build 0/0; diff-check clean. Pushed.
+
+The entire path-misconfiguration class is now closed: every directory Sentinel touches is
+validated before any work happens, with consistent exit codes and actionable messages.

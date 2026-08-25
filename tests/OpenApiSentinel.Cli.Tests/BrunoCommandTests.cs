@@ -339,6 +339,26 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void CollectionPath_Under_A_File_Parent_Fails_As_Config_Error_Before_Writes()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("blocker", "i-am-a-file");
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./blocker/collection.yml
+            """);
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+
+        Assert.Equal(3, exit);
+        Assert.Contains(console.ErrorLines, l =>
+            l.Contains("blocker", StringComparison.Ordinal) && l.Contains("檔案", StringComparison.Ordinal));
+        Assert.DoesNotContain(Directory.EnumerateFiles(root, "collection.yml", SearchOption.AllDirectories), _ => true);
+    }
+
+    [Fact]
     public void ReportDir_Pointing_At_Existing_File_Fails_As_Config_Error()
     {
         WriteFile("spec.yaml", Spec);
