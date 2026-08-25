@@ -2055,5 +2055,5 @@ Implementation note: DirectoryInfo.Exists is false for file paths — the walk m
 File.Exists/Directory.Exists explicitly per level.
 
 Tests: ReportDir_Pointing_At_Existing_File_Fails_As_Config_Error (exit 3, named path,
-collection+state NOT written). Suite green across all projects (total 464); build 0/0;
+collection+state NOT written). Suite **462/462** across all projects; build 0/0;
 diff-check clean. Pushed.
