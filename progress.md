@@ -1948,3 +1948,17 @@ Dry-run was already safe (no writes).
 Tests: StatePath_Colliding_With_Collection_Is_Refused_And_Non_Destructive (seeds a real
 collection, re-aims statePath at it, asserts exit 3 + byte-identical collection + named
 error). Suite **457/457**; build 0/0; diff-check clean. Pushed.
+
+---
+
+## 2026-08-25 (iteration 15) — COLLISION-SURFACE PROBES: ALREADY SAFE BY CONSTRUCTION
+
+Probed the two remaining collision variants after last iteration's statePath fix:
+1. `collectionPath` aimed at a report artifact (`reports/bruno-sync-report.json`) — refused
+   by the existing .yml/.yaml extension guard (exit 3); report filenames are fixed constants,
+   so no yml-named artifact collision is reachable.
+2. `sync.statePath` aimed at a report artifact — refused by the iteration-14 guard (exit 3),
+   and no reports directory is even created (refusal precedes all writes).
+
+No code changes needed. Gates re-run: build 0/0; suite **457/457**; diff-check clean.
+Remote CI still billing-blocked (external). main @ <this commit> pushed.
