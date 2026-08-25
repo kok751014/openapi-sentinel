@@ -1,3 +1,4 @@
+using OpenApiSentinel.Bruno;
 using OpenApiSentinel.OpenApi;
 
 namespace OpenApiSentinel.Cli;
@@ -33,6 +34,16 @@ public static class CommandLineRunner
             console.WriteError($"configuration error: {ex.Message}");
             return ExitCodes.InvalidConfiguration;
         }
+        catch (BrunoFormatException ex)
+        {
+            console.WriteError($"error: invalid Bruno collection: {ex.Message}");
+            return ExitCodes.InvalidInput;
+        }
+        catch (BrunoSyncException ex)
+        {
+            console.WriteError($"bruno sync error: {ex.Message}");
+            return ExitCodes.InvalidConfiguration;
+        }
         catch (Exception ex)
         {
             var debug = CommandLineParser.Parse(args).Has("debug");
@@ -48,6 +59,7 @@ public static class CommandLineRunner
         "format", "fail-on", "config", "baseline", "update-baseline",
         "output", "o", "json", "markdown", "html", "sarif", "junit",
         "changelog", "pr-summary", "explain-target",
+        "source", "collection", "report-dir", "operation", "path",
     };
 
     private static int RunCore(string[] args, IConsoleWriter console)
@@ -107,11 +119,45 @@ public static class CommandLineRunner
             case "compare":
                 return CompareAsync(parsed, console).GetAwaiter().GetResult();
 
+            case "bruno":
+                return parsed.Positional.Count >= 1
+                    ? BrunoAsync(parsed, parsed.Positional[0].ToLowerInvariant(), console).GetAwaiter().GetResult()
+                    : UsageError(console, "bruno <sync|examples> [options]");
+
             default:
                 console.WriteError($"Unknown command '{parsed.Command}'.");
                 PrintUsage(console);
                 return ExitCodes.InvalidInput;
         }
+    }
+
+    private static async Task<int> BrunoAsync(ParsedCommandLine parsed, string subCommand, IConsoleWriter console)
+    {
+        if (subCommand is not ("sync" or "examples"))
+        {
+            console.WriteError($"error: unknown bruno sub-command '{subCommand}'. Use 'sync' or 'examples'.");
+            return ExitCodes.InvalidInput;
+        }
+
+        var config = LoadConfig(parsed, console);
+        string? sourceOverride = parsed.Value("source") ?? (parsed.Positional.Count > 1 ? parsed.Positional[1] : null);
+
+        var request = new BrunoSyncRequest
+        {
+            SubCommand = subCommand,
+            Config = config,
+            DryRun = parsed.Has("dry-run"),
+            Verbose = parsed.Has("verbose"),
+            SourceOverride = sourceOverride,
+            CollectionOverride = parsed.Value("collection"),
+            ReportDirOverride = parsed.Value("report-dir"),
+            RemoveDeletedOperationsOverride = parsed.Has("remove-deleted") ? true : null,
+            ExamplesEnabledOverride = !parsed.Has("no-examples"),
+            OperationFilter = parsed.Value("operation"),
+            PathFilter = parsed.Value("path"),
+        };
+
+        return await BrunoWorkflow.SyncAsync(request, console);
     }
 
     private static async Task<int> CompareAsync(ParsedCommandLine parsed, IConsoleWriter console)
@@ -212,7 +258,6 @@ public static class CommandLineRunner
                       --verbose                               impact + suggested action per finding
                       --report-unknown-kinds                  flag changes no rule evaluates (CG9003)
                       --no-suppressed                         omit the suppressed-findings section
-                      --no-suppressed                         omit the suppressed-findings section
                     """);
                 break;
 
@@ -253,6 +298,34 @@ public static class CommandLineRunner
                     """);
                 break;
 
+            case "bruno":
+                console.Out("""
+                    openapi-sentinel bruno <sync|examples> [options]
+
+                    sync      把 OpenAPI contract 同步成 Bruno collection（OpenCollection YAML），
+                              保留人工 values / scripts / tests / docs / auth，並可自動產生測試範例。
+                    examples  只（重）產生測試範例；可用 --operation 或 --path 縮小範圍。
+
+                    options:
+                      --source <file-or-url>    OpenAPI/Swagger 來源（覆寫設定檔 bruno.source）
+                      --collection <path.yml>   Bruno collection 目標（單檔 OpenCollection YAML）
+                      --report-dir <dir>        報告輸出目錄（預設 ./api-contract/reports）
+                      --config <path>           明確指定設定檔
+                      --dry-run                 只分析與顯示計畫變更，不寫入任何檔案
+                      --remove-deleted          允許刪除已從規格移除的操作（預設僅標示失效）
+                      --no-examples             本次不產生測試範例
+                      --operation <operationId> examples：只處理此 operation
+                      --path <api-path>         examples：只處理此 API path 開頭的操作
+                      --verbose                 顯示每個操作的變更與保留明細
+                      --no-color                純文字輸出
+
+                    說明：
+                      * 自動產生的範例名稱／描述預設為繁體中文（zh-TW）。
+                      * authentication 不會被拿來產生失敗情境；既有 auth 設定永不改動。
+                      * 目錄式 (.bru) collection 不支援寫入，會明確報錯而非破壞內容。
+                    """);
+                break;
+
             default:
                 PrintUsage(console);
                 break;
@@ -267,6 +340,7 @@ public static class CommandLineRunner
             usage:
               openapi-sentinel compare <OLD-SPEC> <NEW-SPEC> [options]
               openapi-sentinel validate <SPEC>
+              openapi-sentinel bruno <sync|examples> [options]
               openapi-sentinel rules [--format json]
               openapi-sentinel explain <RULE-ID>
               openapi-sentinel init [--force]

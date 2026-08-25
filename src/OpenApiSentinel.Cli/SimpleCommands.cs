@@ -177,6 +177,23 @@ output: {}
   # json: artifacts/api-diff.json
   # html: artifacts/api-diff.html
   # pr-summary: artifacts/pr-summary.md   # compact summary for PR comments
+
+# Bruno collection sync + automatic test scenarios (see docs/bruno-sync.md).
+# Paths resolve relative to THIS configuration file's directory.
+# bruno:
+#   enabled: true
+#   source: https://example.local/swagger/v1/swagger.json
+#   collectionPath: ./api-contract/bruno/collection.yml   # single-file OpenCollection YAML
+#   reportPath: ./api-contract/reports
+#   sync:
+#     preserveManualValues: true     # keep user-edited param/body values on updates
+#     removeDeletedOperations: false # false = mark removed ops as stale (default)
+#   examples:
+#     enabled: true
+#     language: zh-TW                # generated scenario names/descriptions
+#     ignoreAuthentication: true     # never generate auth failure scenarios
+#     maxPerOperation: 8             # hard cap of auto scenarios per operation
+#     scenariosPath: ./api-contract/scenarios/openapi-sentinel.scenarios.yml
 """;
         File.WriteAllText(target, template);
         console.Out($"Wrote starter configuration to '{target}'. Review failOn and ignore paths before committing.");

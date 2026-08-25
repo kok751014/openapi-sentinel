@@ -38,16 +38,19 @@ public sealed class BrunoSyncEngine
         this.businessScenarios = businessScenarios ?? [];
     }
 
-    /// <summary>Runs the sync against an existing collection (may be null for first run).</summary>
+    /// <summary>Runs the sync against an existing collection (may be null for first run).
+    /// When <paramref name="operationFilter"/> is set, only matching operations are processed
+    /// and stale/removal detection is skipped entirely (a filtered view cannot judge deletion).</summary>
     public (BrunoCollectionDocument Collection, BrunoSyncOutcome Outcome) Sync(
         BrunoCollectionDocument? existing,
-        ApiDocument document)
+        ApiDocument document,
+        Func<OperationIdentity, bool>? operationFilter = null)
     {
-        globalSecurity = document.GlobalSecurity;
         globalSecurity = document.GlobalSecurity;
         var warnings = new List<string>();
         var conflicts = new List<SyncConflict>();
         var outcomes = new List<OperationSyncOutcome>();
+        var filtering = operationFilter is not null;
 
         var baseUrl = ResolveBaseUrl(document);
         var collection = existing ?? BrunoCollectionDocument.CreateNew(CollectionNameFor(document));
@@ -66,7 +69,10 @@ public sealed class BrunoSyncEngine
                     continue;
                 }
 
-                operations.Add((identity, operation, ContractFingerprint.ComputeOperationHash(identity, operation)));
+                if (!filtering || operationFilter!(identity))
+                {
+                    operations.Add((identity, operation, ContractFingerprint.ComputeOperationHash(identity, operation)));
+                }
             }
         }
 
@@ -112,11 +118,11 @@ public sealed class BrunoSyncEngine
             outcomes.Add(UpdateRequest(item, identity, operation, contentHash, baseUrl));
         }
 
-        // ---- Stale / removed handling ----
+        // ---- Stale / removed handling (skipped for filtered runs) ----
         var knownKeys = operations.Select(o => o.Identity.StableKey).ToHashSet(StringComparer.Ordinal);
         foreach (var (key, item) in markedIndex.OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
-            if (knownKeys.Contains(key))
+            if (knownKeys.Contains(key) || filtering)
             {
                 continue;
             }

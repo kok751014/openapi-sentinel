@@ -97,9 +97,48 @@ output:
   junit: artifacts/api-diff.junit.xml
   changelog: artifacts/CHANGELOG.md
   pr-summary: artifacts/pr-summary.md   # compact PR-comment markdown
+
+# ── Bruno collection sync + automatic test scenarios ─────────────────────
+# See docs/bruno-sync.md and docs/bruno-scenarios.md for the full guide.
+# All relative paths resolve against THIS configuration file's directory,
+# so MSBuild/CI invocations from any working directory behave identically.
+bruno:
+  enabled: true
+  source: ./swagger/v1/swagger.json     # OpenAPI/Swagger file or http(s) URL
+  collectionPath: ./api-contract/bruno/collection.yml   # single-file OpenCollection YAML
+  reportPath: ./api-contract/reports    # bruno-sync-report.html / .json land here
+  format: auto                          # only "auto" (OpenCollection YAML) exists today
+  sync:
+    preserveManualValues: true          # keep user-edited param/body values on updates
+    preserveScripts: true               # accepted; Sentinel never touches scripts/tests anyway
+    preserveTests: true                 # accepted; see docs/bruno-sync.md#preservation-rules
+    preserveDocs: true                  # false = rewrite request docs from the contract
+    removeDeletedOperations: false      # false = removed ops are reported stale (kept)
+    statePath: ""                       # optional; default: hidden state file next to the collection
+  examples:
+    enabled: true                       # generate 「可直接 Send」的測試範例 per operation
+    language: zh-TW                     # generated scenario names/descriptions (zh-TW only)
+    ignoreAuthentication: true          # never auto-generate auth failure scenarios
+    maxPerOperation: 8                  # hard cap of auto scenarios per operation (1-64)
+    scenariosPath: ""                   # optional Layer-2 business scenario file
 ```
 
 ## Semantics
+
+### `bruno` (Bruno sync + scenarios)
+
+Nested keys, dotted: `bruno.enabled`, `bruno.source`, `bruno.collectionPath`,
+`bruno.reportPath`, `bruno.format`; `bruno.sync.preserveManualValues`,
+`bruno.sync.preserveScripts`, `bruno.sync.preserveTests`, `bruno.sync.preserveDocs`,
+`bruno.sync.removeDeletedOperations`, `bruno.sync.statePath`;
+`bruno.examples.enabled`, `bruno.examples.language`, `bruno.examples.ignoreAuthentication`,
+`bruno.examples.maxPerOperation`, `bruno.examples.scenariosPath`.
+
+- Unknown keys under any `bruno.*` section warn; bad values (`format` other than `auto`,
+  unsupported `language`, `maxPerOperation` outside 1–64) fail configuration (exit 3).
+- `bruno.sync.statePath` overrides the default incremental-state location
+  (`<collection>.yml.sentinel-state.json` hidden file next to the collection).
+- The state file stores only hashes and a timestamp — never spec content or secrets.
 
 ### `rules` overrides
 

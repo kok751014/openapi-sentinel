@@ -96,16 +96,23 @@ public static class BrunoYaml
     private static void EmitScalar(IEmitter emitter, YamlScalarNode scalar)
     {
         var value = scalar.Value ?? "null";
-        var style = scalar.Style is not (ScalarStyle.Any or ScalarStyle.Plain)
-            ? scalar.Style
-            : NeedsQuoting(value) || IsAmbiguousScalar(value)
+
+        // Loaded nodes carry the ORIGINAL presentation style (plain→Plain, quoted→*Quoted),
+        // so honoring any explicitly-set style reproduces the author's intent exactly.
+        // Style.Any means "fresh node created in code": pick a safe presentation.
+        var style = scalar.Style switch
+        {
+            ScalarStyle.Plain when !NeedsQuoting(value) && !value.Contains('\n', StringComparison.Ordinal) =>
+                ScalarStyle.Plain,
+            ScalarStyle.Plain when value.Contains('\n', StringComparison.Ordinal) => ScalarStyle.Literal,
+            ScalarStyle.Any => NeedsQuoting(value)
                 ? ScalarStyle.DoubleQuoted
                 : value.Contains('\n', StringComparison.Ordinal)
                     ? ScalarStyle.Literal
-                    : ScalarStyle.Plain;
+                    : ScalarStyle.Plain,
+            _ => scalar.Style,
+        };
 
-        // A literal block cannot represent text that lacks a trailing newline cleanly;
-        // the emitter handles chomp indicators itself, so pass through unchanged.
         emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, value, style, true, false));
     }
 
@@ -148,41 +155,6 @@ public static class BrunoYaml
         }
 
         return char.IsWhiteSpace(value[^1]) || char.IsWhiteSpace(value[0]) && value[0] != '\n';
-    }
-
-    /// <summary>Strings that would re-parse as another type when emitted plain.</summary>
-    internal static bool IsAmbiguousScalar(string value)
-    {
-        var trimmed = value.Trim();
-        if (trimmed.Length == 0 || trimmed == "~")
-        {
-            return true;
-        }
-
-        switch (trimmed)
-        {
-            case "true" or "True" or "TRUE":
-            case "false" or "False" or "FALSE":
-            case "null" or "Null" or "NULL":
-            case "yes" or "Yes" or "YES" or "no" or "No" or "NO":
-            case "on" or "On" or "ON" or "off" or "Off" or "OFF":
-                return true;
-        }
-
-        if (long.TryParse(trimmed, System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture, out _) ||
-            double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out _))
-        {
-            return true;
-        }
-
-        // Hex / octal / binary / underscore-grouped integers.
-        return System.Text.RegularExpressions.Regex.IsMatch(
-            trimmed,
-            @"^[-+]?(0x[0-9a-fA-F_]+|0[bo][0-9a-fA-F_]+|[0-9][0-9_]*)$",
-            System.Text.RegularExpressions.RegexOptions.None,
-            TimeSpan.FromMilliseconds(250));
     }
 
     /// <summary>Copies a representation-model subtree so it can live in another document.</summary>

@@ -31,6 +31,7 @@ public static class CommandLineParser
     {
         "help", "version", "no-color", "verbose", "debug", "force",
         "allow-remote", "report-unknown-kinds", "no-suppressed",
+        "dry-run", "no-examples", "remove-deleted",
     };
     public static ParsedCommandLine Parse(string[] args)
     {

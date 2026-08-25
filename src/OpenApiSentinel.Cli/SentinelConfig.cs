@@ -1,4 +1,5 @@
 using System.Globalization;
+using OpenApiSentinel.Bruno;
 using OpenApiSentinel.Core;
 using OpenApiSentinel.OpenApi;
 using OpenApiSentinel.Rules;
@@ -39,6 +40,13 @@ public sealed record SentinelConfiguration
     /// document's directory (e.g. Azure resource-manager specs sharing common-types).
     /// Absolute paths outside the document tree stay blocked in every mode.</summary>
     public bool AllowAboveDocumentTree { get; init; }
+
+    /// <summary>Bruno sync / scenario-generation section; null when absent (feature off).</summary>
+    public BrunoConfiguration? Bruno { get; init; }
+
+    /// <summary>Directory of the configuration file itself; relative paths in the config
+    /// resolve against this so MSBuild/CI invocations from any cwd behave identically.</summary>
+    public string? ConfigBaseDirectory { get; init; }
 }
 
 public sealed class SentinelConfigException(string message) : Exception(message);
@@ -54,7 +62,7 @@ public static class SentinelConfigLoader
     {
         "failOn", "rules", "ignore", "remoteReferences", "headerEnv",
         "suppressions", "baseline", "output", "reportUnknownKinds", "limits",
-        "externalReferences",
+        "externalReferences", "bruno",
     };
 
     private static readonly Dictionary<string, HashSet<string>> NestedKeys = new(StringComparer.Ordinal)
@@ -68,6 +76,13 @@ public static class SentinelConfigLoader
             { "maxDocumentBytes", "maxDepth", "maxNodes", "maxResolvedRefs", "maxRefChainDepth" },
         ["externalReferences"] = new(StringComparer.Ordinal)
             { "allowAboveDocumentTree" },
+        ["bruno"] = new(StringComparer.Ordinal)
+            { "enabled", "source", "collectionPath", "reportPath", "format", "sync", "examples" },
+        ["bruno.sync"] = new(StringComparer.Ordinal)
+            { "preserveManualValues", "preserveScripts", "preserveTests", "preserveDocs",
+              "removeDeletedOperations", "statePath" },
+        ["bruno.examples"] = new(StringComparer.Ordinal)
+            { "enabled", "language", "ignoreAuthentication", "maxPerOperation", "scenariosPath" },
     };
 
     private const string SuppressKeyRule = "rule";
@@ -295,6 +310,94 @@ public static class SentinelConfigLoader
             };
         }
 
+        // ---- bruno (sync + scenario generation) ----
+        BrunoConfiguration? bruno = null;
+        if (root.TryGetValue("bruno", out var brunoRaw))
+        {
+            if (brunoRaw is not Dictionary<object, object> brunoMap)
+                throw new SentinelConfigException("'bruno' must be a mapping.");
+
+            var enabled = GetBool(brunoMap, "enabled") ?? true;
+            string? source = null, collectionPath = null, reportPath = null;
+            if (brunoMap.TryGetValue("source", out var srcRaw))
+                source = RequireString(srcRaw, "bruno.source");
+            if (brunoMap.TryGetValue("collectionPath", out var colRaw))
+                collectionPath = RequireString(colRaw, "bruno.collectionPath");
+            if (brunoMap.TryGetValue("reportPath", out var repRaw))
+                reportPath = RequireString(repRaw, "bruno.reportPath");
+
+            var format = "auto";
+            if (brunoMap.TryGetValue("format", out var fmtRaw))
+            {
+                format = RequireString(fmtRaw, "bruno.format");
+                if (!string.Equals(format, "auto", StringComparison.OrdinalIgnoreCase))
+                    throw new SentinelConfigException(
+                        $"'bruno.format: {format}' is not supported. Only 'auto' (= OpenCollection YAML) exists in this version.");
+            }
+
+            var syncSettings = new BrunoSyncSettings();
+            if (brunoMap.TryGetValue("sync", out var syncRaw))
+            {
+                if (syncRaw is not Dictionary<object, object> syncMap)
+                    throw new SentinelConfigException("'bruno.sync' must be a mapping.");
+                foreach (var flag in new[] { "preserveScripts", "preserveTests" })
+                {
+                    if (syncMap.TryGetValue(flag, out var flagRaw) && GetBool(syncMap, flag) == false)
+                        warn($"'bruno.sync.{flag}: false' is accepted but has no effect: Sentinel never deletes or rewrites user scripts/tests. The key exists for forward compatibility.");
+                }
+
+                syncSettings = new BrunoSyncSettings
+                {
+                    PreserveManualValues = GetBool(syncMap, "preserveManualValues") ?? true,
+                    PreserveScripts = GetBool(syncMap, "preserveScripts") ?? true,
+                    PreserveTests = GetBool(syncMap, "preserveTests") ?? true,
+                    PreserveDocs = GetBool(syncMap, "preserveDocs") ?? true,
+                    RemoveDeletedOperations = GetBool(syncMap, "removeDeletedOperations") ?? false,
+                    StatePath = syncMap.TryGetValue("statePath", out var spRaw) ? RequireString(spRaw, "bruno.sync.statePath") : null,
+                };
+            }
+
+            var exampleSettings = new BrunoExampleSettings();
+            if (brunoMap.TryGetValue("examples", out var exRaw))
+            {
+                if (exRaw is not Dictionary<object, object> exMap)
+                    throw new SentinelConfigException("'bruno.examples' must be a mapping.");
+
+                var language = ScenarioTexts.LanguageTag;
+                if (exMap.TryGetValue("language", out var langRaw))
+                {
+                    language = RequireString(langRaw, "bruno.examples.language");
+                    if (!string.Equals(language, ScenarioTexts.LanguageTag, StringComparison.OrdinalIgnoreCase))
+                        throw new SentinelConfigException(
+                            $"'bruno.examples.language: {language}' is not supported yet. Supported: {ScenarioTexts.LanguageTag}.");
+                }
+
+                var maxPerOperation = GetInt(exMap, "maxPerOperation") ?? 8;
+                if (maxPerOperation is < 1 or > 64)
+                    throw new SentinelConfigException("'bruno.examples.maxPerOperation' must be between 1 and 64.");
+
+                exampleSettings = new BrunoExampleSettings
+                {
+                    Enabled = GetBool(exMap, "enabled") ?? true,
+                    Language = language,
+                    IgnoreAuthentication = GetBool(exMap, "ignoreAuthentication") ?? true,
+                    MaxPerOperation = maxPerOperation,
+                    ScenariosPath = exMap.TryGetValue("scenariosPath", out var scRaw) ? RequireString(scRaw, "bruno.examples.scenariosPath") : null,
+                };
+            }
+
+            bruno = new BrunoConfiguration
+            {
+                Enabled = enabled,
+                Source = source,
+                CollectionPath = collectionPath,
+                ReportPath = reportPath,
+                Format = format,
+                Sync = syncSettings,
+                Examples = exampleSettings,
+            };
+        }
+
         return new SentinelConfiguration
         {
             Policy = policy,
@@ -308,6 +411,8 @@ public static class SentinelConfigLoader
             Output = output,
             Limits = limits,
             AllowAboveDocumentTree = allowAboveDocumentTree,
+            Bruno = bruno,
+            ConfigBaseDirectory = string.IsNullOrEmpty(path) ? null : Path.GetDirectoryName(Path.GetFullPath(path)),
         };
     }
 
