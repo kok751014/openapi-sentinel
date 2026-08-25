@@ -121,6 +121,22 @@ public static class BrunoWorkflow
         };
 
         var statePath = ResolveStatePath(settings.StatePath, collectionFile, baseDir);
+        // A state path colliding with the collection (or a report artifact) would replace
+        // it with JSON on the post-sync write — refuse loudly instead of destroying data.
+        if (PathsCollide(statePath, collectionFile))
+        {
+            throw new SentinelConfigException(
+                $"'bruno.sync.statePath' ('{statePath}') must not point at the collection file itself.");
+        }
+
+        var reportHtml = Path.Combine(reportDir, "bruno-sync-report.html");
+        var reportJson = Path.Combine(reportDir, "bruno-sync-report.json");
+        if (PathsCollide(statePath, reportHtml) || PathsCollide(statePath, reportJson))
+        {
+            throw new SentinelConfigException(
+                $"'bruno.sync.statePath' ('{statePath}') collides with a sync-report artifact path.");
+        }
+
         var filtering = request.OperationFilter is not null || request.PathFilter is not null;
 
         if (!filtering &&
@@ -197,6 +213,18 @@ public static class BrunoWorkflow
         }
 
         return ExitCodes.Ok;
+    }
+
+    private static bool PathsCollide(string a, string b)
+    {
+        if (string.Equals(a, b, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        // Windows paths are case-insensitive; OrdinalIgnoreCase is deliberately over-strict
+        // on case-sensitive filesystems rather than risk a destructive collision there.
+        return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ResolveStatePath(string? configured, string collectionFile, string? baseDir)

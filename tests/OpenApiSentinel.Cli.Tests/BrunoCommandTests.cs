@@ -339,6 +339,40 @@ public sealed class BrunoCommandTests : IDisposable
     }
 
     [Fact]
+    public void StatePath_Colliding_With_Collection_Is_Refused_And_Non_Destructive()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./c.yml
+            """);
+
+        // seed a valid collection first
+        _ = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml"), "--no-examples"],
+            console);
+        var collectionPath = Path.Combine(root, "c.yml");
+        var before = File.ReadAllText(collectionPath);
+
+        // now aim the state file AT the collection: must refuse loudly, not destroy it
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./c.yml
+              sync:
+                statePath: ./c.yml
+            """);
+
+        var exit = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+
+        Assert.Equal(3, exit);
+        Assert.Equal(before, File.ReadAllText(collectionPath)); // untouched
+        Assert.Contains(console.ErrorLines, l => l.Contains("statePath", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Remote_Source_Requires_Network_Permission_Path_Unchanged()
     {
         // URL source WITHOUT allow-remote must be refused by POLICY (not by a DNS

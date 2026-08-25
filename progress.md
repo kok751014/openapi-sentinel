@@ -1931,3 +1931,20 @@ paths and states that relocation is a user decision. Requests are never auto-mov
 Deep fuzz re-validated at 500 seeds.
 
 Tests: FolderDivergenceTests (2). Suite **456/456**; build 0/0; diff-check clean. Pushed.
+
+---
+
+# 2026-08-25 (iteration 14) — DESTRUCTIVE FOOTGUN CLOSED: statePath → collection collision refused
+
+**Defect found by probe:** setting `bruno.sync.statePath` to the collection file's own path
+made the post-sync state write silently REPLACE the entire Bruno collection with JSON state
+— exit 0 data loss.
+
+**Fix:** workflow refuses any statePath colliding with the collection file or either report
+artifact path (Ordinal + OrdinalIgnoreCase comparison — over-strict on case-sensitive
+filesystems by design). Exit 3 with an actionable message; the collection is untouched.
+Dry-run was already safe (no writes).
+
+Tests: StatePath_Colliding_With_Collection_Is_Refused_And_Non_Destructive (seeds a real
+collection, re-aims statePath at it, asserts exit 3 + byte-identical collection + named
+error). Suite **457/457**; build 0/0; diff-check clean. Pushed.
