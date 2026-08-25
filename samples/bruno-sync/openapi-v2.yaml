@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: 訂單管理 API（範例）
+  version: "1.1"
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /orders:
+    post:
+      operationId: createOrder
+      summary: 建立訂單
+      tags:
+        - 訂單
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customerId
+                - orderType
+                - quantity
+              properties:
+                customerId:
+                  type: integer
+                  minimum: 1
+                  description: 客戶編號
+                orderType:
+                  type: string
+                  enum:
+                    - NORMAL
+                    - URGENT
+                    - SCHEDULED
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                note:
+                  type: string
+                  maxLength: 200
+                  description: 備註（選填）
+      responses:
+        '200':
+          description: 訂單建立成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: 請求內容驗證失敗
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: 查詢使用者
+      tags:
+        - 使用者
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: verbose
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 使用者資料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: 查無使用者
+  /promotions:
+    get:
+      operationId: listPromotions
+      summary: 查詢有效促銷
+      tags:
+        - 行銷
+      parameters:
+        - name: active
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [Y, N]
+      responses:
+        '200':
+          description: 促銷清單
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string

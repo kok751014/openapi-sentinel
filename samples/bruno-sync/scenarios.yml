@@ -1,0 +1,34 @@
+# Layer 2 商業情境：OpenAPI 表達不了、必須由人明確定義的案例。
+# generator 不會自行幻想業務行為；這裡沒寫的就不會出現。
+scenarios:
+
+  - operationId: createOrder
+    name: "成功－一般訂單"
+    description: "使用有效客戶與一般付款方式建立訂單，預期成功建立資料。"
+    request:
+      body:
+        customerId: 10001
+        orderType: NORMAL
+        quantity: 1
+    expect:
+      status: 200
+      description: "訂單建立成功"
+
+  - operationId: createOrder
+    name: "失敗－客戶不存在"
+    description: "使用不存在的 customerId，確認後端查無客戶時的回應。"
+    request:
+      body:
+        customerId: 999999999
+        orderType: NORMAL
+        quantity: 1
+    expect:
+      status: 404
+      description: "查無指定客戶"
+
+  - operationId: getUser
+    name: "失敗－使用者存在但已停用"
+    description: "以有效格式但已停用的 id 查詢，確認後端回傳語意。"
+    request: {}
+    expect:
+      status: 404

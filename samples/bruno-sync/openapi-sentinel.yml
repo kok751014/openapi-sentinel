@@ -1,0 +1,18 @@
+# 範例設定：從 v1 開始同步，之後改用 openapi-v2.yaml 再同步一次，
+# 觀察增量更新與人工內容保留。
+bruno:
+  enabled: true
+  source: ./openapi-v1.yaml          # 第二輪請改成 ./openapi-v2.yaml
+  collectionPath: ./api-contract/bruno/collection.yml
+  reportPath: ./api-contract/reports
+
+  sync:
+    preserveManualValues: true       # 保留人工輸入的參數 / body 值
+    removeDeletedOperations: false   # 被移除的操作標示「失效」而不刪檔
+
+  examples:
+    enabled: true
+    language: zh-TW                  # 自動情境名稱／描述使用繁體中文
+    ignoreAuthentication: true       # 不自動產生驗證失敗情境
+    maxPerOperation: 8               # 每個操作最多 8 個自動情境
+    scenariosPath: ./scenarios.yml   # Layer 2：明確定義的商業情境（可選）
