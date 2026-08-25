@@ -558,3 +558,70 @@ public class IdentityTransitionTests
         Assert.Equal("opid:createOrder", request.IdentityOf()!.StableKey);
     }
 }
+
+/// <summary>§4 folder/category mapping: a tag change between syncs is REPORTED, never
+/// auto-moved (preservation-first).</summary>
+public class FolderDivergenceTests
+{
+    private const string V1 = """
+        openapi: 3.0.3
+        info: { title: t, version: "1" }
+        paths:
+          /orders:
+            post:
+              operationId: createOrder
+              tags: [訂單]
+              responses:
+                '200': { description: OK }
+        """;
+
+    private const string V2Retagged = """
+        openapi: 3.0.3
+        info: { title: t, version: "1.1" }
+        paths:
+          /orders:
+            post:
+              operationId: createOrder
+              tags: [行銷]
+              responses:
+                '200': { description: OK }
+        """;
+
+    [Fact]
+    public void Tag_Change_Warns_And_Keeps_Request_In_Place()
+    {
+        var doc1 = TestSupport.NormalizeSpec(V1);
+        var doc2 = TestSupport.NormalizeSpec(V2Retagged);
+        var engine = new BrunoSyncEngine(
+            new BrunoSyncSettings(), new BrunoExampleSettings { Enabled = false }, "t");
+
+        var (collection, first) = engine.Sync(null, doc1);
+        Assert.Single(first.Operations, o => o.Action == OperationAction.Added);
+
+        var (_, second) = engine.Sync(collection, doc2);
+
+        // structural change (tag feeds the fingerprint) → Updated, with the divergence warning
+        Assert.Single(second.Operations, o => o.Action == OperationAction.Updated);
+        var warning = second.Operations[0].Warnings.Single();
+        Assert.Contains("行銷", warning, StringComparison.Ordinal);
+        Assert.Contains("訂單", warning, StringComparison.Ordinal);
+        Assert.Contains("不自動搬移", warning, StringComparison.Ordinal);
+
+        // request physically stayed in the original folder
+        var folder = collection.RootItems.Single(i => i.IsFolder);
+        Assert.Equal("訂單", folder.Name);
+        Assert.Single(folder.Children);
+    }
+
+    [Fact]
+    public void Unchanged_Tag_Produces_No_Warning()
+    {
+        var doc1 = TestSupport.NormalizeSpec(V1);
+        var engine = new BrunoSyncEngine(
+            new BrunoSyncSettings(), new BrunoExampleSettings { Enabled = false }, "t");
+        var (collection, _) = engine.Sync(null, doc1);
+
+        var (_, again) = engine.Sync(collection, doc1);
+        Assert.Empty(again.Operations.SelectMany(o => o.Warnings));
+    }
+}

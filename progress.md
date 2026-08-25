@@ -1916,3 +1916,18 @@ with the next real change or can be committed standalone).
 No defects found this iteration. Loop remains at terminal state: DoD complete, only
 external items outstanding (Actions billing, NUGET_API_KEY, Docker daemon).
 main @ <this commit> pushed.
+
+---
+
+# 2026-08-25 (iteration 13) — §4 FOLDER/CATEGORY MAPPING: TAG-DIVERGENCE REPORTING
+
+**Gap (§4 "folder/category mapping / tags"):** a tag change between syncs silently kept the
+request in its old folder with no signal — the contract now mapped it elsewhere and nobody
+was told.
+
+**Fix (preservation-first):** the collection walk now tracks each request's current folder
+path; when it differs from the tag-derived folder, sync emits a zh-TW warning naming BOTH
+paths and states that relocation is a user decision. Requests are never auto-moved.
+Deep fuzz re-validated at 500 seeds.
+
+Tests: FolderDivergenceTests (2). Suite **456/456**; build 0/0; diff-check clean. Pushed.

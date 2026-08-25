@@ -90,6 +90,10 @@ Body 合併採「結構歸合約、數值歸人」：新增 required 屬性會�
 被規格移除的操作預設標示為**失效（stale）**並保留檔案；
 只有 `removeDeletedOperations: true` 才會真正刪除對應 Request。
 
+標籤（tag）變更導致的資料夾歸屬差異會在報告與警告中明確提示
+（「合約標籤對應的資料夾為 X；目前位於 Y」），但**不會自動搬移** Request——
+是否搬移由使用者決定。
+
 ## Incremental state
 
 每次成功同步後，會在 collection 旁寫入隱藏狀態檔

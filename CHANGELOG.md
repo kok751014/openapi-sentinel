@@ -37,6 +37,9 @@ report format or exit code changed behavior.
 - **MSBuild integration sample** — `samples/bruno-sync/OpenApiSentinel.targets`
   (design-time-build safe, single-project import recommended).
 - New project `OpenApiSentinel.Bruno`; YamlDotNet remains the only runtime dependency.
+- Tag/folder divergence reporting: when a contract's tags now map an operation to a
+  different folder, sync warns with both paths instead of silently (or automatically)
+  relocating the request.
 - Symlink-safe writes: a collection reached through a symbolic link is updated at its
   resolved target atomically; the link itself is never replaced.
 - Bruno commands honor the same remote-fetch security model as compare: `--allow-remote`

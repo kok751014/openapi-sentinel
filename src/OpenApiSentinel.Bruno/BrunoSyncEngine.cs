@@ -38,6 +38,35 @@ public sealed class BrunoSyncEngine
         this.businessScenarios = businessScenarios ?? [];
     }
 
+    /// <summary>Yields every HTTP-request item together with its current folder path.</summary>
+    private static IEnumerable<(BrunoItem Item, IReadOnlyList<string> FolderSegments)> WalkRequestsWithFolders(
+        BrunoCollectionDocument collection)
+    {
+        return Walk(collection.RootItems, []);
+
+        static IEnumerable<(BrunoItem, IReadOnlyList<string>)> Walk(
+            IEnumerable<BrunoItem> items, IReadOnlyList<string> path)
+        {
+            foreach (var item in items)
+            {
+                if (item.IsFolder)
+                {
+                    var name = item.Name ?? "";
+                    var childPath = new List<string>(path) { name };
+                    yield return (item, childPath);
+                    foreach (var nested in Walk(item.Children, childPath))
+                    {
+                        yield return nested;
+                    }
+                }
+                else
+                {
+                    yield return (item, path);
+                }
+            }
+        }
+    }
+
     /// <summary>Runs the sync against an existing collection (may be null for first run).
     /// When <paramref name="operationFilter"/> is set, only matching operations are processed
     /// and stale/removal detection is skipped entirely (a filtered view cannot judge deletion).</summary>
@@ -82,8 +111,14 @@ public sealed class BrunoSyncEngine
         // transitions in BOTH directions (operationId added since last sync AND removed).
         var markedByMethodPath = new Dictionary<string, BrunoItem>(StringComparer.Ordinal);
         var unmarkedCandidates = new List<(BrunoItem Item, OperationIdentity Identity)>();
-        foreach (var item in collection.AllRequests().Where(i => i.IsHttpRequest).ToList())
+        var currentFolders = new Dictionary<BrunoItem, IReadOnlyList<string>>(ReferenceEqualityComparer.Instance);
+        foreach (var (item, folderSegments) in WalkRequestsWithFolders(collection))
         {
+            if (folderSegments.Count > 0)
+            {
+                currentFolders[item] = folderSegments;
+            }
+
             // Sentinel-marked requests are indexed by their recorded identity regardless of
             // whether it is operationId- or method+path-based.
             var identity = item.IdentityOf();
@@ -123,7 +158,7 @@ public sealed class BrunoSyncEngine
                 continue;
             }
 
-            outcomes.Add(UpdateRequest(item, identity, operation, contentHash, baseUrl));
+            outcomes.Add(UpdateRequest(item, identity, operation, contentHash, baseUrl, currentFolders));
         }
 
         // ---- Stale / removed handling (skipped for filtered runs) ----
@@ -189,12 +224,24 @@ public sealed class BrunoSyncEngine
         OperationIdentity identity,
         Operation operation,
         string contentHash,
-        string baseUrl)
+        string baseUrl,
+        Dictionary<BrunoItem, IReadOnlyList<string>> currentFolders)
     {
         var request = new BrunoRequestView(item.Node);
         var changes = new List<string>();
         var preserved = new List<string>();
         var itemWarnings = new List<string>();
+
+        // §4 folder/category mapping: report divergence between the contract's tag-derived
+        // folder and the item's current location. Never move automatically — relocation is
+        // a user decision (preservation-first).
+        if (currentFolders.TryGetValue(item, out var current) &&
+            !current.SequenceEqual(FolderSegments(operation), StringComparer.Ordinal))
+        {
+            var desired = string.Join("/", FolderSegments(operation));
+            var actual = string.Join("/", current);
+            itemWarnings.Add($"合約標籤對應的資料夾為「{desired}」；此 Request 目前位於「{actual}」。依保留原則不自動搬移，可自行調整標籤或移動 Request。");
+        }
         var storedHash = item.StoredContentHash();
         var structuralChange = storedHash != contentHash;
         // An unmarked (user-created) request that we adopt counts as newly managed.
