@@ -23,21 +23,34 @@ dotnet run -c Release --project bench/OpenApiSentinel.Bench
   compare    median 1.3 ms   (11 changes)
   rules      median 0.3 ms   (11 findings)
   reports    median 0.5 ms   (html+json)
+  bruno full median 4.3 ms   (create + serialize)
+  bruno skip median 1.1 ms   (unchanged resync)
 ═══ Medium: old 90 KB, new 94 KB ═══
-  allocations ≈ 16.9 MB
-  parse      median 76.9 ms
-  resolve+normalize median 5.6 ms
-  compare    median 20.1 ms   (113 changes)
-  rules      median 0.8 ms   (113 findings)
-  reports    median 1.4 ms   (html+json)
+  allocations ≈ 23.1 MB
+  parse      median 74.2 ms
+  resolve+normalize median 6.2 ms
+  compare    median 24.0 ms   (113 changes)
+  rules      median 1.0 ms   (113 findings)
+  reports    median 2.1 ms   (html+json)
+  bruno full median 38.8 ms   (create + serialize)
+  bruno skip median 6.6 ms   (unchanged resync)
 ═══ Large: old 455 KB, new 470 KB ═══
-  allocations ≈ 82.5 MB
-  parse      median 173.2 ms
-  resolve+normalize median 39.8 ms
-  compare    median 74.9 ms   (555 changes)
+  allocations ≈ 110.5 MB
+  parse      median 329.6 ms
+  resolve+normalize median 32.3 ms
+  compare    median 97.3 ms   (555 changes)
   rules      median 3.2 ms   (555 findings)
-  reports    median 10.7 ms   (html+json)
+  reports    median 8.2 ms   (html+json)
+  bruno full median 46.0 ms   (create + serialize)
+  bruno skip median 34.4 ms   (unchanged resync)
 ```
+
+The `bruno` rows measure the sync engine directly against the already-normalized NEW
+contract: "full" = create the collection from scratch plus YAML serialization; "skip" =
+re-syncing an unchanged contract WITHOUT the state-file fast path (the engine still walks
+every operation and refreshes metadata). The real CLI with a present state file skips the
+engine entirely on unchanged contracts, so end-to-end no-op runs are faster than these
+numbers.
 
 ## Interpretation
 
@@ -45,6 +58,9 @@ dotnet run -c Release --project bench/OpenApiSentinel.Bench
 - Comparison scales linearly with operation count on this workload.
 - Even the large contract (~450 KB, 600+ operations) completes the full pipeline in well under a second,
   which keeps CI usage effectively free.
+- Bruno sync is comfortably interactive at every size: full creation of a large collection
+  costs ~46 ms, and unchanged re-syncs stay in tens of milliseconds even without the
+  state fast path — Visual Studio build hooks are effectively free.
 
 These are not BenchmarkDotNet microbenchmarks; treat absolute numbers as indicative and rerun on your hardware.
 

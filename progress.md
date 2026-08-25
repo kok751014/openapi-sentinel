@@ -1821,3 +1821,19 @@ Build 0/0; suite **450/450**; git diff --check clean.
 Owner-account billing still blocks runner start — external, unchanged.
 ### Last verified commit
 <this commit> on main, pushed.
+
+---
+
+# 2026-08-25 (iteration 7) — BRUNO BENCHMARK STAGE + RELEASE-READINESS DOCS COMPLETE
+
+§19 closed: bench/OpenApiSentinel.Bench now measures the sync engine alongside compare —
+"bruno full" (create collection from scratch + serialize) and "bruno skip" (unchanged
+engine-level resync, i.e. WITHOUT the state-file fast path). Measured on this machine:
+Small 4.3/1.1 ms, Medium 38.8/6.6 ms, Large 46.0/34.4 ms — full creation of a large
+collection ~46 ms; unchanged runs are effectively free in the CLI (state fast-path skips
+the engine entirely). docs/benchmarks.md updated with the new rows, the measurement
+definition, and interpretation.
+
+Combined with iteration 6 this completes §22 (changelog + SemVer assessment + releasable
+packaging) and §19 (benchmark infrastructure extended). All §20 doc surfaces now cover
+Bruno. Suite/build/diff-check green at commit time.

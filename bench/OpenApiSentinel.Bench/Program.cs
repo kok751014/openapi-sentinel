@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OpenApiSentinel.Bruno;
 using OpenApiSentinel.Core;
 using OpenApiSentinel.OpenApi;
 using OpenApiSentinel.OpenApi.Model;
@@ -43,6 +44,8 @@ internal static class Program
         var compareMs = new List<double>();
         var rulesMs = new List<double>();
         var reportMs = new List<double>();
+        var brunoFullMs = new List<double>();
+        var brunoResyncMs = new List<double>();
 
         ApiDocument? oldDoc = null, newDoc = null;
         IReadOnlyList<SemanticChange>? changes = null;
@@ -87,6 +90,20 @@ internal static class Program
             sw.Stop();
             reportMs.Add(sw.Elapsed.TotalMilliseconds);
 
+            // Bruno sync: full creation (sync + serialize) vs incremental unchanged skip.
+            var syncEngine = new BrunoSyncEngine(
+                new BrunoSyncSettings(), new BrunoExampleSettings { Enabled = false }, "bench");
+            sw.Restart();
+            var (collection, _) = syncEngine.Sync(null, newDoc!);
+            _ = collection.ToYaml();
+            sw.Stop();
+            brunoFullMs.Add(sw.Elapsed.TotalMilliseconds);
+
+            sw.Restart();
+            _ = syncEngine.Sync(collection, newDoc!);
+            sw.Stop();
+            brunoResyncMs.Add(sw.Elapsed.TotalMilliseconds);
+
             if (run == runs - 1)
             {
                 var allocated = GC.GetTotalAllocatedBytes(precise: true) - beforeAlloc;
@@ -101,10 +118,12 @@ internal static class Program
         Console.WriteLine($"  compare    median {Median(compareMs):F1} ms   ({changes!.Count} changes)");
         Console.WriteLine($"  rules      median {Median(rulesMs):F1} ms   ({evaluation!.Result.Findings.Count} findings)");
         Console.WriteLine($"  reports    median {Median(reportMs):F1} ms   (html+json)");
+        Console.WriteLine($"  bruno full median {Median(brunoFullMs):F1} ms   (create + serialize)");
+        Console.WriteLine($"  bruno skip median {Median(brunoResyncMs):F1} ms   (unchanged resync)");
 
         if (save)
         {
-            var line = $"| {label} | {Median(parseMs):F1} | {Median(normalizeMs):F1} | {Median(compareMs):F1} | {Median(rulesMs):F1} | {Median(reportMs):F1} | {changes.Count} | {evaluation.Result.Findings.Count} |";
+            var line = $"| {label} | {Median(parseMs):F1} | {Median(normalizeMs):F1} | {Median(compareMs):F1} | {Median(rulesMs):F1} | {Median(reportMs):F1} | {Median(brunoFullMs):F1} | {Median(brunoResyncMs):F1} | {changes.Count} | {evaluation.Result.Findings.Count} |";
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "bench-results.md"), line + Environment.NewLine);
         }
     }
