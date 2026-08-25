@@ -34,7 +34,60 @@ public sealed class BrunoCollectionDocument
                 "Directory-based (.bru) collections are not writable by this version — see docs/bruno-sync.md.");
         }
 
+        ValidateItems(root, sourceName, "$");
         return new BrunoCollectionDocument(root);
+    }
+
+    /// <summary>
+    /// Structural validation of the parts sync will touch: where OpenCollection expects a
+    /// LIST (items, params, headers, examples) a non-list value would otherwise be
+    /// silently REPLACED during a merge — a §6 corruption vector. Fail clearly instead.
+    /// Unknown keys are still allowed everywhere; this only guards known list slots.
+    /// </summary>
+    private static void ValidateItems(YamlMappingNode container, string sourceName, string path)
+    {
+        if (BrunoYaml.Get(container, "items") is { } items && items is not YamlSequenceNode)
+        {
+            throw new BrunoFormatException(
+                $"'{sourceName}': '{path}.items' must be a list (found {items.GetType().Name}). " +
+                "Refusing to sync: a merge would silently discard the malformed value.");
+        }
+
+        foreach (var rawItem in BrunoYaml.SequenceOf(container, "items")?.Children ?? [])
+        {
+            if (rawItem is not YamlMappingNode item)
+            {
+                continue;
+            }
+
+            var name = BrunoYaml.AsString(BrunoYaml.Get(
+                BrunoYaml.MappingOf(item, "info") ?? new YamlMappingNode(), "name")) ?? "(unnamed)";
+            var itemPath = $"{path}.items[{name}]";
+
+            foreach (var key in (ReadOnlySpan<string>)["params", "headers", "examples"])
+            {
+                if (BrunoYaml.Get(item, key) is { } value && value is not YamlSequenceNode)
+                {
+                    throw new BrunoFormatException(
+                        $"'{sourceName}': request '{itemPath}.{key}' must be a list (found {value.GetType().Name}). " +
+                        "Refusing to sync: a merge would silently discard the malformed value.");
+                }
+            }
+
+            // Recurse into folders.
+            if (BrunoYaml.SequenceOf(item, "items") is { } children)
+            {
+                ValidateItems(WrapAsContainer(children), sourceName, itemPath);
+            }
+        }
+    }
+
+    private static YamlMappingNode WrapAsContainer(YamlSequenceNode children)
+    {
+        // A lightweight pseudo-container so ValidateItems can read .items uniformly.
+        var wrapper = new YamlMappingNode();
+        wrapper.Children.Add(BrunoYaml.Scalar("items"), children);
+        return wrapper;
     }
 
     /// <summary>Creates a minimal new bundled collection document.</summary>

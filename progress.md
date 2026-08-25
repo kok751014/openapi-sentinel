@@ -1999,3 +1999,20 @@ in shipped sources.
 
 Gates: build 0/0; diff-check clean. Remote CI still billing-blocked (external).
 main @ <this commit> pushed.
+
+---
+
+# 2026-08-25 (iteration 19) — §6 HARDENING: MALFORMED LIST SLOTS FAIL AT PARSE
+
+**Gap found by probe:** where OpenCollection expects a LIST (items / params / headers /
+examples), a non-list value (e.g. params as a mapping) was silently REPLACED by the merge
+whenever that request was matched+updated — silent data loss on an already-malformed file.
+
+**Fix:** parse-time structural validation walks the whole tree; any known list slot holding
+a non-sequence value fails with BrunoFormatException naming the file and the exact item
+path (e.g. `$…items[folderA].items[deep].headers`), BEFORE any merge or write can happen.
+Unknown keys remain allowed everywhere — only known list slots are guarded.
+
+Tests: MalformedListSlotTests ×5 (params/headers/examples rejections with path context,
+nested-folder context, well-formed still parses incl. folders). Deep fuzz 300 seeds clean.
+Suite **463/463**; build 0/0; diff-check clean. Pushed.

@@ -40,6 +40,9 @@ report format or exit code changed behavior.
 - Tag/folder divergence reporting: when a contract's tags now map an operation to a
   different folder, sync warns with both paths instead of silently (or automatically)
   relocating the request.
+- Malformed-collection hardening: list slots (`items`, `params`, `headers`, `examples`)
+  holding non-list values fail at parse time with item-level context instead of being
+  silently replaced during a merge.
 - Symlink-safe writes: a collection reached through a symbolic link is updated at its
   resolved target atomically; the link itself is never replaced.
 - Bruno commands honor the same remote-fetch security model as compare: `--allow-remote`

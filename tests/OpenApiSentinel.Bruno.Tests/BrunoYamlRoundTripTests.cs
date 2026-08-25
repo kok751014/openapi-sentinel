@@ -288,3 +288,97 @@ public class BrunoYamlRoundTripTests
         Assert.Contains("\"multi\": \"line\"", new BrunoRequestView(back.Node).JsonBodyRaw, StringComparison.Ordinal);
     }
 }
+
+/// <summary>§6 hardening: malformed list slots fail at PARSE time instead of being
+/// silently replaced by a later merge.</summary>
+public class MalformedListSlotTests
+{
+    [Theory]
+    [InlineData("params", "name: oops")]
+    [InlineData("headers", "name: oops")]
+    [InlineData("examples", "name: oops")]
+    public void Non_Sequence_List_Slots_Are_Rejected_At_Parse(string slot, string body)
+    {
+        var yaml = $$"""
+            opencollection: "1.0.0"
+            info:
+              name: broken
+            items:
+              - info:
+                  name: r1
+                  type: http
+                http:
+                  method: GET
+                  url: https://api.example.com/x
+                {{slot}}:
+                  {{body}}
+            """;
+
+        var ex = Assert.Throws<BrunoFormatException>(() =>
+            BrunoCollectionDocument.Parse(yaml, "broken.yml"));
+        Assert.Contains($"items[r1].{slot}", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("silently discard", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Malformed_Folder_Items_Are_Rejected_With_Path_Context()
+    {
+        var yaml = """
+            opencollection: "1.0.0"
+            info:
+              name: broken
+            items:
+              - info:
+                  name: folderA
+                  type: folder
+                items:
+                  - info:
+                      name: deep
+                      type: http
+                    http:
+                      method: GET
+                      url: "{{baseUrl}}/x"
+                    headers:
+                      not: a-list
+            """;
+
+        var ex = Assert.Throws<BrunoFormatException>(() =>
+            BrunoCollectionDocument.Parse(yaml, "broken.yml"));
+        Assert.Contains("items[folderA].items[deep].headers", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Well_Formed_Collections_Still_Parse()
+    {
+        const string yaml = """
+            opencollection: "1.0.0"
+            info:
+              name: ok
+            items:
+              - info:
+                  name: r1
+                  type: http
+                http:
+                  method: GET
+                  url: "{{baseUrl}}/x"
+                params:
+                  - name: q
+                    value: "1"
+                examples:
+                  - name: e1
+              - info:
+                  name: f
+                  type: folder
+                items:
+                  - info:
+                      name: r2
+                      type: http
+                    http:
+                      method: POST
+                      url: "{{baseUrl}}/y"
+            """;
+
+        var doc = BrunoCollectionDocument.Parse(yaml, "ok.yml");
+        Assert.Equal(2, doc.AllRequests().Count(i => i.IsHttpRequest));
+    }
+}
