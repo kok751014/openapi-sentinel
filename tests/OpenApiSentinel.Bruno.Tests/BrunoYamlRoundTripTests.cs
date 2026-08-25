@@ -382,3 +382,96 @@ public class MalformedListSlotTests
         Assert.Equal(2, doc.AllRequests().Count(i => i.IsHttpRequest));
     }
 }
+
+/// <summary>
+/// Unit pins for the incremental-skip gate: every hash field difference must force a
+/// resync, and corrupt/unknown-schema state must degrade safely to "absent".
+/// </summary>
+public class BrunoSyncStateStoreTests : IDisposable
+{
+    private readonly string root = Directory.CreateTempSubdirectory("sentinel-state").FullName;
+    private string PathFor(string name) => System.IO.Path.Combine(root, name);
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        try { Directory.Delete(root, recursive: true); }
+        catch (System.IO.IOException) { }
+    }
+
+    private static BrunoSyncState State(
+        string sourceHash = "aaa",
+        string bruno = "bbb",
+        string examples = "ccc",
+        string? scenarios = "ddd",
+        string generatorVersion = "1.0.0") => new()
+    {
+        GeneratorVersion = generatorVersion,
+        SourceHash = sourceHash,
+        BrunoConfigHash = bruno,
+        ExampleConfigHash = examples,
+        ScenariosFileHash = scenarios,
+    };
+
+    [Fact]
+    public void Identical_State_Matches()
+    {
+        var path = PathFor("s.json");
+        BrunoSyncStateStore.Write(path, State());
+        Assert.True(BrunoSyncStateStore.Matches(BrunoSyncStateStore.Read(path), State()));
+    }
+
+    [Theory]
+    [InlineData("sourceHash")]
+    [InlineData("brunoConfigHash")]
+    [InlineData("exampleConfigHash")]
+    [InlineData("scenariosFileHash")]
+    [InlineData("generatorVersion")]
+    public void Any_Field_Difference_Forces_Resync(string changedField)
+    {
+        var path = PathFor("s.json");
+        BrunoSyncStateStore.Write(path, State());
+
+        var drifted = State() with { };
+        switch (changedField)
+        {
+            case "sourceHash": drifted = drifted with { SourceHash = "changed" }; break;
+            case "brunoConfigHash": drifted = drifted with { BrunoConfigHash = "changed" }; break;
+            case "exampleConfigHash": drifted = drifted with { ExampleConfigHash = "changed" }; break;
+            case "scenariosFileHash": drifted = drifted with { ScenariosFileHash = "changed" }; break;
+            case "generatorVersion": drifted = drifted with { GeneratorVersion = "9.9.9" }; break;
+        }
+
+        Assert.False(BrunoSyncStateStore.Matches(BrunoSyncStateStore.Read(path), drifted),
+            $"{changedField} difference did not force a resync");
+    }
+
+    [Fact]
+    public void Corrupted_Json_Reads_As_Null_Safe_Rebuild()
+    {
+        var path = PathFor("corrupt.json");
+        File.WriteAllText(path, "{ not valid json !!");
+        Assert.Null(BrunoSyncStateStore.Read(path));
+    }
+
+    [Fact]
+    public void Unknown_Schema_Version_Reads_As_Null()
+    {
+        var path = PathFor("future.json");
+        File.WriteAllText(path, """{"schemaVersion": 99, "sourceHash": "x"}""");
+        Assert.Null(BrunoSyncStateStore.Read(path));
+    }
+
+    [Fact]
+    public void Null_Scenarios_Hash_And_Empty_Are_Equivalent()
+    {
+        var path = PathFor("s.json");
+        BrunoSyncStateStore.Write(path, State(scenarios: null));
+        var read = BrunoSyncStateStore.Read(path);
+        Assert.Null(read!.ScenariosFileHash);
+
+        // expected state with no scenarios file also hashes to "" — must still match
+        var expected = State(scenarios: null);
+        Assert.True(BrunoSyncStateStore.Matches(read, expected));
+    }
+}

@@ -2125,3 +2125,17 @@ All quality gates re-run and green on current HEAD: build 0/0; suite **463/463**
 diff-check clean; tree clean. Remote CI still billing-blocked (external, unchanged).
 No defects found, no code changes. main @ 60eff9f — loop remains at its verified
 terminal state; only external items outstanding.
+
+---
+
+# 2026-08-25 (iteration 28) — UNIT PINS FOR THE INCREMENTAL-SKIP GATE
+
+**Coverage gap found:** BrunoSyncStateStore (the component deciding whether sync skips)
+had ZERO direct test coverage — a Matches() bug there could silently skip needed syncs.
+
+BrunoSyncStateStoreTests (9): every hash-field difference (source/bruno-config/
+example-config/scenarios-file/generator-version) forces resync; identical state matches;
+corrupted JSON reads as null; unknown schemaVersion reads as null (both degrade safely to
+full rebuild); null-vs-empty scenarios hash equivalence pinned.
+
+Suite **472/472**; build 0/0; diff-check clean. Pushed.
