@@ -2026,3 +2026,16 @@ existed — users following the docs had to invent one. Added `*.sentinel-state.
 (matches the default hidden state file at any depth; verified via git check-ignore for
 root and nested collection layouts). Committed sample artifacts unaffected.
 Gates: build 0/0. Remote CI still billing-blocked (external).
+
+---
+
+## 2026-08-25 (iteration 21) — SAMPLE REPRODUCTION RE-VERIFIED ON FINAL HEAD
+
+Post header/cookie + symlink + parse-validation changes, re-ran the samples/bruno-sync
+reproduction on current HEAD: **collection byte-identical** to the committed expected/
+artifact and the JSON report identical modulo generatedAtUtc. The byte-reproducibility
+claim in the sample README remains true after all post-DoD fixes.
+
+Gates: build 0/0; suite **463/463**; diff-check clean; tree clean (loop prompt file only).
+Remote CI still billing-blocked (external, unchanged). No code changes this iteration.
+main @ 2ca6ab9.
