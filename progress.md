@@ -1976,3 +1976,13 @@ report's warnings list; exit stays 0 (nothing went wrong mechanically).
 
 Tests: Zero_Match_Filter_Warns_Instead_Of_Silent_Success. Suite **458/458**;
 build 0/0; diff-check clean. Pushed.
+
+---
+
+## 2026-08-25 (iteration 17) — README CURRENT-STATUS REFRESHED (doc currency)
+
+README's status block still said "384 tests / CI passing" — stale on both counts. Now
+states: v1.0.1 released; main carries the Bruno feature (1.1.0 recommended); **458 tests**;
+CI matrix green at v1.0.1 with remote runs currently paused by the owner-account billing
+issue; packaging gate re-verified after the Bruno project addition. Verified stdin works
+as a bruno source (probe, no defect). Gates green; docs-only commit pushed.
