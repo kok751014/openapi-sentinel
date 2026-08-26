@@ -9,7 +9,13 @@ namespace OpenApiSentinel.Bruno.Model;
 /// </summary>
 public sealed class BrunoItem
 {
-    public const string SentinelKey = "x-sentinel";
+    /// <summary>
+    /// Prefix of the single Sentinel binding tag stored in the schema-legal
+    /// <c>info.tags</c> list. The tag points at the request's metadata entry inside the
+    /// collection-level <c>extensions.x-sentinel.operations</c> index; request items NEVER
+    /// carry a Sentinel metadata block (official HttpRequest schema: additionalProperties:false).
+    /// </summary>
+    public const string SentinelTagPrefix = "x-sentinel:";
 
     public BrunoItem(YamlMappingNode node)
     {
@@ -64,31 +70,70 @@ public sealed class BrunoItem
         }
     }
 
-    /// <summary>The sentinel-managed metadata block (top-level <c>x-sentinel:</c>), created on demand.</summary>
-    public YamlMappingNode Sentinel
+    /// <summary>The stable identity key recorded by this item's binding tag; null when unbound.</summary>
+    public string? SentinelTagKey
     {
         get
         {
-            if (BrunoYaml.MappingOf(Node, SentinelKey) is { } existing)
+            if (BrunoYaml.SequenceOf(InfoOrNull ?? new YamlMappingNode(), "tags") is not { } tags)
             {
-                return existing;
+                return null;
             }
 
-            // A non-mapping x-sentinel value cannot be upgraded in place; replace it.
-            if (BrunoYaml.HasKey(Node, SentinelKey))
+            foreach (var tag in tags.Children)
             {
-                BrunoYaml.RemoveKey(Node, SentinelKey);
+                if (tag is YamlScalarNode { Value: not null } scalar &&
+                    scalar.Value.StartsWith(SentinelTagPrefix, StringComparison.Ordinal))
+                {
+                    return scalar.Value[SentinelTagPrefix.Length..];
+                }
             }
 
-            var created = new YamlMappingNode();
-            Node.Children.Add(BrunoYaml.Scalar(SentinelKey), created);
-            return created;
+            return null;
         }
     }
 
-    /// <summary>The sentinel block when present AND a mapping; null otherwise.</summary>
-    public YamlMappingNode? SentinelOrNull => BrunoYaml.MappingOf(Node, SentinelKey);
+    /// <summary>Binds this item to <paramref name="stableKey"/> via its info tag, replacing any previous binding. Other tags are preserved.</summary>
+    public void BindSentinelTag(string stableKey)
+    {
+        var info = BrunoYaml.GetOrCreateMapping(Node, "info");
+        var tags = BrunoYaml.GetOrCreateSequence(info, "tags");
+        var replacement = new YamlScalarNode(SentinelTagPrefix + stableKey);
+        var replaced = false;
+        for (var i = 0; i < tags.Children.Count; i++)
+        {
+            if (tags.Children[i] is YamlScalarNode { Value: not null } scalar &&
+                scalar.Value.StartsWith(SentinelTagPrefix, StringComparison.Ordinal))
+            {
+                tags.Children[i] = replacement;
+                replaced = true;
+                break;
+            }
+        }
 
-    /// <summary>True when this item was created/managed by OpenAPI Sentinel at some point.</summary>
-    public bool IsSentinelManaged => SentinelOrNull is not null;
+        if (!replaced)
+        {
+            tags.Children.Add(replacement);
+        }
+    }
+
+    public void UnbindSentinelTag()
+    {
+        if (BrunoYaml.SequenceOf(InfoOrNull ?? new YamlMappingNode(), "tags") is not { } tags)
+        {
+            return;
+        }
+
+        for (var i = tags.Children.Count - 1; i >= 0; i--)
+        {
+            if (tags.Children[i] is YamlScalarNode { Value: not null } scalar &&
+                scalar.Value.StartsWith(SentinelTagPrefix, StringComparison.Ordinal))
+            {
+                tags.Children.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>True when this item carries a Sentinel binding tag.</summary>
+    public bool IsSentinelManaged => SentinelTagKey is not null;
 }

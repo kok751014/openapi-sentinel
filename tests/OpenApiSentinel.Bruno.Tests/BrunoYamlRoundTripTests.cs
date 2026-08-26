@@ -77,6 +77,7 @@ public class BrunoYamlRoundTripTests
 {
     private const string RichCollection = """
         opencollection: "1.0.0"
+        bundled: true
         info:
           name: 訂單管理 API
           version: 1.2.0
@@ -91,6 +92,20 @@ public class BrunoYamlRoundTripTests
               - 1
               - two
               - three: null
+          x-sentinel:
+            version: 1
+            generator:
+              generator: openapi-sentinel
+            operations:
+              opid:createOrder:
+                operationId: createOrder
+                method: POST
+                path: /orders/{id}
+                identityKey: opid:createOrder
+                contentHash: abc123
+                generatorVersion: 1.2.0
+                managedHeaders:
+                  - Content-Type
         items:
           - info:
               name: 訂單
@@ -106,6 +121,7 @@ public class BrunoYamlRoundTripTests
                   seq: 1
                   tags:
                     - core
+                    - x-sentinel:opid:createOrder
                 http:
                   method: POST
                   url: "{{baseUrl}}/orders/:id"
@@ -115,14 +131,13 @@ public class BrunoYamlRoundTripTests
                       type: path
                     - name: verbose
                       value: "true"
+                      type: query
                       disabled: true
                   headers:
                     - name: Content-Type
                       value: application/json
-                      enabled: true
                     - name: X-Custom-Manual
                       value: keep-me
-                      enabled: true
                   body:
                     type: json
                     data: |
@@ -220,9 +235,10 @@ public class BrunoYamlRoundTripTests
         // scripts preserved untouched
         Assert.NotNull(BrunoYaml.Get(itemAfter.Node, "runtime"));
         Assert.Equal("keep-me", viewAfter.Headers().First(h => h.Name == "X-Custom-Manual").Value);
-        // sentinel block intact
+        // sentinel metadata intact (collection-level index entry, bound via tag)
+        var store = SentinelMetaStore.For(docAfter);
         Assert.Equal("createOrder", BrunoYaml.AsString(
-            BrunoYaml.Get(itemAfter.SentinelOrNull!, "operationId")));
+            BrunoYaml.Get(store.EntryOrNull("opid:createOrder")!, "operationId")));
     }
 
     [Fact]

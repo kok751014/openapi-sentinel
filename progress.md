@@ -3599,3 +3599,64 @@ main @ 2976d30 — terminal state holds.
 Gates green on current HEAD: build 0/0; suite **472/472**; diff-check clean; tree clean.
 Remote CI still billing-blocked (external, unchanged). No defects found, no code changes.
 main @ 953916a — terminal state holds.
+
+---
+
+## 2026-08-26 — Bruno OpenCollection compatibility release-blocker FIXED + one-click bootstrap + Bruno folder workspace
+
+Continued from the pre-existing uncommitted working tree (schema pin, validator,
+normalizer, meta store were already drafted); preserved all valid work, fixed its
+compile/test breakage, then completed the remaining Definition of Done.
+
+**Schema compatibility (the release blocker)**
+1. Request-level illegal `x-sentinel` fully removed (regression-tested).
+2. Metadata now lives in schema-legal `extensions.x-sentinel.operations` index; requests
+   bind via `info.tags` (`x-sentinel:<key>`). Identity transitions merge old entries.
+3. Legacy v1.1.0 request-level blocks auto-migrate on sync; unknown keys carried verbatim.
+4. Every param row carries explicit `type: query|path` (requests AND examples).
+5. All param values serialize as YAML strings (quoted when plain form would re-read as
+   number/bool/null); JSON body content untouched.
+6. Pinned official OpenCollection v1.0 JSON Schema embedded
+   (`src/OpenApiSentinel.Bruno/Validation/opencollection.schema.json`, upstream commit in
+   README); validation is offline and runs before EVERY write.
+7. Validation failure blocks collection + workspace + reports + state update (exit 2).
+8. Dry-run also validates (non-zero exit, zero writes).
+9. Preservation verified end-to-end incl. workspace-file edits (values/scripts/tests/
+   docs/auth/environment/unbound files).
+
+**One-click bootstrap**
+12. Missing output dirs auto-created (collection/report/state/workspace/openapi/scenarios).
+    Missing local SOURCE fails clearly (exit 2), no fake input ever created.
+13. `--dry-run` prints the full bootstrap plan, filesystem byte-identical afterwards.
+- First sync without config but with `--source` writes a production-ready
+  `openapi-sentinel.yml` (never overwrites an existing one); neither → actionable zh-TW
+  hint, exit 2.
+- Remote sources snapshot the RAW entry document to `api-contract/openapi/source-snapshot.json`
+  (no header/token content; local sources never copied).
+
+**Bruno folder workspace (6C)**
+- Official filesystem format pinned by reading usebruno/bruno `feat/opencollection-action`
+  filestore/electron sources: `opencollection.yml` (`bundled: false`) + `<folder>/folder.yml`
+  + one `.yml` per request; environments dir untouched.
+- Workspace and bundled collection generated from ONE canonical model; existing workspace
+  is the canonical read source; per-file schema gate uses $defs (Folder/HttpRequest/…);
+  orphaned managed files cleaned only under `removeDeletedOperations`; unbound user files
+  never deleted; Windows-safe traversal-proof name sanitization.
+
+**Gates**
+11. `dotnet build -c Release`: 0 errors / 0 warnings.
+10. `dotnet test -c Release`: **501/501 green** across 7 test projects
+    (Core 21, Reporting 48, Rules 91, OpenApi 171, Integration 3, Cli 80, Bruno 87).
+- `git diff --check` clean; no tag created; compare smoke checks still exit 1/0 correctly.
+
+**Audit §14**: (1) yes; (2) extensions.x-sentinel index + info.tags binding; (3) yes,
+automatic with diagnostics; (4) yes; (5) yes; (6) yes, pinned offline schema; (7) yes;
+(8) yes; (9) yes; (10) 501/501; (11) 0/0; (12) yes; (13) yes; (14) yes; (15) **yes —
+schema compatibility verified automatically; Bruno Desktop import/workspace open must be
+manually smoke-tested before release.**
+
+Docs updated: README, docs/bruno-sync.md, docs/bruno-scenarios.md,
+docs/troubleshooting.md, docs/cli-reference.md, docs/configuration.md, docs/DECISIONS.md,
+CHANGELOG.md, samples/bruno-sync (expected outputs regenerated), AGENTS.md.
+
+Remaining manual step only: Bruno Desktop import / Open-Workspace smoke test.

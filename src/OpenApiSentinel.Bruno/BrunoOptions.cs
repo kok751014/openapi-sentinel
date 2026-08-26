@@ -11,6 +11,14 @@ public sealed record BrunoConfiguration
     /// <summary>Bruno collection target: an OpenCollection YAML file path.</summary>
     public string? CollectionPath { get; init; }
 
+    /// <summary>
+    /// Directory of the folder-based OpenCollection workspace Bruno Desktop opens directly
+    /// (opencollection.yml + one YAML file per request/folder). Null = default
+    /// ./api-contract/bruno-workspace next to the config. Generated from the SAME canonical
+    /// model as the bundled collection so the two never drift.
+    /// </summary>
+    public string? WorkspacePath { get; init; }
+
     /// <summary>Directory for bruno-sync-report.html / .json.</summary>
     public string? ReportPath { get; init; }
 

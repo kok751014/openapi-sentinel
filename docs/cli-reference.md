@@ -64,10 +64,12 @@ Refuses to overwrite without `--force`.
 
 ### `bruno <sync|examples> [options]`
 
-Sync an OpenAPI contract into a single-file Bruno OpenCollection YAML collection,
-preserving user-maintained values/scripts/tests/docs/auth, and generate
-Traditional-Chinese test scenarios. Full guides: docs/bruno-sync.md and
-docs/bruno-scenarios.md.
+Sync an OpenAPI contract into a Bruno OpenCollection output (bundled YAML plus a
+folder-based workspace Bruno opens directly), preserving user-maintained
+values/scripts/tests/docs/auth, and generate Traditional-Chinese test scenarios.
+Every output is validated against the pinned official OpenCollection v1.0 schema
+before anything is written; a missing config with `--source` bootstraps one
+automatically. Full guides: docs/bruno-sync.md and docs/bruno-scenarios.md.
 
 ```
 openapi-sentinel bruno sync [options]
@@ -95,7 +97,10 @@ Behavior notes:
   business-scenario file are unchanged since the last successful sync, the run prints
   `No API contract changes detected.` / `Nothing to update.` and exits 0 immediately.
 - Reports `bruno-sync-report.html` (zh-TW, offline) and `bruno-sync-report.json`
-  (schema `bruno-sync/1.0`) are written after every non-skipped sync.
+  (schema `bruno-sync/1.0`, with `openCollectionSchemaVersion` and
+  `schemaValidation.status`) are written after every non-skipped sync.
+- Schema gate: validation failure (exit 2) blocks the collection, workspace, reports and
+  state file — nothing is partially written.
 - Exit codes follow the shared contract below; conflicts surface as report entries and
   warnings without changing the exit code.
 

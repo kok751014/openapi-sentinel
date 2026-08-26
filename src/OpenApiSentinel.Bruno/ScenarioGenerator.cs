@@ -6,25 +6,28 @@ namespace OpenApiSentinel.Bruno;
 
 public enum ScenarioCategory
 {
+    // Deterministic selection priority under maxPerOperation (docs/bruno-scenarios.md):
+    // 1 success-full · 2 success-required-only · 3 missing-required · 4 invalid-enum
+    // 5 boundaries · 6 constraint violations · 7 invalid-format · 8 meaningful wrong-type
     SuccessFull = 10,
     SuccessRequiredOnly = 20,
-    MissingRequired = 60,
-    InvalidEnum = 50,
-    BelowMinimum = 70,
-    AboveMaximum = 80,
-    MaxLengthExceeded = 90,
-    MinLengthViolated = 100,
-    WrongType = 110,
-    PatternViolation = 120,
-    InvalidFormat = 130,
-    TooFewItems = 140,
-    TooManyItems = 150,
-    BoundaryMinimum = 160,
-    BoundaryMaximum = 170,
-    BoundaryMinLength = 180,
-    BoundaryMaxLength = 190,
-    BoundaryItemsMin = 200,
-    BoundaryItemsMax = 210,
+    MissingRequired = 30,
+    InvalidEnum = 40,
+    BoundaryMinimum = 50,
+    BoundaryMaximum = 51,
+    BoundaryMinLength = 52,
+    BoundaryMaxLength = 53,
+    BoundaryItemsMin = 54,
+    BoundaryItemsMax = 55,
+    BelowMinimum = 56,
+    AboveMaximum = 57,
+    MaxLengthExceeded = 58,
+    MinLengthViolated = 59,
+    PatternViolation = 60,
+    InvalidFormat = 61,
+    WrongType = 62,
+    TooFewItems = 63,
+    TooManyItems = 64,
 }
 
 /// <summary>A fully materialized HTTP request payload for one scenario.</summary>
@@ -33,7 +36,9 @@ public sealed record ScenarioRequest(
     string Url,
     IReadOnlyList<(string Name, string Value, string Type, bool Enabled)> Params,
     IReadOnlyList<(string Name, string Value, bool Enabled)> Headers,
-    string? JsonBody);
+    string? JsonBody,
+    BodyKind FormKind = BodyKind.None,
+    IReadOnlyList<FormRow>? FormRows = null);
 
 /// <summary>One generated test scenario (Layer 1).</summary>
 public sealed record GeneratedScenario(
@@ -41,7 +46,8 @@ public sealed record GeneratedScenario(
     string Name,
     string Description,
     ScenarioCategory Category,
-    ScenarioRequest Request);
+    ScenarioRequest Request,
+    ScenarioResponse? Response = null);
 
 /// <summary>
 /// Deterministic Layer-1 scenario generator. Produces 「可直接在 Bruno 點擊 Send」的測試案例
@@ -97,12 +103,27 @@ public sealed class ScenarioGenerator
             AddFieldScenarios(candidates, field, baseRequest, order: fieldOrder++);
         }
 
-        return candidates
+        // Expected responses are attached from documented OpenAPI behavior only; success
+        // and failure scenarios cite different documented statuses.
+        var (successResponse, _) = ResponseExampleFactory.ForSuccess(operation);
+        var (failureResponse, _) = ResponseExampleFactory.ForFailure(operation);
+
+        var result = candidates
             .OrderBy(c => c.Rank)
             .ThenBy(c => c.FieldOrder)
             .Select(c => c.Scenario)
+            // Duplicate-equivalent requests never earn a slot: two scenarios whose full
+            // wire representation is identical are indistinguishable to the caller.
+            .DistinctBy(DedupeKey, StringComparer.Ordinal)
+            .Select(scenario => scenario with
+            {
+                Response = scenario.Category is ScenarioCategory.SuccessFull or ScenarioCategory.SuccessRequiredOnly
+                    ? successResponse
+                    : failureResponse,
+            })
             .Take(Math.Max(0, Options.MaxPerOperation))
             .ToList();
+        return result;
     }
 
     private static void AddFieldScenarios(
@@ -122,7 +143,24 @@ public sealed class ScenarioGenerator
                 return;
             }
 
-            var mutated = ApplyValue(baseRequest, field, SampleValueFactory.ViolatingValue(schema, kind.Value));
+            // Query/path parameters travel as serialized TEXT. For string-formatted
+            // declarations (uuid/date/date-time/…) a "wrong type" probe is just another
+            // invalid FORMAT value — skip it in favour of the meaningful format scenario
+            // and free the slot for a distinct failure class.
+            if (category == ScenarioCategory.WrongType &&
+                field.Location is FieldLocation.Query or FieldLocation.Path &&
+                NonNullPrimary(schema) == "string")
+            {
+                return;
+            }
+
+            var value = SampleValueFactory.ViolatingValue(schema, kind.Value);
+            if (value is null)
+            {
+                return; // no safe same-type representation (e.g. saturated boolean enum)
+            }
+
+            var mutated = ApplyValue(baseRequest, field, value);
             if (mutated is null)
             {
                 return;
@@ -249,6 +287,18 @@ public sealed class ScenarioGenerator
         }
     }
 
+    /// <summary>Wire-representation fingerprint used to drop duplicate-equivalent scenarios.</summary>
+    private static string DedupeKey(GeneratedScenario scenario)
+    {
+        var request = scenario.Request;
+        var paramsKey = string.Join(";", request.Params.Select(p => $"{p.Name}={p.Value}:{p.Type}:{p.Enabled}"));
+        var headerKey = string.Join(";", request.Headers.Select(h => $"{h.Name}={h.Value}:{h.Enabled}"));
+        var formKey = request.FormRows is { Count: > 0 }
+            ? $"{request.FormKind}:" + string.Join(";", request.FormRows.Select(r => $"{r.Name}={r.Value}:{r.IsFile}:{r.Enabled}"))
+            : "";
+        return $"{request.Method}|{request.Url}|{paramsKey}|{headerKey}|{request.JsonBody ?? ""}|{formKey}";
+    }
+
     /// <summary>Maps a scenario category to the violation kind it exercises; null for non-violation categories.</summary>
     private static ViolationKind? MapToViolation(ScenarioCategory category) => category switch
     {
@@ -337,27 +387,29 @@ public sealed class ScenarioGenerator
         return null;
     }
 
-    /// <summary>The 成功－僅輸入必填參數 variant of the base request.</summary>
+    /// <summary>The 成功－僅輸入必填參數 variant of the base request. Derived from the SAME
+    /// canonical body factory as the default request — only the property depth differs.</summary>
     private static ScenarioRequest BuildRequiredOnly(OperationIdentity identity, Operation operation, ScenarioRequest baseRequest)
     {
         var requiredParamNames = operation.Parameters.Where(p => p.Required).Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
         var paramsFiltered = baseRequest.Params
             .Where(p => p.Type == "path" || requiredParamNames.Contains(p.Name))
-            .ToList();        var headersFiltered = FilterHeadersToRequired(operation, baseRequest.Headers, requiredParamNames);
+            .ToList();
+        var headersFiltered = FilterHeadersToRequired(operation, baseRequest.Headers, requiredParamNames);
 
-        string? body = null;
-        if (operation.RequestBody is { } requestBody)
+        string? jsonBody = null;
+        BodyKind formKind = BodyKind.None;
+        IReadOnlyList<FormRow>? formRows = null;
+        if (operation.RequestBody is { } requestBody &&
+            (baseRequest.JsonBody is not null || baseRequest.FormRows is not null))
         {
-            var schema = PrimaryBodySchema(requestBody);
-            if (schema is not null && baseRequest.JsonBody is not null)
-            {
-                var requiredOnly = SampleValueFactory.Sample(
-                    schema, SampleValueFactory.Depth.RequiredOnly, level: 2);
-                body = (requiredOnly as JsonObject ?? new JsonObject()).ToJsonString(BodyWriterOptions);
-            }
+            var body = CanonicalBodyFactory.Create(requestBody, SampleValueFactory.Depth.RequiredOnly);
+            jsonBody = body.Kind == BodyKind.Json ? body.Json : null;
+            formKind = body.Kind is BodyKind.MultipartForm or BodyKind.FormUrlEncoded ? body.Kind : BodyKind.None;
+            formRows = body.Rows;
         }
 
-        return baseRequest with { Params = paramsFiltered, Headers = headersFiltered, JsonBody = body };
+        return baseRequest with { Params = paramsFiltered, Headers = headersFiltered, JsonBody = jsonBody, FormKind = formKind, FormRows = formRows };
     }
 
     private static List<(string Name, string Value, bool Enabled)> FilterHeadersToRequired(
@@ -467,28 +519,35 @@ public sealed class ScenarioGenerator
         {
             case FieldLocation.Body:
             {
-                if (baseRequest.JsonBody is null)
+                if (baseRequest.JsonBody is not null)
                 {
-                    return null;
-                }
+                    try
+                    {
+                        if (JsonNode.Parse(baseRequest.JsonBody) is not JsonObject root)
+                        {
+                            return null;
+                        }
 
-                try
-                {
-                    if (JsonNode.Parse(baseRequest.JsonBody) is not JsonObject root)
+                        if (!TrySetPath(root, field.DotPath.Split('.'), value.DeepClone()))
+                        {
+                            return null;
+                        }
+
+                        return baseRequest with { JsonBody = root.ToJsonString(BodyWriterOptions) };
+                    }
+                    catch (JsonException)
                     {
                         return null;
                     }
-
-                    if (!TrySetPath(root, field.DotPath.Split('.'), value.DeepClone()))                    {
-                        return null;
-                    }
-
-                    return baseRequest with { JsonBody = root.ToJsonString(BodyWriterOptions) };
                 }
-                catch (JsonException)
+
+                if (baseRequest.FormRows is { Count: > 0 })
                 {
-                    return null;
+                    var updated = MutateFormRows(baseRequest, field.DotPath, serialized);
+                    return updated is null ? null : baseRequest with { FormRows = updated };
                 }
+
+                return null;
             }
 
             case FieldLocation.Query or FieldLocation.Path:
@@ -530,6 +589,12 @@ public sealed class ScenarioGenerator
 
     private static ScenarioRequest RemoveBodyPath(ScenarioRequest baseRequest, string dotPath)
     {
+        if (baseRequest.FormRows is { Count: > 0 })
+        {
+            var rows = baseRequest.FormRows.Where(r => !string.Equals(r.Name, LeafName(dotPath), StringComparison.Ordinal)).ToList();
+            return baseRequest with { FormRows = rows };
+        }
+
         if (baseRequest.JsonBody is null)
         {
             return baseRequest;
@@ -549,6 +614,34 @@ public sealed class ScenarioGenerator
         {
             return baseRequest;
         }
+    }
+
+    /// <summary>Mutates every form row whose name matches the field's leaf (arrays produce
+    /// repeated rows — all occurrences change together, mirroring JSON path semantics).
+    /// Returns null when the field is not part of the form body.</summary>
+    private static List<FormRow>? MutateFormRows(ScenarioRequest baseRequest, string dotPath, string serialized)
+    {
+        var leaf = LeafName(dotPath);
+        var updated = new List<FormRow>();
+        var touched = false;
+        foreach (var row in baseRequest.FormRows!)
+        {
+            if (string.Equals(row.Name, leaf, StringComparison.Ordinal))
+            {
+                touched = true;
+                // A file part cannot be probed with a same-type invalid value without
+                // inventing local files; leave file rows untouched.
+                if (!row.IsFile)
+                {
+                    updated.Add(row with { Value = serialized });
+                    continue;
+                }
+            }
+
+            updated.Add(row);
+        }
+
+        return touched ? updated : null;
     }
 
     private static void RemovePath(JsonObject obj, string[] segments)

@@ -85,5 +85,5 @@ openapi-sentinel bruno examples --path /users             # 路徑前綴
 - 不改動既有 Bruno auth / environment / token scripts
 - 不把任何 bearer token 或 secret 寫進產出檔或報告
 
-若操作依合約要求認證，僅在 `x-sentinel.requiresAuth` 記錄並在 docs 加註，
+若操作依合約要求認證，僅在集合層 `extensions.x-sentinel` 索引記錄 `requiresAuth` 並在 docs 加註，
 由 Bruno 原本的 collection/environment/auth 流程處理。

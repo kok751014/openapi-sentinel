@@ -90,6 +90,7 @@ public class ScenarioGeneratorTests
                         enum: [NORMAL, URGENT]
                       quantity:
                         type: integer
+                        example: 5
                         minimum: 1
                         maximum: 100
                       name:

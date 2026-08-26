@@ -77,7 +77,7 @@ public static class SentinelConfigLoader
         ["externalReferences"] = new(StringComparer.Ordinal)
             { "allowAboveDocumentTree" },
         ["bruno"] = new(StringComparer.Ordinal)
-            { "enabled", "source", "collectionPath", "reportPath", "format", "sync", "examples" },
+            { "enabled", "source", "collectionPath", "workspacePath", "reportPath", "format", "sync", "examples" },
         ["bruno.sync"] = new(StringComparer.Ordinal)
             { "preserveManualValues", "preserveScripts", "preserveTests", "preserveDocs",
               "removeDeletedOperations", "statePath" },
@@ -318,11 +318,13 @@ public static class SentinelConfigLoader
                 throw new SentinelConfigException("'bruno' must be a mapping.");
 
             var enabled = GetBool(brunoMap, "enabled") ?? true;
-            string? source = null, collectionPath = null, reportPath = null;
+            string? source = null, collectionPath = null, reportPath = null, workspacePath = null;
             if (brunoMap.TryGetValue("source", out var srcRaw))
                 source = RequireString(srcRaw, "bruno.source");
             if (brunoMap.TryGetValue("collectionPath", out var colRaw))
                 collectionPath = RequireString(colRaw, "bruno.collectionPath");
+            if (brunoMap.TryGetValue("workspacePath", out var wsRaw))
+                workspacePath = RequireString(wsRaw, "bruno.workspacePath");
             if (brunoMap.TryGetValue("reportPath", out var repRaw))
                 reportPath = RequireString(repRaw, "bruno.reportPath");
 
@@ -391,6 +393,7 @@ public static class SentinelConfigLoader
                 Enabled = enabled,
                 Source = source,
                 CollectionPath = collectionPath,
+                WorkspacePath = workspacePath,
                 ReportPath = reportPath,
                 Format = format,
                 Sync = syncSettings,

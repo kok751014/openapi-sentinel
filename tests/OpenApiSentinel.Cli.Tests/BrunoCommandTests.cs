@@ -5,6 +5,7 @@ using System.Net;
 namespace OpenApiSentinel.Cli.Tests;
 
 /// <summary>End-to-end CLI behavior of `bruno sync` / `bruno examples` in temp workspaces.</summary>
+[Collection("process-cwd")]
 public sealed class BrunoCommandTests : IDisposable
 {
     private readonly string root = Directory.CreateTempSubdirectory("sentinel-bruno-cli").FullName;

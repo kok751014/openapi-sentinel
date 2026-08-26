@@ -95,15 +95,26 @@ public sealed class BrunoCollectionDocument
     {
         var root = new YamlMappingNode();
         root.Children.Add(BrunoYaml.Scalar(FormatMarker), BrunoYaml.Scalar("1.0.0"));
+        root.Children.Add(BrunoYaml.Scalar("bundled"), BrunoYaml.Scalar(true));
         var info = new YamlMappingNode();
         info.Children.Add(BrunoYaml.Scalar("name"), BrunoYaml.Scalar(name));
         root.Children.Add(BrunoYaml.Scalar("info"), info);
+        // Sentinel metadata lives in the schema-legal extensions block, never on request items.
+        root.Children.Add(BrunoYaml.Scalar("extensions"), SentinelExtensionsBlock());
+        return new BrunoCollectionDocument(root);
+    }
+
+    private static YamlMappingNode SentinelExtensionsBlock()
+    {
+        var sentinel = new YamlMappingNode();
+        sentinel.Children.Add(BrunoYaml.Scalar("version"), BrunoYaml.Scalar(1));
+        sentinel.Children.Add(BrunoYaml.Scalar("operations"), new YamlMappingNode());
         var generated = new YamlMappingNode();
         generated.Children.Add(BrunoYaml.Scalar("generator"), BrunoYaml.Scalar("openapi-sentinel"));
+        sentinel.Children.Add(BrunoYaml.Scalar("generator"), generated);
         var extensions = new YamlMappingNode();
-        extensions.Children.Add(BrunoYaml.Scalar("x-sentinel"), generated);
-        root.Children.Add(BrunoYaml.Scalar("extensions"), extensions);
-        return new BrunoCollectionDocument(root);
+        extensions.Children.Add(BrunoYaml.Scalar("x-sentinel"), sentinel);
+        return extensions;
     }
 
     public string? CollectionName

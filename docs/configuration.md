@@ -106,6 +106,7 @@ bruno:
   enabled: true
   source: ./swagger/v1/swagger.json     # OpenAPI/Swagger file or http(s) URL
   collectionPath: ./api-contract/bruno/collection.yml   # single-file OpenCollection YAML
+  workspacePath: ./api-contract/bruno-workspace         # folder workspace Bruno opens directly
   reportPath: ./api-contract/reports    # bruno-sync-report.html / .json land here
   format: auto                          # only "auto" (OpenCollection YAML) exists today
   sync:
@@ -128,7 +129,7 @@ bruno:
 ### `bruno` (Bruno sync + scenarios)
 
 Nested keys, dotted: `bruno.enabled`, `bruno.source`, `bruno.collectionPath`,
-`bruno.reportPath`, `bruno.format`; `bruno.sync.preserveManualValues`,
+`bruno.workspacePath`, `bruno.reportPath`, `bruno.format`; `bruno.sync.preserveManualValues`,
 `bruno.sync.preserveScripts`, `bruno.sync.preserveTests`, `bruno.sync.preserveDocs`,
 `bruno.sync.removeDeletedOperations`, `bruno.sync.statePath`;
 `bruno.examples.enabled`, `bruno.examples.language`, `bruno.examples.ignoreAuthentication`,

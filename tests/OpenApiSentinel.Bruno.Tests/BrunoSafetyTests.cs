@@ -52,10 +52,10 @@ public class BrunoSafetyTests
         Assert.Contains(reparsed.AllRequests(), i => i.IsHttpRequest);
 
         var request = reparsed.AllRequests().Single(i => i.IsHttpRequest);
-        Assert.NotNull(request.IdentityOf());
+        Assert.NotNull(request.IdentityOf(reparsed));
         // The hostile operationId is preserved verbatim INSIDE a scalar value,
         // never interpreted as YAML structure.
-        Assert.Contains("script: alert(1)", request.IdentityOf()!.OperationId, StringComparison.Ordinal);
+        Assert.Contains("script: alert(1)", request.IdentityOf(reparsed)!.OperationId, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,13 +79,21 @@ public class BrunoSafetyTests
 
         var (collection, outcome) = Run(spec);
         var report = BrunoWorkflowBridge.Build(outcome);
-
         var html = BrunoSyncHtmlReporter.Render(report);
-        Assert.DoesNotContain("<script>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("&lt;script&gt;", html, StringComparison.Ordinal);
 
-        var json = BrunoSyncJsonReporter.Render(report);
-        Assert.Contains("<script>", json, StringComparison.Ordinal); // JSON keeps raw text for machines
+        // Naming policy strips HTML markup BEFORE anything reaches reports: a spec summary
+        // carrying script tags must not survive into any rendered artifact.
+        Assert.DoesNotContain("<script>", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("&lt;script&gt;", html, StringComparison.OrdinalIgnoreCase);
+
+        // Non-tag prose from the summary survives (stripped, harmless).
+        Assert.Contains("alert(", html, StringComparison.Ordinal);
+
+        // No raw markup from any spec-derived surface reaches the report unescaped.
+        Assert.DoesNotContain("<b>", html, StringComparison.OrdinalIgnoreCase);
+
+        var jsonEscaped = BrunoSyncJsonReporter.Render(report);
+        Assert.DoesNotContain("<script>", jsonEscaped, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

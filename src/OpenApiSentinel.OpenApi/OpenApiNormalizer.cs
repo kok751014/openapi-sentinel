@@ -166,6 +166,7 @@ public static class OpenApiNormalizer
             Path = path,
             OperationId = op["operationId"]?.GetValue<string>(),
             Summary = op["summary"]?.GetValue<string>(),
+            Description = op["description"]?.GetValue<string>(),
             Deprecated = op["deprecated"] is JsonValue dv && dv.TryGetValue<bool>(out var d) && d,
             Tags = tags,
             Parameters = parameters.Where(p => p.BodySchema is null).ToList(),
@@ -454,6 +455,7 @@ public static class OpenApiNormalizer
             if (resp is not JsonObject ro) continue;
 
             var content = new Dictionary<string, SchemaInfo>(StringComparer.OrdinalIgnoreCase);
+            var mediaExamples = new Dictionary<string, System.Text.Json.Nodes.JsonNode>(StringComparer.OrdinalIgnoreCase);
             if (spec == SpecVersion.Swagger20)
             {
                 var produces = new List<string> { "application/json" };
@@ -467,6 +469,11 @@ public static class OpenApiNormalizer
                 if (schema is not null)
                     foreach (var ct in produces)
                         content[ct] = schema;
+
+                if (ro["examples"] is JsonObject ex2)
+                    foreach (var (ct, node) in ex2)
+                        if (!ct.StartsWith("x-", StringComparison.Ordinal) && node is not null)
+                            mediaExamples[ct] = node.DeepClone();
             }
             else if (ro["content"] is JsonObject co)
             {
@@ -477,6 +484,22 @@ public static class OpenApiNormalizer
                     {
                         var schema = MakeSchema(mo["schema"], spec);
                         if (schema is not null) content[ct] = schema;
+
+                        if (mo["example"] is { } explicitExample)
+                            mediaExamples[ct] = explicitExample.DeepClone();
+                        else if (mo["examples"] is JsonObject many && many.Count > 0)
+                        {
+                            foreach (var entry in many)
+                            {
+                                if (entry.Key.StartsWith("x-", StringComparison.Ordinal)) continue;
+                                if (entry.Value is JsonObject wrapper &&
+                                    wrapper["value"] is { } value)
+                                {
+                                    mediaExamples[ct] = value.DeepClone();
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -509,6 +532,7 @@ public static class OpenApiNormalizer
                 Description = ro["description"]?.GetValue<string>(),
                 Content = content,
                 Headers = headers,
+                MediaExamples = mediaExamples,
             };
         }
         return result;

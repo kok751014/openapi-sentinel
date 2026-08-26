@@ -100,11 +100,15 @@ public static class BrunoYaml
         // Loaded nodes carry the ORIGINAL presentation style (plain→Plain, quoted→*Quoted),
         // so honoring any explicitly-set style reproduces the author's intent exactly.
         // Style.Any means "fresh node created in code": pick a safe presentation.
+        // Fresh STRING scalars whose text would be re-read as a YAML number/bool/null
+        // (e.g. param value "1") are quoted so the emitted YAML keeps the string type —
+        // required by the official OpenCollection schema for name/value fields.
         var style = scalar.Style switch
         {
             ScalarStyle.Plain when !NeedsQuoting(value) && !value.Contains('\n', StringComparison.Ordinal) =>
                 ScalarStyle.Plain,
             ScalarStyle.Plain when value.Contains('\n', StringComparison.Ordinal) => ScalarStyle.Literal,
+            ScalarStyle.Any when PlainScalarResolvesToNonString(value) => ScalarStyle.DoubleQuoted,
             ScalarStyle.Any => NeedsQuoting(value)
                 ? ScalarStyle.DoubleQuoted
                 : value.Contains('\n', StringComparison.Ordinal)
@@ -115,6 +119,25 @@ public static class BrunoYaml
 
         emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, value, style, true, false));
     }
+
+    /// <summary>
+    /// True when a PLAIN scalar with this text would be parsed back as null/bool/int/float
+    /// rather than a string under the YAML 1.2 core schema.
+    /// </summary>
+    public static bool PlainScalarResolvesToNonString(string value) => value switch
+    {
+        "" or "~" or "null" or "Null" or "NULL" => true,
+        "true" or "True" or "TRUE" or "false" or "False" or "FALSE" => true,
+        _ when int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _) => true,
+        _ when double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _) &&
+               LooksNumeric(value) => true,
+        _ => false,
+    };
+
+    private static bool LooksNumeric(string value) =>
+        value.Contains('0') || value.Contains('1') || value.Contains('2') || value.Contains('3') ||
+        value.Contains('4') || value.Contains('5') || value.Contains('6') || value.Contains('7') ||
+        value.Contains('8') || value.Contains('9');
 
     private static readonly HashSet<char> IndicatorChars = ['#', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`'];
 

@@ -27,11 +27,14 @@ openapi-sentinel bruno sync --config ./openapi-sentinel.yml --verbose
 
 ```
 api-contract/
-├─ bruno/collection.yml     # 單檔 OpenCollection YAML，可直接用 Bruno 開啟
+├─ bruno/collection.yml     # 單檔 OpenCollection YAML（可交換／備份）
+├─ bruno-workspace/         # 資料夾式 workspace：Bruno 直接「開啟集合」這個目錄，免 Import
 └─ reports/
    ├─ bruno-sync-report.html
    └─ bruno-sync-report.json
 ```
+
+> 產出前會以官方 OpenCollection v1.0 schema 驗證；未通過絕不寫檔。
 
 ### 觀察重點（第一輪）
 
