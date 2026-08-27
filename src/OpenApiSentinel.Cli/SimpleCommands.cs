@@ -16,11 +16,14 @@ public static class SimpleCommands
     };
 
     public static async Task<int> ValidateAsync(
-        string source, SentinelConfiguration config, bool allowRemoteOverride,
+        string source, SentinelConfiguration config, bool allowRemoteOverride, bool allowPrivateNetworkOverride,
+        bool insecureTlsOverride,
         IConsoleWriter console, CancellationToken ct)
     {
+        RemoteSecurityWarnings.WriteIfInsecure(config.RemoteReferences, insecureTlsOverride, console);
         var outcome = await AnalysisPipeline.LoadDocumentAsync(
-            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, false, config.Limits,
+            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, allowPrivateNetworkOverride,
+            insecureTlsOverride, config.Limits,
             config.AllowAboveDocumentTree, ct);
         var doc = outcome.Document;
         var paths = doc.Paths.Count;

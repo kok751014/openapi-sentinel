@@ -18,6 +18,9 @@ Full compatibility comparison. This is the command CI uses.
 | `--verbose` | Include impact + suggested action per finding in console/markdown. |
 | `--config <path>` | Explicit configuration file (default: `openapi-sentinel.yml[.yaml]` in the working directory). |
 | `--allow-remote` | Enable remote references/URL fetching for this run (equivalent to `remoteReferences.enabled`). |
+| `--allow-private-network` | Permit trusted localhost/private-network remote targets for this run; does not enable remote fetching. |
+| `--insecure-tls` | Dangerous explicit opt-in: bypass HTTPS certificate validation for remote fetching. It does not enable remote fetching or private-network access. |
+| `--update-snapshot` | After all reports succeed and policy passes, atomically replace a local OLD spec with the raw NEW entry document. |
 | `--baseline <file>` | Suppress findings whose fingerprints appear in the baseline file. |
 | `--report-unknown-kinds` | Emit an aggregated VERIFY finding (CG9003) for changes no rule evaluates. |
 | `--no-suppressed` | Omit the suppressed-findings section from reports (default: shown with reasons). |
@@ -91,6 +94,7 @@ openapi-sentinel bruno examples [options]
 | `--path <api-path>` | examples | Process only operations under this API path prefix |
 | `--allow-remote` | both | Permit remote sources/refs for this run (subject to the same `remoteReferences` security policy as compare) |
 | `--allow-private-network` | both | Explicitly permit localhost/private-network remote sources or refs for this run; `--allow-remote` is still required. |
+| `--insecure-tls` | both | Dangerous explicit certificate-validation bypass for trusted test/internal HTTPS endpoints only; it does not imply either other remote opt-in. |
 | `--verbose` | both | Per-operation change/preservation details |
 | `--no-color` | both | Plain text output |
 
@@ -138,7 +142,7 @@ removals or renames bump `schemaVersion`. Top-level structure:
 ```json
 {
   "schemaVersion": "1.0",
-  "toolVersion": "1.1.0",
+  "toolVersion": "1.2.0",
   "result": "passed",
   "oldContractName": "old.yaml",
   "newContractName": "new.yaml",

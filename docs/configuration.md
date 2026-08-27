@@ -42,6 +42,7 @@ remoteReferences:
   enabled: false              # master switch; also --allow-remote on the CLI
   allowHttp: false            # plain HTTP opt-in (HTTPS enforced by default)
   allowPrivateNetwork: false  # localhost/link-local/private ranges (SSRF guard)
+  insecureTls: false          # dangerous explicit HTTPS certificate-validation bypass
   allowedHosts: []            # e.g. [specs.example.com]; empty = any public host
   timeoutSeconds: 30
   maxResponseBytes: 20971520  # 20 MB
@@ -153,7 +154,13 @@ Nested keys, dotted: `bruno.enabled`, `bruno.source`, `bruno.collectionPath`,
   public HTTPS URL, add `--allow-remote`; the generated config persists only
   `remoteReferences.enabled: true`. For localhost/private URLs, add both
   `--allow-remote --allow-private-network`; it also persists
-  `allowPrivateNetwork: true`. These permissions are never enabled implicitly.
+  `allowPrivateNetwork: true`. A self-signed/hostname-mismatched endpoint additionally needs
+  `--insecure-tls`; only that explicit first-run flag persists `insecureTls: true`. None of these
+  permissions enables either of the others implicitly.
+
+`insecureTls` is `false` by default. It only changes certificate validation for remote OpenAPI
+fetches; URL fetching, SSRF/private-network protection, host allowlists, and redirect validation
+remain in effect.
 
 ### `rules` overrides
 

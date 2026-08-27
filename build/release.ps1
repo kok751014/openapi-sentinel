@@ -1,10 +1,10 @@
 # PowerShell release script for OpenAPI Sentinel.
 # Produces self-contained binaries, checksums and the NuGet global-tool package.
 #
-# Usage: ./build/release.ps1 [[-Version] "1.0.0"]
+# Usage: ./build/release.ps1 [[-Version] "1.2.0"]
 [CmdletBinding()]
 param(
-    [string]$Version = $(if ($env:SENTINEL_VERSION) { $env:SENTINEL_VERSION } else { "1.0.0" })
+    [string]$Version = $(if ($env:SENTINEL_VERSION) { $env:SENTINEL_VERSION } else { "1.2.0" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,13 +31,16 @@ $rids = @(
 )
 
 $out = Join-Path $root "dist/$Version"
-New-Item -ItemType Directory -Force -Path "$out/pkg", "$out/stage" | Out-Null
+$stage = Join-Path $out "stage"
+if (Test-Path -LiteralPath $stage) {
+    Remove-Item -LiteralPath $stage -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path "$out/pkg", $stage | Out-Null
 
 foreach ($entry in $rids) {
     $rid = $entry.Rid
     Write-Host "==> Publishing self-contained $rid"
     & dotnet publish src/OpenApiSentinel.Cli -c Release `
-        --no-build --no-restore `
         -r $rid --self-contained true `
         "/p:SentinelVersion=$Version" `
         -o "$out/stage/$rid"
@@ -45,11 +48,14 @@ foreach ($entry in $rids) {
 
     # Normalize the executable name to the product command.
     $exeName = if ($entry.Archive -eq "zip") { "openapi-sentinel.exe" } else { "openapi-sentinel" }
-    Move-Item (Join-Path "$out/stage/$rid" "OpenApiSentinel.Cli$(if ($entry.Archive -eq 'zip') { '.exe' })") `
-              (Join-Path "$out/stage/$rid" $exeName) -Force
+    $publishedExecutable = Join-Path "$stage/$rid" "OpenApiSentinel.Cli$(if ($entry.Archive -eq 'zip') { '.exe' })"
+    if (-not (Test-Path -LiteralPath $publishedExecutable)) {
+        throw "Expected published executable was not produced: $publishedExecutable"
+    }
+    Move-Item -LiteralPath $publishedExecutable -Destination (Join-Path "$stage/$rid" $exeName) -Force
 
     $name = "openapi-sentinel-$Version-$rid"
-    Push-Location "$out/stage/$rid"
+    Push-Location "$stage/$rid"
     try {
         if ($entry.Archive -eq "zip") {
             Compress-Archive -Path * -DestinationPath "$out/$name.zip" -Force
@@ -66,11 +72,12 @@ Write-Host "==> Packing .NET global tool"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Checksums (SHA256)"
-Get-ChildItem $out -File -Include *.zip, *.tar.gz -Recurse -Depth 0 |
+Get-ChildItem -LiteralPath $out -File |
+    Where-Object { $_.Name.EndsWith('.zip', [StringComparison]::OrdinalIgnoreCase) -or $_.Name.EndsWith('.tar.gz', [StringComparison]::OrdinalIgnoreCase) } |
     ForEach-Object {
         $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
         "{0}  {1}" -f $hash, $_.Name
-    } | Set-Content "$out/SHA256SUMS.txt"
+    } | Set-Content "$out/SHA256SUMS"
 
 Write-Host "==> Done. Artifacts in $out"
 Get-ChildItem $out -File | Select-Object Name, Length

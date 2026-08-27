@@ -69,7 +69,7 @@ public static class SentinelConfigLoader
     {
         ["ignore"] = new(StringComparer.Ordinal) { "paths" },
         ["remoteReferences"] = new(StringComparer.Ordinal)
-            { "enabled", "allowHttp", "allowPrivateNetwork", "allowedHosts", "timeoutSeconds", "maxResponseBytes" },
+            { "enabled", "allowHttp", "allowPrivateNetwork", "insecureTls", "allowedHosts", "timeoutSeconds", "maxResponseBytes" },
         ["output"] = new(StringComparer.Ordinal)
             { "console", "json", "markdown", "html", "sarif", "junit", "changelog", "pr-summary" },
         ["limits"] = new(StringComparer.Ordinal)
@@ -191,6 +191,7 @@ public static class SentinelConfigLoader
                 Enabled = GetBool(remoteMap, "enabled") ?? false,
                 AllowHttp = GetBool(remoteMap, "allowHttp") ?? false,
                 AllowPrivateNetwork = GetBool(remoteMap, "allowPrivateNetwork") ?? false,
+                InsecureTls = GetBool(remoteMap, "insecureTls") ?? false,
                 AllowedHosts = remoteMap.TryGetValue("allowedHosts", out var hosts)
                     ? new HashSet<string>(RequireStringList(hosts, "remoteReferences.allowedHosts"), StringComparer.OrdinalIgnoreCase)
                     : null,

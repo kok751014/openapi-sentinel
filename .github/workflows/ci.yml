@@ -138,7 +138,7 @@ jobs:
         run: |
           TAG="$RELEASE_TAG"
           VERSION="${TAG#v}"
-          NOTES="dist/$VERSION/RELEASE_NOTES.md"
+          NOTES="RELEASE_NOTES.md"
 
           assets=(
             dist/$VERSION/openapi-sentinel-*.zip

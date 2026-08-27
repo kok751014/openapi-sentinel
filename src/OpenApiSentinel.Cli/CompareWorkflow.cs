@@ -32,6 +32,14 @@ public static class CompareWorkflow
 
         public bool AllowRemoteOverride { get; init; }
 
+        public bool AllowPrivateNetworkOverride { get; init; }
+
+        public bool InsecureTlsOverride { get; init; }
+
+        /// <summary>Advance a local OLD source to the raw NEW entry document only after
+        /// every report succeeds and the configured comparison policy passes.</summary>
+        public bool UpdateSnapshot { get; init; }
+
         public FailurePolicy? FailOnOverride { get; init; }
 
         public string? BaselinePathOverride { get; init; }
@@ -48,11 +56,20 @@ public static class CompareWorkflow
     {
         var config = request.Config;
 
+        if (request.UpdateSnapshot)
+        {
+            ValidateSnapshotRequest(request);
+        }
+
+        RemoteSecurityWarnings.WriteIfInsecure(config.RemoteReferences, request.InsecureTlsOverride, console);
+
         var oldOutcome = await AnalysisPipeline.LoadDocumentAsync(
-            request.OldSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, false,
+            request.OldSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride,
+            request.AllowPrivateNetworkOverride, request.InsecureTlsOverride,
             config.Limits, config.AllowAboveDocumentTree, ct);
         var newOutcome = await AnalysisPipeline.LoadDocumentAsync(
-            request.NewSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride, false,
+            request.NewSource, config.RemoteReferences, config.HeaderEnv, request.AllowRemoteOverride,
+            request.AllowPrivateNetworkOverride, request.InsecureTlsOverride,
             config.Limits, config.AllowAboveDocumentTree, ct);
         var oldDoc = oldOutcome.Document;
         var newDoc = newOutcome.Document;
@@ -94,7 +111,63 @@ public static class CompareWorkflow
 
         RenderOutputs(evaluation.Result, request, console);
 
-        return evaluation.Result.PolicyViolated ? ExitCodes.PolicyViolated : ExitCodes.Ok;
+        if (evaluation.Result.PolicyViolated)
+        {
+            if (request.UpdateSnapshot)
+            {
+                console.Out("Snapshot not updated because the comparison policy failed.");
+            }
+            return ExitCodes.PolicyViolated;
+        }
+
+        if (request.UpdateSnapshot)
+        {
+            // A loaded entry is the literal source body, never the normalized/resolved model.
+            // This write is deliberately last, after every requested report completed.
+            var loaded = newOutcome.Loaded ?? throw new SentinelConfigException(
+                "Cannot update snapshot: the NEW source did not provide a raw entry document.");
+            AtomicFileWriter.Write(request.OldSource, loaded.Content);
+            console.Out($"Snapshot updated:{Environment.NewLine}  {request.OldSource}{Environment.NewLine}Source:{Environment.NewLine}  {request.NewSource}");
+        }
+
+        return ExitCodes.Ok;
+    }
+
+    private static void ValidateSnapshotRequest(Request request)
+    {
+        if (request.OldSource is "-" or "stdin" || request.OldSource.StartsWith("git:", StringComparison.Ordinal) ||
+            (Uri.TryCreate(request.OldSource, UriKind.Absolute, out var uri) &&
+             uri.Scheme is "http" or "https"))
+        {
+            throw new SentinelConfigException(
+                "--update-snapshot requires OLD-SPEC to be an existing local file path; URL, stdin, and git sources do not have a safe snapshot destination.");
+        }
+
+        if (!File.Exists(request.OldSource))
+        {
+            throw new SentinelConfigException($"--update-snapshot requires an existing local OLD-SPEC file: '{request.OldSource}'.");
+        }
+
+        var oldPath = NormalizePathForCollision(request.OldSource);
+        var outputs = MergeOutputs(request.Config.Output, request.OutputPaths).Values;
+        if (outputs.Any(path => PathsCollide(oldPath, NormalizePathForCollision(path))) ||
+            (request.UpdateBaselinePath is { } updateBaseline && PathsCollide(oldPath, NormalizePathForCollision(updateBaseline))))
+        {
+            throw new SentinelConfigException(
+                "--update-snapshot refuses an output or update-baseline path that collides with OLD-SPEC; choose a separate report/baseline destination.");
+        }
+    }
+
+    private static bool PathsCollide(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizePathForCollision(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var info = new FileInfo(fullPath);
+        return info.Exists && info.ResolveLinkTarget(returnFinalTarget: true) is { } target
+            ? target.FullName
+            : fullPath;
     }
 
     internal static void RenderOutputs(ComparisonResult result, Request request, IConsoleWriter console)

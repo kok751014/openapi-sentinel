@@ -42,6 +42,10 @@ public sealed record BrunoSyncRequest
     /// This never enables remote loading by itself; <c>--allow-remote</c> remains required.</summary>
     public bool AllowPrivateNetworkOverride { get; init; }
 
+    /// <summary>Explicit one-run opt-in to bypass HTTPS certificate validation. This never
+    /// enables remote loading or private-network targets by itself.</summary>
+    public bool InsecureTlsOverride { get; init; }
+
     public bool ExamplesEnabledOverride { get; init; } = true;
 
     /// <summary>Clock for report timestamps; defaults to UTC system time and is injectable for tests.</summary>
@@ -112,6 +116,7 @@ public static class BrunoWorkflow
                 {
                     Enabled = request.AllowRemoteOverride,
                     AllowPrivateNetwork = request.AllowPrivateNetworkOverride,
+                    InsecureTls = request.InsecureTlsOverride,
                 }
                 : config.RemoteReferences;
 
@@ -129,7 +134,8 @@ public static class BrunoWorkflow
             bootstrapConfigContent = BrunoBootstrap.ConfigTemplate(
                 rawSource,
                 enableRemote: isRemoteBootstrapSource && request.AllowRemoteOverride,
-                allowPrivateNetwork: isRemoteBootstrapSource && request.AllowPrivateNetworkOverride);
+                allowPrivateNetwork: isRemoteBootstrapSource && request.AllowPrivateNetworkOverride,
+                insecureTls: isRemoteBootstrapSource && request.InsecureTlsOverride);
             if (request.DryRun)
             {
                 console.Out($"[預計建立] openapi-sentinel.yml");
@@ -189,11 +195,15 @@ public static class BrunoWorkflow
         }
 
         // ---- load contract ----
+        RemoteSecurityWarnings.WriteIfInsecure(config.RemoteReferences, request.InsecureTlsOverride, console);
         var outcomeDoc = await AnalysisPipeline.LoadDocumentAsync(
             source, config.RemoteReferences, config.HeaderEnv,
             allowRemoteOverride: request.AllowRemoteOverride,
             allowPrivateNetworkOverride: request.AllowPrivateNetworkOverride,
-            config.Limits, config.AllowAboveDocumentTree, ct);
+            insecureTlsOverride: request.InsecureTlsOverride,
+            limits: config.Limits,
+            allowAboveDocumentTree: config.AllowAboveDocumentTree,
+            ct: ct);
         var document = outcomeDoc.Document;
 
         // Remote sources get a deterministic snapshot of the RAW entry document as fetched

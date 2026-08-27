@@ -40,6 +40,9 @@ Start from the exit code — they are stable (see [cli-reference](cli-reference.
 - Private-network addresses are blocked by the SSRF guard; allow-list hosts or set
   `allowPrivateNetwork: true` consciously.
 - Redirects are followed manually and each hop is revalidated (max 5).
+- For a trusted self-signed or hostname-mismatched HTTPS endpoint, add all required independent
+  opt-ins: `--allow-remote`, `--allow-private-network` when applicable, and `--insecure-tls`.
+  TLS verification remains enabled unless the last flag (or `insecureTls: true`) is explicit.
 
 ### Exit 5: internal error
 

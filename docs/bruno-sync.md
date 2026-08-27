@@ -26,8 +26,8 @@ openapi-sentinel bruno sync --source ./swagger.json
 # 公開 HTTPS URL：明確同意遠端讀取，權限會寫入新設定檔
 openapi-sentinel bruno sync --source "https://api.example.com/swagger.json" --allow-remote
 
-# localhost／私有網路 HTTPS URL：兩個安全 opt-in 都必須明確給出
-openapi-sentinel bruno sync --source "https://localhost:7099/swagger/backend/swagger.json" --allow-remote --allow-private-network
+# localhost／私有網路 + 自簽 TLS：三個安全 opt-in 都必須明確給出
+openapi-sentinel bruno sync --source "https://localhost:7099/swagger/backend/swagger.json" --allow-remote --allow-private-network --insecure-tls
 ```
 
 Sentinel 會自動完成：
@@ -86,11 +86,13 @@ localhost、link-local 或 private-network HTTPS URL 還必須加
 remoteReferences:
   enabled: true
   allowPrivateNetwork: true
+  insecureTls: true
 ```
 
 這兩個權限只會在使用者明確指定時寫入，第二次起才能安全地直接執行
 `openapi-sentinel bruno sync`。未授權的私網/localhost 存取仍由 SSRF 防護拒絕。
-來源無法讀取、無效 OpenAPI 或任一 schema gate 失敗時，bootstrap 不會建立設定檔或
+`--insecure-tls` 只在第一次 bootstrap 明確給出時才會持久化 `insecureTls: true`；它不會
+隱含 remote 或 private-network 權限。來源無法讀取、無效 OpenAPI 或任一 schema gate 失敗時，bootstrap 不會建立設定檔或
 產品輸出；`--dry-run` 永遠不寫入。
 
 ## 產生範例（v1.1.0 暫時預設停用）

@@ -113,7 +113,8 @@ public static class CommandLineRunner
             case "validate":
                 return parsed.Positional.Count == 1
                     ? SimpleCommands.ValidateAsync(
-                        parsed.Positional[0], LoadConfig(parsed, console), parsed.Has("allow-remote"), console, default).GetAwaiter().GetResult()
+                        parsed.Positional[0], LoadConfig(parsed, console), parsed.Has("allow-remote"),
+                        parsed.Has("allow-private-network"), parsed.Has("insecure-tls"), console, default).GetAwaiter().GetResult()
                     : UsageError(console, "validate <SPEC>");
 
             case "compare":
@@ -177,6 +178,7 @@ public static class CommandLineRunner
             RemoveDeletedOperationsOverride = parsed.Has("remove-deleted") ? true : null,
             AllowRemoteOverride = parsed.Has("allow-remote"),
             AllowPrivateNetworkOverride = parsed.Has("allow-private-network"),
+            InsecureTlsOverride = parsed.Has("insecure-tls"),
             ExamplesEnabledOverride = !parsed.Has("no-examples"),
             OperationFilter = parsed.Value("operation"),
             PathFilter = parsed.Value("path"),
@@ -217,6 +219,9 @@ public static class CommandLineRunner
             NoColor = parsed.Has("no-color"),
             Verbose = parsed.Has("verbose"),
             AllowRemoteOverride = parsed.Has("allow-remote"),
+            AllowPrivateNetworkOverride = parsed.Has("allow-private-network"),
+            InsecureTlsOverride = parsed.Has("insecure-tls"),
+            UpdateSnapshot = parsed.Has("update-snapshot"),
             FailOnOverride = failOnOverride,
             BaselinePathOverride = parsed.Value("baseline"),
             UpdateBaselinePath = parsed.Value("update-baseline"),
@@ -283,6 +288,9 @@ public static class CommandLineRunner
                       --baseline <file>                       suppress baselined findings
                       --update-baseline <file>                adopt current findings as baseline
                       --allow-remote                          enable remote references this run
+                      --allow-private-network                 permit trusted localhost/private remote targets this run
+                      --insecure-tls                          DANGEROUS: disable HTTPS certificate validation for this run
+                      --update-snapshot                       replace local OLD only after reports succeed and policy passes
                       --config <path>                         explicit configuration file
                       --no-color                              plain text output
                       --verbose                               impact + suggested action per finding
@@ -358,6 +366,7 @@ public static class CommandLineRunner
                       --allow-remote            允許此 run 使用遠端來源／$refs
                                                 （需符合既有 remoteReferences 安全政策）
                       --allow-private-network    明確允許本次使用 localhost／私有網路來源或 $refs
+                      --insecure-tls             危險：僅本次停用 HTTPS 憑證驗證；不會啟用 remote/private network
                       --verbose                 顯示每個操作的變更與保留明細
                       --no-color                純文字輸出
 
@@ -402,6 +411,8 @@ public static class CommandLineRunner
               --config <path>                         explicit configuration file
               --allow-remote                          enable remote references for this run
               --allow-private-network                 allow localhost/private-network remote sources or refs for this Bruno run
+              --insecure-tls                          DANGEROUS: disable HTTPS certificate validation for this run
+              --update-snapshot                       update a local OLD compare snapshot only after policy passes
               --baseline <file>                       suppress findings listed in baseline
               --update-baseline <file>                write current findings as the new baseline
               -o/--output <path>                      write primary format to a file

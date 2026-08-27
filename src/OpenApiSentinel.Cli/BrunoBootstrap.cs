@@ -19,11 +19,12 @@ public static class BrunoBootstrap
     public const string SnapshotFileName = "source-snapshot.json";
 
     /// <summary>Production-ready default configuration written on first sync.</summary>
-    public static string ConfigTemplate(string source, bool enableRemote, bool allowPrivateNetwork)
+    public static string ConfigTemplate(string source, bool enableRemote, bool allowPrivateNetwork, bool insecureTls = false)
     {
         var remoteReferences = enableRemote
             ? "\nremoteReferences:\n  enabled: true\n" +
-              (allowPrivateNetwork ? "  allowPrivateNetwork: true\n" : "")
+              (allowPrivateNetwork ? "  allowPrivateNetwork: true\n" : "") +
+              (insecureTls ? "  insecureTls: true\n" : "")
             : "";
 
         return $"""

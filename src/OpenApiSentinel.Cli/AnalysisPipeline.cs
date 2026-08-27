@@ -10,7 +10,7 @@ namespace OpenApiSentinel.Cli;
 /// <param name="Document">The normalized API document.</param>
 /// <param name="UnresolvedExternalRefs">Count of external refs that could not be resolved.</param>
 /// <param name="Loaded">The raw entry document as loaded (file bytes/HTTP body); used by
-/// the Bruno bootstrap snapshot. Null for sources without a single raw entry (stdin).</param>
+/// snapshot workflows. Null only for loaders that cannot supply a single raw entry document.</param>
 public sealed record AnalysisOutcome(ApiDocument Document, int UnresolvedExternalRefs, LoadedSpec? Loaded = null);
 
 /// <summary>Loads one specification through the full pipeline: load → parse → resolve → normalize.</summary>
@@ -22,6 +22,7 @@ public static class AnalysisPipeline
         IReadOnlyList<EnvHeader> envHeaders,
         bool allowRemoteOverride = false,
         bool allowPrivateNetworkOverride = false,
+        bool insecureTlsOverride = false,
         ProcessingLimits? limits = null,
         bool allowAboveDocumentTree = false,
         CancellationToken ct = default)
@@ -30,6 +31,7 @@ public static class AnalysisPipeline
         {
             Enabled = remotePolicy.Enabled || allowRemoteOverride,
             AllowPrivateNetwork = remotePolicy.AllowPrivateNetwork || allowPrivateNetworkOverride,
+            InsecureTls = remotePolicy.InsecureTls || insecureTlsOverride,
         };
 
         var loader = new SpecLoader(policy, envHeaders);

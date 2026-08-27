@@ -1,7 +1,7 @@
 # OpenAPI Sentinel
 
 [![CI](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v1.1.0-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.1.0)
+[![Release](https://img.shields.io/badge/release-v1.2.0-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.2.0)
 
 **Catch breaking API contract changes before they reach production.**
 
@@ -190,6 +190,7 @@ suppressions:
 
 remoteReferences:
   enabled: false
+  insecureTls: false  # dangerous explicit opt-in; does not enable remote/private targets
 ```
 
 Remote reference fetching remains off unless you explicitly enable it.
@@ -371,13 +372,13 @@ The release pipeline validates:
 
 ## Current status
 
-**OpenAPI Sentinel 1.1.0.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
+**OpenAPI Sentinel 1.2.0.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
 and the [CHANGELOG](CHANGELOG.md) for release details.
 
 Current verified quality state:
 
-- `openapi-sentinel version` reports **1.1.0**
-- **551/551 automated tests passing**; Release build succeeds
+- `openapi-sentinel version` reports **1.2.0**
+- **561/561 automated tests passing**; release verification is performed locally before publication
 - `git diff --check` passes
 
 Current distribution work that is intentionally separate from the GitHub Release:
