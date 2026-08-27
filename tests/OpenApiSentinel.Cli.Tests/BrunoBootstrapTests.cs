@@ -146,6 +146,18 @@ public sealed class BrunoBootstrapTests : IDisposable
     }
 
     [Fact]
+    public void Bootstrap_Config_Persists_InsecureTls_OnlyForExplicitOptIn()
+    {
+        var optedInPath = WriteFile("opted-in.yml", BrunoBootstrap.ConfigTemplate(
+            "https://localhost:7099/swagger.json", enableRemote: true, allowPrivateNetwork: true, insecureTls: true));
+        var defaultPath = WriteFile("default.yml", BrunoBootstrap.ConfigTemplate(
+            "https://localhost:7099/swagger.json", enableRemote: true, allowPrivateNetwork: true));
+
+        Assert.True(SentinelConfigLoader.Load(optedInPath).RemoteReferences.InsecureTls);
+        Assert.False(SentinelConfigLoader.Load(defaultPath).RemoteReferences.InsecureTls);
+    }
+
+    [Fact]
     public void First_Sync_Does_Not_Overwrite_Existing_Config()
     {
         WriteFile("swagger.json", Spec);

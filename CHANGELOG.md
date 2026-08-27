@@ -7,6 +7,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning foll
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-27
+
+### Added
+
+- Explicit `--insecure-tls` / `remoteReferences.insecureTls` opt-in for trusted internal or test
+  HTTPS OpenAPI sources.
+- `compare --update-snapshot`, which atomically advances a local raw-contract snapshot only after
+  every requested report is written and the comparison policy passes.
+
+### Fixed
+
+- `validate`, `compare`, and Bruno commands now apply the same independent remote, private-network,
+  and TLS CLI security overrides.
+- Boolean CLI flags no longer consume positional specification arguments.
+- Windows release automation now publishes each RID with its own restore/build assets and emits the
+  same `SHA256SUMS` artifact contract as the shell release script.
+
+### Security
+
+- Insecure TLS remains default-off and is independent from remote-loading and private-network opt-ins;
+  SSRF checks, host allowlists, and redirect validation remain active.
+
 ## [1.1.0] - 2026-08-27
 
 ### Fixed — Bruno OpenCollection import compatibility (release-blocker for 1.1.0)

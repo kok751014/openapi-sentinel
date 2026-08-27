@@ -1,43 +1,34 @@
-# OpenAPI Sentinel v1.1.0 release notes
-
-This document describes the v1.1.0 release content.
+# OpenAPI Sentinel v1.2.0 release notes
 
 ## Highlights
 
-- **Bruno OpenCollection sync.** `openapi-sentinel bruno sync` turns an OpenAPI/Swagger
-  contract into a Bruno collection and incrementally synchronizes later contract changes.
-- **Native Bruno folder workspace and bootstrap.** A first sync can create the configuration
-  and output layout, including a folder-based Bruno workspace that Bruno can open directly,
-  alongside the bundled OpenCollection artifact.
-- **Preservation-first updates.** Contract-owned request structure is refreshed while manual
-  values, scripts, tests, documentation, authentication, user examples, and unbound workspace
-  files remain under user control. Removed operations are reported as stale unless explicit
-  removal is configured.
-- **Better request generation.** POST/PUT request bodies are generated and merged more
-  reliably, and multipart/form-data requests now preserve the required multipart shape.
-- **OpenCollection validation before writes.** Generated bundled collections are validated
-  against the pinned official OpenCollection v1.0 schema before collection, workspace, report,
-  or incremental-state output is written.
-- **Useful, quiet sync reporting.** Meaningful sync changes create timestamped HTML and JSON
-  report pairs. Unchanged operation details are filtered from reports, and no report is created
-  when there are no meaningful changes.
-
-## Generated Bruno examples
-
-The generated Bruno example/scenario feature remains implemented but is experimental and
-disabled by default in v1.1.0. Normal request, body, parameter, header, collection, and
-workspace generation remains available without it. Enable generated examples explicitly with
-`bruno.examples.enabled: true`, or run the explicit `bruno examples` command when appropriate.
+- **Safe remote snapshot advancement.** `compare <local-old> <new> --update-snapshot` compares and
+  reports first, then atomically replaces the local OLD contract with the raw NEW entry document
+  only when the policy passes. Fetch, parse, reference, report, and policy failures leave the
+  snapshot byte-safe. `--fail-on none` is the explicit way to accept findings before advancing.
+- **Explicit insecure TLS opt-in.** Trusted internal/test endpoints with self-signed or
+  hostname-mismatched certificates can use `--insecure-tls` or
+  `remoteReferences.insecureTls: true`.
+- **Consistent remote policy flags.** `validate`, `compare`, and Bruno support the same independent
+  `--allow-remote`, `--allow-private-network`, and `--insecure-tls` controls.
+- **Reliable Windows packaging.** `build/release.ps1 -Version 1.2.0` now produces all six
+  self-contained RID archives, a NuGet tool package, and one `SHA256SUMS` file.
 
 ## Remote-source security
 
-Remote URL sources and remote references remain opt-in. Use `--allow-remote` (or the matching
-configuration) for remote access; localhost and private-network targets additionally require
-the explicit private-network opt-in. HTTPS is required by default, with HTTP requiring its own
-explicit configuration.
+TLS certificate verification remains enabled by default. Insecure TLS requires explicit opt-in and
+is appropriate only for trusted internal/test endpoints; trusted certificates remain recommended for
+production. It does not enable remote access, private-network access, HTTP, host-allowlist bypasses,
+or redirect bypasses. Redirects and remote sibling `$ref` documents remain guarded by the existing
+SSRF and host policy.
 
-## Known limitation
+For a private HTTPS endpoint using a self-signed certificate, provide all required independent flags:
 
-HTTPS endpoints with untrusted, self-signed, or hostname-mismatched certificates are not
-automatically bypassed. Use a certificate that the runtime trusts and whose hostname matches the
-endpoint.
+```text
+--allow-remote --allow-private-network --insecure-tls
+```
+
+## Upgrade notes
+
+No existing remote policy is relaxed. `insecureTls` defaults to `false`, and Bruno bootstrap writes
+`insecureTls: true` only when the user supplied `--insecure-tls` explicitly on that first run.

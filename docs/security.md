@@ -27,6 +27,7 @@ remoteReferences:
   enabled: false            # off by default — local analysis stays fully offline
   allowHttp: false          # HTTPS only unless explicitly relaxed
   allowPrivateNetwork: false
+  insecureTls: false          # dangerous explicit opt-in; default .NET TLS validation otherwise applies
   allowedHosts: []          # empty = any public host; list hostnames for strict control
   timeoutSeconds: 30
   maxResponseBytes: 20971520
@@ -34,6 +35,11 @@ remoteReferences:
 
 `--allow-remote` on the CLI is equivalent to `enabled: true`. Cyclic reference graphs are
 detected and replaced with deterministic marker nodes instead of recursing forever.
+
+`--insecure-tls` (or `insecureTls: true`) is only for explicitly trusted internal/test HTTPS
+endpoints with self-signed or mismatched certificates. It is default-off and does not enable
+remote loading, private-network access, HTTP, host allowlist bypasses, or redirect bypasses.
+Every redirect and remote sibling `$ref` remains subject to the same SSRF and host policy.
 
 ## Dependency posture
 

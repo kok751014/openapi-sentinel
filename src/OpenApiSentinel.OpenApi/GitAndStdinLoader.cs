@@ -16,6 +16,10 @@ public sealed record RemoteFetchPolicy
     /// <summary>Allow requests to localhost / private / link-local network ranges (SSRF guard).</summary>
     public bool AllowPrivateNetwork { get; init; }
 
+    /// <summary>Explicitly bypass HTTPS certificate validation. This dangerous option is
+    /// independent from remote-loading and private-network opt-ins.</summary>
+    public bool InsecureTls { get; init; }
+
     public IReadOnlySet<string>? AllowedHosts { get; init; }
 
     public int TimeoutSeconds { get; init; } = 30;

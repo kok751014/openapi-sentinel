@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Net.Security;
 
 namespace OpenApiSentinel.OpenApi;
 
@@ -14,11 +15,7 @@ public sealed partial class SpecLoader
 
         ValidateRemoteUri(uri);
 
-        using var client = new HttpClient(new SocketsHttpHandler
-        {
-            AllowAutoRedirect = false,
-            ConnectTimeout = TimeSpan.FromSeconds(_remotePolicy.TimeoutSeconds),
-        })
+        using var client = new HttpClient(CreateHttpHandler())
         {
             Timeout = TimeSpan.FromSeconds(_remotePolicy.TimeoutSeconds),
         };
@@ -96,6 +93,25 @@ public sealed partial class SpecLoader
             // (multi-file specs served over HTTP), under the same fetch policy.
             return new LoadedSpec(uri.ToString(), content, null, uri.ToString());
         }
+    }
+
+    private SocketsHttpHandler CreateHttpHandler()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            ConnectTimeout = TimeSpan.FromSeconds(_remotePolicy.TimeoutSeconds),
+        };
+        if (_remotePolicy.InsecureTls)
+        {
+#pragma warning disable CA5359 // Explicitly requested insecure TLS mode; default policy does not install this callback.
+            handler.SslOptions = new SslClientAuthenticationOptions
+            {
+                RemoteCertificateValidationCallback = static (_, _, _, _) => true,
+            };
+#pragma warning restore CA5359
+        }
+        return handler;
     }
 
     private const int MaxRedirectHops = 5;

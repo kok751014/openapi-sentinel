@@ -1,4 +1,9 @@
 using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using OpenApiSentinel.Core;
 using OpenApiSentinel.OpenApi;
@@ -292,6 +297,30 @@ public sealed class RemoteSiblingRefTests : IDisposable
         Assert.Contains("stdin and git-revision sources", ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task InsecureTls_IsExplicit_AndDoesNotBypassRemoteOrPrivatePolicy()
+    {
+        await using var server = new SelfSignedHttpsServer("openapi: 3.0.3\ninfo: { title: TLS, version: '1' }\npaths: {}\n");
+        var url = server.Url;
+
+        var trustedDefaults = new RemoteFetchPolicy { Enabled = true, AllowPrivateNetwork = true };
+        var insecure = trustedDefaults with { InsecureTls = true };
+        var loaded = await new SpecLoader(insecure).LoadAsync(url);
+        Assert.Contains("title: TLS", loaded.Content, StringComparison.Ordinal);
+
+        await Assert.ThrowsAsync<SpecFetchException>(() => new SpecLoader(trustedDefaults).LoadAsync(url));
+
+        await Assert.ThrowsAsync<SpecFetchException>(() => new SpecLoader(insecure with
+        {
+            AllowPrivateNetwork = false,
+        }).LoadAsync(url));
+
+        await Assert.ThrowsAsync<SpecFetchException>(() => new SpecLoader(insecure with
+        {
+            Enabled = false,
+        }).LoadAsync(url));
+    }
+
     private async Task<string> FetchAsync(string path)
     {
         using var client = new HttpClient();
@@ -300,4 +329,75 @@ public sealed class RemoteSiblingRefTests : IDisposable
 
     private static System.Collections.Generic.HashSet<string> FrozenHosts(params string[] hosts) =>
         hosts.ToHashSet(StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>A tiny in-process HTTPS server with a self-signed certificate. It exercises the
+/// actual SocketsHttpHandler TLS path without relying on machine certificate stores.</summary>
+internal sealed class SelfSignedHttpsServer : IAsyncDisposable
+{
+    private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+    private readonly X509Certificate2 _certificate;
+    private readonly string _body;
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Task _acceptLoop;
+
+    public SelfSignedHttpsServer(string body)
+    {
+        _body = body;
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest("CN=localhost", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, false));
+        using var generated = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(5));
+        _certificate = X509CertificateLoader.LoadPkcs12(generated.Export(X509ContentType.Pfx), password: null);
+        _listener.Start();
+        Url = $"https://127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}/openapi.yaml";
+        _acceptLoop = AcceptLoopAsync();
+    }
+
+    public string Url { get; }
+
+    private async Task AcceptLoopAsync()
+    {
+        try
+        {
+            while (!_stop.IsCancellationRequested)
+            {
+                var client = await _listener.AcceptTcpClientAsync(_stop.Token);
+                await HandleAsync(client);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task HandleAsync(TcpClient client)
+    {
+        using (client)
+        await using (var stream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false))
+        {
+            try
+            {
+                await stream.AuthenticateAsServerAsync(_certificate, clientCertificateRequired: false,
+                    enabledSslProtocols: System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                    checkCertificateRevocation: false);
+                using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+                while (!string.IsNullOrEmpty(await reader.ReadLineAsync())) { }
+                var content = Encoding.UTF8.GetBytes(_body);
+                var headers = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: application/yaml\r\nContent-Length: {content.Length}\r\nConnection: close\r\n\r\n");
+                await stream.WriteAsync(headers);
+                await stream.WriteAsync(content);
+            }
+            catch (IOException) { }
+            catch (AuthenticationException) { }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _stop.Cancel();
+        _listener.Stop();
+        try { await _acceptLoop; } catch (ObjectDisposedException) { }
+        _certificate.Dispose();
+        _stop.Dispose();
+    }
 }

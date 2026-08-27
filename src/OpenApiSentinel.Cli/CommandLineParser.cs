@@ -30,7 +30,7 @@ public static class CommandLineParser
     private static readonly HashSet<string> BooleanFlags = new(StringComparer.Ordinal)
     {
         "help", "version", "no-color", "verbose", "debug", "force",
-        "allow-remote", "report-unknown-kinds", "no-suppressed",
+        "allow-remote", "allow-private-network", "insecure-tls", "update-snapshot", "report-unknown-kinds", "no-suppressed",
         "dry-run", "no-examples", "remove-deleted",
     };
     public static ParsedCommandLine Parse(string[] args)

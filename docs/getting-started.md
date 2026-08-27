@@ -27,6 +27,16 @@ openapi-sentinel validate old.yaml     # sanity-check a single contract
 openapi-sentinel compare old.yaml new.yaml
 ```
 
+To keep a local baseline file current only when comparison policy passes, use:
+
+```bash
+openapi-sentinel compare ./swagger.json https://trusted.example/swagger.json --allow-remote --update-snapshot --fail-on high
+```
+
+`--update-snapshot` accepts only a local OLD file, writes the raw NEW entry document atomically,
+and never advances the snapshot on fetch/parse/report/policy failure. Use `--fail-on none` only
+when intentionally accepting all findings before advancing it.
+
 ## 3. Understand the output
 
 The default console report shows:
