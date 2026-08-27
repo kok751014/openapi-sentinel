@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OpenApiSentinel.Reporting\OpenApiSentinel.Reporting.csproj" />
+    <ProjectReference Include="..\..\src\OpenApiSentinel.Rules\OpenApiSentinel.Rules.csproj" />
   </ItemGroup>
 
 </Project>

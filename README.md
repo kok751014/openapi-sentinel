@@ -1,7 +1,7 @@
 # OpenAPI Sentinel
 
 [![CI](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v1.2.0-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.2.0)
+[![Release](https://img.shields.io/badge/release-v1.3.0-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.3.0)
 
 **Catch breaking API contract changes before they reach production.**
 
@@ -228,8 +228,9 @@ openapi-sentinel compare old.yaml new.yaml --html report.html
 ```
 
 The HTML report is a single portable file with embedded CSS/JS, no required CDN, and works offline.
-It includes severity/compatibility filters, text search, collapsible details, suppressed findings,
-affected endpoints, rule IDs, remediation guidance, and semantic-version recommendations.
+It defaults to Traditional Chinese; use `--html-lang en` for English. It presents deduplicated human
+changes (while retaining raw findings for policy and machine reports), an actionable breaking-first
+summary, endpoint-specific descriptions, related-change grouping, and snapshot-advance status.
 
 ### SARIF / JUnit
 
@@ -372,12 +373,12 @@ The release pipeline validates:
 
 ## Current status
 
-**OpenAPI Sentinel 1.2.0.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
+**OpenAPI Sentinel 1.3.0.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
 and the [CHANGELOG](CHANGELOG.md) for release details.
 
 Current verified quality state:
 
-- `openapi-sentinel version` reports **1.2.0**
+- `openapi-sentinel version` reports **1.3.0**
 - **561/561 automated tests passing**; release verification is performed locally before publication
 - `git diff --check` passes
 

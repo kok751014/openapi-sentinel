@@ -233,20 +233,20 @@ public class HtmlReporterTests
         Assert.Contains("new.yaml", html, StringComparison.Ordinal);
         Assert.Contains("2026-03-01 10:30:00", html, StringComparison.Ordinal);
         Assert.Contains("MAJOR", html, StringComparison.Ordinal); // recommendation badge
-        Assert.Contains("Suppressed findings", html, StringComparison.Ordinal);
-        Assert.Contains("Affected endpoints", html, StringComparison.Ordinal);
-        Assert.Contains("st-removed", html, StringComparison.Ordinal); // state badge
+        Assert.Contains("已抑制的 Findings", html, StringComparison.Ordinal);
+        Assert.Contains("受影響的 Endpoint", html, StringComparison.Ordinal);
+        Assert.Contains("本次變更摘要", html, StringComparison.Ordinal);
     }
 
     [Fact]
     public void FailingReport_ShowsFailedVerdict_AndFindingFilters()
     {
         var html = Render(TestResults.Failing());
-        Assert.Contains(">FAILED<", html, StringComparison.Ordinal);
+        Assert.Contains(">未通過<", html, StringComparison.Ordinal);
         Assert.Contains("id=\"search\"", html, StringComparison.Ordinal);
-        Assert.Contains("id=\"f-severity\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-rule=\"CG1001\"", html, StringComparison.Ordinal);
-        Assert.Contains("Recommended version bump".Replace("Recommended version bump", ""), html, StringComparison.Ordinal);
+        Assert.Contains("id=\"f-compat\"", html, StringComparison.Ordinal);
+        Assert.Contains("CG1001", html, StringComparison.Ordinal);
+        Assert.Contains("需要處理", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -269,6 +269,46 @@ public class HtmlReporterTests
     public void Deterministic_Output()
     {
         Assert.Equal(Render(TestResults.Failing()), Render(TestResults.Failing()));
+    }
+
+    [Fact]
+    public void HtmlPresentation_DeduplicatesOnlyExactEvents()
+    {
+        var original = TestResults.Finding("CG5017", "Property removed", Severity.High, Compatibility.Breaking,
+            path: "/accounts/{id}", oldValue: "test");
+        var differentValue = original with { OldValue = "other" };
+        var result = TestResults.Passing() with
+        {
+            Findings = [original, original, original, differentValue],
+            Summary = new ResultSummary { Total = 4, Breaking = 4, High = 4 },
+            PolicyViolated = true,
+        };
+        var html = new HtmlReporter().Render(result, new ReporterOptions { HtmlLanguage = HtmlLanguage.En });
+
+        Assert.Contains("Raw rule events 4 · Distinct changes 2 · Duplicates collapsed 2", html, StringComparison.Ordinal);
+        Assert.Contains("Merged 3 identical rule events", html, StringComparison.Ordinal);
+        Assert.Equal(4, result.Findings.Count); // HTML did not mutate the engine result.
+    }
+
+    [Fact]
+    public void EnglishMode_UsesEnglishMarkup_And_TraditionalChineseIsDefault()
+    {
+        var zh = Render(TestResults.Failing());
+        var en = new HtmlReporter().Render(TestResults.Failing(), new ReporterOptions { HtmlLanguage = HtmlLanguage.En });
+        Assert.Contains("<html lang=\"zh-Hant-TW\">", zh, StringComparison.Ordinal);
+        Assert.Contains("本次變更摘要", zh, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\">", en, StringComparison.Ordinal);
+        Assert.Contains("Affected endpoints", en, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EveryBuiltInRule_HasTraditionalChineseHtmlCoverage()
+    {
+        var uncovered = OpenApiSentinel.Rules.RuleRegistry.CreateDefault().All
+            .Select(r => r.Descriptor.Id)
+            .Where(id => !HtmlLocalizationCatalog.HasTraditionalChinese(id))
+            .ToArray();
+        Assert.Empty(uncovered);
     }
 }
 

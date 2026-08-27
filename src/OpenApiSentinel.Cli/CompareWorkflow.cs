@@ -50,6 +50,9 @@ public static class CompareWorkflow
 
         /// <summary>Omit the suppressed-findings section from reports.</summary>
         public bool HideSuppressed { get; init; }
+
+        /// <summary>Language for HTML output only.</summary>
+        public HtmlLanguage HtmlLanguage { get; init; } = HtmlLanguage.ZhTw;
     }
 
     public static async Task<int> RunAsync(Request request, IConsoleWriter console, CancellationToken ct = default)
@@ -109,7 +112,10 @@ public static class CompareWorkflow
             console.Out($"Baseline written: {updatePath} ({fingerprints.Count + evaluation.Result.Findings.Count} entries).");
         }
 
-        RenderOutputs(evaluation.Result, request, console);
+        var snapshotStatus = request.UpdateSnapshot
+            ? (evaluation.Result.PolicyViolated ? HtmlSnapshotStatus.PolicyFailed : HtmlSnapshotStatus.Pending)
+            : HtmlSnapshotStatus.NotRequested;
+        RenderOutputs(evaluation.Result, request, console, snapshotStatus);
 
         if (evaluation.Result.PolicyViolated)
         {
@@ -127,6 +133,9 @@ public static class CompareWorkflow
             var loaded = newOutcome.Loaded ?? throw new SentinelConfigException(
                 "Cannot update snapshot: the NEW source did not provide a raw entry document.");
             AtomicFileWriter.Write(request.OldSource, loaded.Content);
+            // Keep the initial report valid until the snapshot has been atomically advanced,
+            // then atomically replace only HTML artifacts with their final presentation status.
+            FinalizeHtmlArtifacts(evaluation.Result, request);
             console.Out($"Snapshot updated:{Environment.NewLine}  {request.OldSource}{Environment.NewLine}Source:{Environment.NewLine}  {request.NewSource}");
         }
 
@@ -170,13 +179,17 @@ public static class CompareWorkflow
             : fullPath;
     }
 
-    internal static void RenderOutputs(ComparisonResult result, Request request, IConsoleWriter console)
+    internal static void RenderOutputs(ComparisonResult result, Request request, IConsoleWriter console, HtmlSnapshotStatus snapshotStatus = HtmlSnapshotStatus.NotRequested)
     {
         var options = new ReporterOptions
         {
             NoColor = request.NoColor,
             Verbose = request.Verbose,
             IncludeSuppressed = !request.HideSuppressed,
+            HtmlLanguage = request.HtmlLanguage,
+            SnapshotStatus = snapshotStatus,
+            SnapshotPath = request.OldSource,
+            SnapshotSource = request.NewSource,
         };
         var allOutputs = MergeOutputs(request.Config.Output, request.OutputPaths);
 
@@ -189,6 +202,10 @@ public static class CompareWorkflow
             NoColor = request.NoColor || !primaryToStdout,
             Verbose = request.Verbose,
             IncludeSuppressed = !request.HideSuppressed,
+            HtmlLanguage = request.HtmlLanguage,
+            SnapshotStatus = snapshotStatus,
+            SnapshotPath = request.OldSource,
+            SnapshotSource = request.NewSource,
         };
         var primary = RenderFormat(request.Format, result, primaryOptions);
         if (primaryToStdout)
@@ -201,13 +218,39 @@ public static class CompareWorkflow
             // File artifacts are always color-free regardless of terminal detection.
             var content = format == request.Format && primaryToStdout
                 ? primary
-                : RenderFormat(format, result, new ReporterOptions { NoColor = true, Verbose = request.Verbose });
+                : RenderFormat(format, result, new ReporterOptions
+                {
+                    NoColor = true,
+                    Verbose = request.Verbose,
+                    IncludeSuppressed = !request.HideSuppressed,
+                    HtmlLanguage = request.HtmlLanguage,
+                    SnapshotStatus = snapshotStatus,
+                    SnapshotPath = request.OldSource,
+                    SnapshotSource = request.NewSource,
+                });
             WriteArtifact(path, content, format);
             if (format != "console")
             {
                 Console.Error.WriteLine($"[sentinel] wrote {format}: {path}");
             }
         }
+    }
+
+    private static void FinalizeHtmlArtifacts(ComparisonResult result, Request request)
+    {
+        var outputs = MergeOutputs(request.Config.Output, request.OutputPaths);
+        if (!outputs.TryGetValue("html", out var path)) return;
+        var html = RenderFormat("html", result, new ReporterOptions
+        {
+            NoColor = true,
+            Verbose = request.Verbose,
+            IncludeSuppressed = !request.HideSuppressed,
+            HtmlLanguage = request.HtmlLanguage,
+            SnapshotStatus = HtmlSnapshotStatus.Updated,
+            SnapshotPath = request.OldSource,
+            SnapshotSource = request.NewSource,
+        });
+        AtomicFileWriter.Write(path, html);
     }
 
     private static Dictionary<string, string> MergeOutputs(IReadOnlyDictionary<string, string> fromConfig, IReadOnlyDictionary<string, string> fromCli)

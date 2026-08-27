@@ -1,10 +1,10 @@
 # PowerShell release script for OpenAPI Sentinel.
 # Produces self-contained binaries, checksums and the NuGet global-tool package.
 #
-# Usage: ./build/release.ps1 [[-Version] "1.2.0"]
+# Usage: ./build/release.ps1 [[-Version] "1.3.0"]
 [CmdletBinding()]
 param(
-    [string]$Version = $(if ($env:SENTINEL_VERSION) { $env:SENTINEL_VERSION } else { "1.2.0" })
+    [string]$Version = $(if ($env:SENTINEL_VERSION) { $env:SENTINEL_VERSION } else { "1.3.0" })
 )
 
 $ErrorActionPreference = "Stop"

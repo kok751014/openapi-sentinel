@@ -1,5 +1,6 @@
 using OpenApiSentinel.Bruno;
 using OpenApiSentinel.OpenApi;
+using OpenApiSentinel.Reporting;
 
 namespace OpenApiSentinel.Cli;
 
@@ -58,7 +59,7 @@ public static class CommandLineRunner
     {
         "format", "fail-on", "config", "baseline", "update-baseline",
         "output", "o", "json", "markdown", "html", "sarif", "junit",
-        "changelog", "pr-summary", "explain-target",
+        "changelog", "pr-summary", "explain-target", "html-lang",
         "source", "collection", "report-dir", "operation", "path",
     };
 
@@ -198,6 +199,12 @@ public static class CommandLineRunner
             throw new SentinelConfigException($"Unknown --format '{format}'. Supported: console, json, markdown, html.");
 
         var failOnOverride = parsed.Value("fail-on") is { } fo ? SentinelConfigLoader.ParseFailOn(fo) : null;
+        var htmlLanguage = parsed.Value("html-lang") switch
+        {
+            null or "zh-TW" => HtmlLanguage.ZhTw,
+            "en" => HtmlLanguage.En,
+            _ => throw new SentinelConfigException("Unsupported HTML language. Supported HTML languages: zh-TW, en."),
+        };
 
         // CLI output path options override config output section entries.
         Dictionary<string, string> cliOutputs = new(StringComparer.Ordinal);
@@ -227,6 +234,7 @@ public static class CommandLineRunner
             UpdateBaselinePath = parsed.Value("update-baseline"),
             ReportUnknownKinds = parsed.Has("report-unknown-kinds"),
             HideSuppressed = parsed.Has("no-suppressed"),
+            HtmlLanguage = htmlLanguage,
         };
 
         return await CompareWorkflow.RunAsync(request, console);
@@ -291,6 +299,7 @@ public static class CommandLineRunner
                       --allow-private-network                 permit trusted localhost/private remote targets this run
                       --insecure-tls                          DANGEROUS: disable HTTPS certificate validation for this run
                       --update-snapshot                       replace local OLD only after reports succeed and policy passes
+                      --html-lang <zh-TW|en>                   HTML report language; default zh-TW
                       --config <path>                         explicit configuration file
                       --no-color                              plain text output
                       --verbose                               impact + suggested action per finding
@@ -413,6 +422,7 @@ public static class CommandLineRunner
               --allow-private-network                 allow localhost/private-network remote sources or refs for this Bruno run
               --insecure-tls                          DANGEROUS: disable HTTPS certificate validation for this run
               --update-snapshot                       update a local OLD compare snapshot only after policy passes
+              --html-lang <zh-TW|en>                   HTML report language; default zh-TW
               --baseline <file>                       suppress findings listed in baseline
               --update-baseline <file>                write current findings as the new baseline
               -o/--output <path>                      write primary format to a file
