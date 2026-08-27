@@ -21,6 +21,7 @@ Full compatibility comparison. This is the command CI uses.
 | `--allow-private-network` | Permit trusted localhost/private-network remote targets for this run; does not enable remote fetching. |
 | `--insecure-tls` | Dangerous explicit opt-in: bypass HTTPS certificate validation for remote fetching. It does not enable remote fetching or private-network access. |
 | `--update-snapshot` | After all reports succeed and policy passes, atomically replace a local OLD spec with the raw NEW entry document. |
+| `--html-lang <zh-TW\|en>` | HTML report language only. Defaults to Traditional Chinese (`zh-TW`); use `en` for English. Invalid values exit 3. |
 | `--baseline <file>` | Suppress findings whose fingerprints appear in the baseline file. |
 | `--report-unknown-kinds` | Emit an aggregated VERIFY finding (CG9003) for changes no rule evaluates. |
 | `--no-suppressed` | Omit the suppressed-findings section from reports (default: shown with reasons). |
@@ -134,6 +135,14 @@ Print the tool version.
 
 These codes are stable and safe to script against; do not parse console text for verdicts.
 
+## HTML report presentation
+
+HTML reports are offline single files and default to `zh-Hant-TW`. Their summary and cards use
+presentation-only exact-event deduplication, so the prominent count is **distinct changes** while
+the report also shows raw rule-event count. This does not modify policy evaluation, JSON, Markdown,
+SARIF, JUnit, baselines, fingerprints, suppressions, or rule evaluation. Breaking and review-needed
+changes appear before a collapsed non-breaking section; endpoint rows describe the observed change.
+
 ## JSON output contract
 
 `schemaVersion: "1.0"` fields are additive-only within the same major schema version:
@@ -142,7 +151,7 @@ removals or renames bump `schemaVersion`. Top-level structure:
 ```json
 {
   "schemaVersion": "1.0",
-  "toolVersion": "1.2.0",
+  "toolVersion": "1.3.0",
   "result": "passed",
   "oldContractName": "old.yaml",
   "newContractName": "new.yaml",

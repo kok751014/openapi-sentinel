@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.3.0] - 2026-08-27
+
+### Added
+
+- Traditional-Chinese HTML compatibility reports by default with `--html-lang en` opt-in.
+- Action-oriented change summary, needs-attention section, related changes and snapshot status.
+
+### Changed
+
+- Exact duplicate findings are collapsed in HTML presentation only; policy and machine outputs remain raw.
+- Breaking and review-required changes are shown before safe additions; non-breaking details start collapsed.
+
+### Fixed
+
+- Prevent duplicated `v` prefix in displayed API versions such as `api vv1`.
+- Improved HTML filtering, responsive layout and print readability.
+
+### Compatibility
+
+- Comparison engine, policy evaluation, JSON/Markdown/SARIF/JUnit outputs, baselines and rule semantics remain unchanged.
+
 All notable changes to OpenAPI Sentinel are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versioning follows
 [SemVer](https://semver.org/). Release artifacts are produced from the tagged commit by

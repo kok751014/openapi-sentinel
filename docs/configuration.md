@@ -1,5 +1,11 @@
 # Configuration
 
+## HTML report language
+
+HTML report language is deliberately a command-line presentation option rather than a contract
+configuration field. It defaults to Traditional Chinese; pass `--html-lang en` for English. This
+keeps existing configuration files and non-HTML report contracts unchanged.
+
 OpenAPI Sentinel reads `openapi-sentinel.yml` (or `.yaml`) from the working directory,
 or the path given via `--config`. Unknown keys produce **warnings** (never silent);
 semantic errors exit with code 3.

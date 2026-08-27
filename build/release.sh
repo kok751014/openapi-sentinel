@@ -4,12 +4,12 @@
 #   - NuGet global-tool package
 #
 # Usage: ./build/release.sh [version]
-# Version defaults to 1.2.0 or $SENTINEL_VERSION.
+# Version defaults to 1.3.0 or $SENTINEL_VERSION.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
-VERSION="${1:-${SENTINEL_VERSION:-1.2.0}}"
+VERSION="${1:-${SENTINEL_VERSION:-1.3.0}}"
 OUT="$ROOT/dist/$VERSION"
 
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1

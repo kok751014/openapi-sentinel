@@ -1,5 +1,22 @@
 # Getting started
 
+## Read an HTML compatibility report
+
+Generate a portable HTML report with Traditional-Chinese UI (the default):
+
+```powershell
+openapi-sentinel compare old.yaml new.yaml --html api-diff.html
+```
+
+Use English when sharing the report with an English-speaking team:
+
+```powershell
+openapi-sentinel compare old.yaml new.yaml --html api-diff.html --html-lang en
+```
+
+The HTML page groups exact duplicate rule events for readability only. CI policy and every
+machine-readable report continue to use the complete finding stream.
+
 This guide takes you from install to first CI verdict in five minutes.
 
 ## 1. Install

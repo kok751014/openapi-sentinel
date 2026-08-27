@@ -1,5 +1,17 @@
 # Troubleshooting
 
+## HTML language option is rejected
+
+`--html-lang` accepts only `zh-TW` (the default) and `en`. Any other value is a configuration
+error (exit code 3). The option changes only the HTML presentation; it cannot translate console,
+JSON, Markdown, SARIF, JUnit, or Bruno output.
+
+## HTML counts differ from JSON finding counts
+
+This is expected when the engine emitted exact duplicate events. HTML shows conservative distinct
+changes and reports the raw-event count separately. Policy, baselines, suppressions and JSON keep
+the original full finding set.
+
 ## Exit codes
 
 Start from the exit code — they are stable (see [cli-reference](cli-reference.md#exit-codes)).

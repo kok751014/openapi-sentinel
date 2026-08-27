@@ -80,7 +80,8 @@ public class EndToEndScenarioTests : IDisposable
         Assert.Contains("FAILED", md, StringComparison.Ordinal);
 
         var html = File.ReadAllText(Path.Combine(_artifactDir, "report.html"));
-        Assert.Contains(">FAILED<", html, StringComparison.Ordinal);
+        Assert.Contains(">未通過<", html, StringComparison.Ordinal);
+        Assert.Contains("本次變更摘要", html, StringComparison.Ordinal);
         // Offline single-file report: no external scripts/styles/fonts (spec data URLs are fine).
         Assert.DoesNotContain("<script src=", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("<link", html, StringComparison.OrdinalIgnoreCase);

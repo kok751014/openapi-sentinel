@@ -14,8 +14,22 @@ public sealed record ReporterOptions
     /// <summary>Include the suppressed-findings section.</summary>
     public bool IncludeSuppressed { get; init; } = true;
 
+    /// <summary>Language used only by the HTML reporter. Other reporters retain their stable contract.</summary>
+    public HtmlLanguage HtmlLanguage { get; init; } = HtmlLanguage.ZhTw;
+
+    /// <summary>Presentation-only status of a requested snapshot advancement.</summary>
+    public HtmlSnapshotStatus SnapshotStatus { get; init; } = HtmlSnapshotStatus.NotRequested;
+
+    public string? SnapshotPath { get; init; }
+
+    public string? SnapshotSource { get; init; }
+
     public static ReporterOptions Default { get; } = new();
 }
+
+public enum HtmlLanguage { ZhTw, En }
+
+public enum HtmlSnapshotStatus { NotRequested, Pending, PolicyFailed, Updated }
 
 /// <summary>A reporter renders a ComparisonResult into a specific output format.</summary>
 public interface IResultReporter
