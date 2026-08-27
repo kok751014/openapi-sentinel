@@ -1,10 +1,14 @@
 using OpenApiSentinel.Cli;
+using OpenApiSentinel.Bruno;
+using OpenApiSentinel.Bruno.Reports;
 using System.Text;
 using System.Net;
+using System.Text.Json;
 
 namespace OpenApiSentinel.Cli.Tests;
 
 /// <summary>End-to-end CLI behavior of `bruno sync` / `bruno examples` in temp workspaces.</summary>
+[Collection("process-cwd")]
 public sealed class BrunoCommandTests : IDisposable
 {
     private readonly string root = Directory.CreateTempSubdirectory("sentinel-bruno-cli").FullName;
@@ -68,6 +72,20 @@ public sealed class BrunoCommandTests : IDisposable
         {extra}
         """);
 
+    private string ReportsDirectory => Path.Combine(root, "api-contract", "reports");
+
+    private IReadOnlyList<string> ReportFiles(string extension) =>
+        Directory.Exists(ReportsDirectory)
+            ? [.. Directory.EnumerateFiles(ReportsDirectory, "bruno-sync-report-*" + extension).Order(StringComparer.Ordinal)]
+            : [];
+
+    private static string ReportStem(string path) => Path.GetFileNameWithoutExtension(path);
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
     [Fact]
     public void Sync_Creates_Collection_State_And_Reports()
     {
@@ -79,16 +97,88 @@ public sealed class BrunoCommandTests : IDisposable
 
         var collection = Path.Combine(root, "api-contract/bruno/collection.yml");
         Assert.True(File.Exists(collection));
-        Assert.True(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.html")));
-        Assert.True(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.json")));
+        var htmlReports = ReportFiles(".html");
+        var jsonReports = ReportFiles(".json");
+        Assert.Single(htmlReports);
+        Assert.Single(jsonReports);
+        Assert.Matches("^bruno-sync-report-[0-9]{8}-[0-9]{6}(?:-[0-9]{2})?\\.html$", Path.GetFileName(htmlReports[0]));
+        Assert.Equal(ReportStem(htmlReports[0]), ReportStem(jsonReports[0]));
         Assert.True(Directory.EnumerateFiles(Path.GetDirectoryName(collection)!, ".*.sentinel-state.json", SearchOption.TopDirectoryOnly).Any());
 
-        var json = File.ReadAllText(Path.Combine(root, "api-contract/reports/bruno-sync-report.json"));
+        var json = File.ReadAllText(jsonReports[0]);
         Assert.Contains("\"schemaVersion\": \"bruno-sync/1.0\"", json, StringComparison.Ordinal);
         Assert.Contains("createOrder", json, StringComparison.Ordinal);
 
         var yaml = File.ReadAllText(collection);
         Assert.Contains("成功－完整參數", yaml, StringComparison.Ordinal); // zh-TW scenario present
+    }
+
+    [Fact]
+    public void Default_Config_Disables_Generated_Examples_But_Keeps_Normal_Requests()
+    {
+        WriteFile("spec.yaml", Spec);
+        WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./api-contract/bruno/collection.yml
+              workspacePath: ./api-contract/bruno-workspace
+            """);
+
+        Assert.Equal(0, CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml"), "--no-color"], console));
+
+        var collection = File.ReadAllText(Path.Combine(root, "api-contract/bruno/collection.yml"));
+        var native = File.ReadAllText(Directory.EnumerateFiles(
+            Path.Combine(root, "api-contract/bruno-workspace"), "*.bru", SearchOption.AllDirectories)
+            .Single(path => File.ReadAllText(path).Contains("body:json", StringComparison.Ordinal)));
+        Assert.DoesNotContain("成功－完整參數", collection, StringComparison.Ordinal);
+        Assert.DoesNotContain("examples:", collection, StringComparison.Ordinal);
+        Assert.DoesNotContain("example {", native, StringComparison.Ordinal);
+        Assert.Contains("customerId", collection, StringComparison.Ordinal);
+        Assert.Contains("body: json", native, StringComparison.Ordinal);
+        Assert.Contains("body:json", native, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(root, "api-contract/scenarios")));
+    }
+
+    [Fact]
+    public void Disabling_Examples_Removes_Only_Recorded_Examples_And_Stabilizes()
+    {
+        WriteFile("spec.yaml", Spec);
+        var configPath = WriteFile("openapi-sentinel.yml", """
+            bruno:
+              source: ./spec.yaml
+              collectionPath: ./api-contract/bruno/collection.yml
+              workspacePath: ./api-contract/bruno-workspace
+              reportPath: ./api-contract/reports
+              examples:
+                enabled: true
+            """);
+        string[] args = ["bruno", "sync", "--config", configPath, "--no-color"];
+
+        Assert.Equal(0, CommandLineRunner.Run(args, console));
+        var requestFile = Directory.EnumerateFiles(
+            Path.Combine(root, "api-contract/bruno-workspace"), "*.bru", SearchOption.AllDirectories)
+            .Single(path => File.ReadAllText(path).Contains("body:json", StringComparison.Ordinal));
+        File.AppendAllText(requestFile, "\nexample {\n  name: 使用者自訂範例\n}\n");
+
+        File.WriteAllText(configPath, File.ReadAllText(configPath).Replace("enabled: true", "enabled: false", StringComparison.Ordinal));
+        Assert.Equal(0, CommandLineRunner.Run(args, new RecordingConsole()));
+
+        var collectionPath = Path.Combine(root, "api-contract/bruno/collection.yml");
+        var collection = File.ReadAllText(collectionPath);
+        var native = File.ReadAllText(requestFile);
+        Assert.DoesNotContain("成功－完整參數", collection, StringComparison.Ordinal);
+        Assert.DoesNotContain("成功－完整參數", native, StringComparison.Ordinal);
+        Assert.Contains("使用者自訂範例", collection, StringComparison.Ordinal);
+        Assert.Contains("使用者自訂範例", native, StringComparison.Ordinal);
+        Assert.Contains("body:json", native, StringComparison.Ordinal);
+
+        var beforeSecondDisabledSync = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .ToDictionary(path => path, File.ReadAllBytes);
+        var secondConsole = new RecordingConsole();
+        Assert.Equal(0, CommandLineRunner.Run(args, secondConsole));
+        Assert.All(beforeSecondDisabledSync, file => Assert.Equal(file.Value, File.ReadAllBytes(file.Key)));
+        Assert.Contains("No API contract changes detected.", string.Join("\n", secondConsole.OutLines), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -118,8 +208,102 @@ public sealed class BrunoCommandTests : IDisposable
 
         Assert.Equal(0, exit);
         Assert.False(File.Exists(Path.Combine(root, "api-contract/bruno/collection.yml")));
-        Assert.False(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.html")));
+        Assert.Empty(ReportFiles(".html"));
         Assert.Contains("(dry-run)", string.Join("\n", console.OutLines), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Report_History_Retains_Changed_Syncs_And_NoChange_Sync_Leaves_It_Untouched()
+    {
+        WriteFile("spec.yaml", Spec);
+        _ = Config();
+        string[] args = ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml"), "--no-color"];
+
+        Assert.Equal(0, CommandLineRunner.Run(args, console));
+        var firstReports = ReportFiles(".html").Concat(ReportFiles(".json")).ToDictionary(path => path, File.ReadAllBytes);
+        Assert.Equal(2, firstReports.Count);
+
+        var noChangeConsole = new RecordingConsole();
+        Assert.Equal(0, CommandLineRunner.Run(args, noChangeConsole));
+        Assert.Equal(firstReports.Keys.Order(StringComparer.Ordinal), ReportFiles(".html").Concat(ReportFiles(".json")).Order(StringComparer.Ordinal));
+        Assert.All(firstReports, report => Assert.Equal(report.Value, File.ReadAllBytes(report.Key)));
+        Assert.Contains("report generation skipped", string.Join("\n", noChangeConsole.OutLines), StringComparison.Ordinal);
+
+        WriteFile("spec.yaml", Spec.Replace("note: { type: string }", "comment: { type: string }", StringComparison.Ordinal));
+        Assert.Equal(0, CommandLineRunner.Run(args, new RecordingConsole()));
+
+        var htmlReports = ReportFiles(".html");
+        var jsonReports = ReportFiles(".json");
+        Assert.Equal(2, htmlReports.Count);
+        Assert.Equal(2, jsonReports.Count);
+        Assert.All(firstReports, report => Assert.Equal(report.Value, File.ReadAllBytes(report.Key)));
+        Assert.Equal(htmlReports.Select(ReportStem).Order(StringComparer.Ordinal), jsonReports.Select(ReportStem).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Report_Model_Excludes_Unchanged_Details_But_Retains_Their_Summary_Count()
+    {
+        var outcome = new BrunoSyncOutcome
+        {
+            Operations =
+            [
+                new OperationSyncOutcome { Action = OperationAction.Unchanged, Method = "GET", Path = "/same", OperationId = "same" },
+                new OperationSyncOutcome { Action = OperationAction.Updated, Method = "POST", Path = "/changed", OperationId = "changed", Changes = ["contract changed"] },
+            ],
+            Conflicts = [],
+            Warnings = [],
+        };
+        var report = BrunoWorkflow.BuildReport(outcome, new BrunoSyncRequest { SubCommand = "sync" }, "spec.yaml", "collection.yml", "test",
+            new DateTimeOffset(2026, 8, 27, 15, 20, 45, TimeSpan.Zero));
+
+        Assert.True(BrunoSyncReportPolicy.HasMeaningfulChanges(outcome));
+        Assert.Equal(1, report.Summary.OperationsUnchanged);
+        Assert.Equal(["changed"], report.Operations.Select(operation => operation.OperationId));
+
+        var html = BrunoSyncHtmlReporter.Render(report);
+        var json = BrunoSyncJsonReporter.Render(report);
+        Assert.Contains("/changed", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("/same", html, StringComparison.Ordinal);
+        using var parsed = JsonDocument.Parse(json);
+        var jsonOperationIds = parsed.RootElement.GetProperty("operations").EnumerateArray()
+            .Select(operation => operation.GetProperty("operationId").GetString()).ToList();
+        Assert.Equal(report.Operations.Select(operation => operation.OperationId), jsonOperationIds);
+        Assert.DoesNotContain(
+            parsed.RootElement.GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("action").GetString() == "unchanged");
+    }
+
+    [Fact]
+    public void Report_Timestamp_Uses_Injected_Clock()
+    {
+        var expected = new DateTimeOffset(2026, 8, 27, 15, 20, 45, TimeSpan.Zero);
+        var actual = BrunoWorkflow.GetReportTimestamp(new BrunoSyncRequest
+        {
+            SubCommand = "sync",
+            TimeProvider = new FixedTimeProvider(expected),
+        });
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void Report_Pair_Names_Are_Deterministic_Utc_And_Collisions_Use_One_Matched_Suffix()
+    {
+        var reports = Path.Combine(root, "reports");
+        var timestamp = new DateTimeOffset(2026, 8, 27, 15, 20, 45, TimeSpan.Zero);
+        var first = BrunoWorkflow.ResolveReportArtifactPaths(reports, timestamp);
+        Assert.EndsWith("bruno-sync-report-20260827-152045.html", first.HtmlPath, StringComparison.Ordinal);
+        Assert.EndsWith("bruno-sync-report-20260827-152045.json", first.JsonPath, StringComparison.Ordinal);
+
+        Directory.CreateDirectory(reports);
+        File.WriteAllText(first.HtmlPath, "old html");
+        File.WriteAllText(first.JsonPath, "old json");
+        var second = BrunoWorkflow.ResolveReportArtifactPaths(reports, timestamp);
+
+        Assert.EndsWith("bruno-sync-report-20260827-152045-01.html", second.HtmlPath, StringComparison.Ordinal);
+        Assert.EndsWith("bruno-sync-report-20260827-152045-01.json", second.JsonPath, StringComparison.Ordinal);
+        Assert.Equal("old html", File.ReadAllText(first.HtmlPath));
+        Assert.Equal("old json", File.ReadAllText(first.JsonPath));
     }
 
     [Fact]
@@ -463,6 +647,8 @@ public sealed class BrunoCommandTests : IDisposable
             "bruno:",
             $"  source: {server.Prefix}spec.yaml",
             "  collectionPath: ./c.yml",
+            "  examples:",
+            "    enabled: true",
             "remoteReferences:",
             "  enabled: true",
             "  allowHttp: true",
@@ -475,6 +661,33 @@ public sealed class BrunoCommandTests : IDisposable
         Assert.True(exit == 0, "exit=" + exit + " errors=" + string.Join(" | ", console.ErrorLines));
         Assert.Contains("成功－完整參數",
             File.ReadAllText(Path.Combine(root, "c.yml")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Private_Network_Flag_Is_Required_And_Enables_Only_The_Current_Run()
+    {
+        using var server = LoopbackSpecServer.Start(Spec);
+        WriteFile("openapi-sentinel.yml", string.Join(Environment.NewLine,
+            "bruno:",
+            $"  source: {server.Prefix}spec.yaml",
+            "  collectionPath: ./c.yml",
+            "remoteReferences:",
+            "  enabled: true",
+            "  allowHttp: true",
+            "  allowPrivateNetwork: false"));
+
+        var denied = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml")], console);
+        Assert.Equal(4, denied);
+        Assert.False(File.Exists(Path.Combine(root, "c.yml")));
+
+        var allowed = CommandLineRunner.Run(
+            ["bruno", "sync", "--config", Path.Combine(root, "openapi-sentinel.yml"),
+             "--allow-private-network"], console);
+        Assert.True(allowed == 0, "exit=" + allowed + " errors=" + string.Join(" | ", console.ErrorLines));
+        Assert.True(File.Exists(Path.Combine(root, "c.yml")));
+        Assert.Contains("allowPrivateNetwork: false", File.ReadAllText(Path.Combine(root, "openapi-sentinel.yml")),
+            StringComparison.Ordinal);
     }
 
     private sealed class RecordingConsole : IConsoleWriter

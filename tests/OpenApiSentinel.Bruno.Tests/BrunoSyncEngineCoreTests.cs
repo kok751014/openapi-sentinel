@@ -15,6 +15,15 @@ public static class TestSupport
         return OpenApiNormalizer.Normalize(root);
     }
 
+    /// <summary>Resolves an item's stored identity against its collection's meta index.</summary>
+    public static OperationIdentity? IdentityOf(this BrunoItem item, BrunoCollectionDocument collection) =>
+        item.IdentityOf(SentinelMetaStore.For(collection));
+
+    /// <summary>The item's metadata entry in the collection-level index; null when unbound.</summary>
+    public static YamlDotNet.RepresentationModel.YamlMappingNode? SentinelEntry(
+        this BrunoItem item, BrunoCollectionDocument collection) =>
+        item.SentinelTagKey is { } key ? SentinelMetaStore.For(collection).EntryOrNull(key) : null;
+
     /// <summary>A minimal but realistic Order Management contract.</summary>
     public const string V1Spec = """
         openapi: 3.0.3
@@ -153,8 +162,8 @@ public class BrunoSyncEngineCoreTests
         Assert.Equal("訂單", folderItem.Name);
         Assert.Contains(folderItem.Children, c => ReferenceEquals(c.Node, createOrder!.Node));
 
-        // sentinel metadata recorded
-        var identity = createOrder!.IdentityOf();
+        // sentinel metadata recorded (collection-level extensions index + binding tag)
+        var identity = createOrder!.IdentityOf(collection);
         Assert.NotNull(identity);
         Assert.Equal("opid:createOrder", identity!.StableKey);
         Assert.True(createOrder.IsSentinelManaged);
@@ -164,7 +173,7 @@ public class BrunoSyncEngineCoreTests
     public void Path_Parameters_Become_Bruno_Style()
     {
         var (collection, _) = Run(null, TestSupport.V1Spec);
-        var getUser = collection.AllRequests().Single(r => r.IdentityOf()?.StableKey == "opid:getUser");
+        var getUser = collection.AllRequests().Single(r => r.IdentityOf(collection)?.StableKey == "opid:getUser");
         var view = TestSupport.View(getUser);
 
         Assert.Equal("https://api.example.com/v1/users/:id", view.Url);
@@ -177,9 +186,9 @@ public class BrunoSyncEngineCoreTests
     public void SecondSync_Without_Changes_Is_Idempotent()
     {
         var (first, _) = Run(null, TestSupport.V1Spec);
-        // simulate a manual sentinel-block annotation that an unchanged re-sync must not touch
+        // simulate a manual annotation inside the meta index that an unchanged re-sync must not touch
         var order = TestSupport.FindRequest(first, "建立訂單")!;
-        BrunoYaml.SetString(order.SentinelOrNull!, "note-manual", "keep");
+        BrunoYaml.SetString(order.SentinelEntry(first)!, "note-manual", "keep");
 
         var yamlBefore = first.ToYaml();
         var (second, outcome) = Run(first, TestSupport.V1Spec);
@@ -351,7 +360,7 @@ public class BrunoSyncEngineCoreTests
         var ping = Enumerable.Single(result.AllRequests());
         Assert.Equal("我自己寫的 ping", ping.Name); // adopted, not duplicated/recreated
         Assert.Equal(OperationAction.Added, Enumerable.Single(outcome.Operations).Action);
-        Assert.NotNull(ping.IdentityOf());
+        Assert.NotNull(ping.IdentityOf(result));
         Assert.Equal("手動文件", new BrunoRequestView(ping.Node).Docs);
     }
 
@@ -401,7 +410,7 @@ public class BrunoSyncEngineCoreTests
 
         var (collection, _) = Run(null, secured, exampleSettings: new BrunoExampleSettings { Enabled = false });
         var request = Enumerable.Single(collection.AllRequests());
-        var requiresAuth = BrunoYaml.AsBool(BrunoYaml.Get(request.SentinelOrNull!, "requiresAuth"));
+        var requiresAuth = BrunoYaml.AsBool(BrunoYaml.Get(request.SentinelEntry(collection)!, "requiresAuth"));
         Assert.True(requiresAuth);
 
         var yaml = collection.ToYaml();
@@ -555,7 +564,7 @@ public class IdentityTransitionTests
 
         var request = Enumerable.Single(collection.AllRequests());
         Assert.Equal("GET", new BrunoRequestView(request.Node).Method);
-        Assert.Equal("opid:createOrder", request.IdentityOf()!.StableKey);
+        Assert.Equal("opid:createOrder", request.IdentityOf(collection)!.StableKey);
     }
 }
 

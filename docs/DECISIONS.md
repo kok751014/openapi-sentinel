@@ -335,13 +335,22 @@ converted. YAML I/O bypasses `YamlStream.Save` because it anchors every repeated
 VALUE with random ids — nondeterministic output; a custom event-level emitter reproduces
 original scalar styles exactly (plain stays plain, quoted stays quoted).
 
-**Ownership.** Each managed request carries an `x-sentinel:` block recording its identity
-(operationId preferred, else method+normalized path), contract-derived content hash, and
-which params/headers/body were sentinel-managed. Everything else is user territory:
-values inside known fields survive merges, scripts/tests/auth/docs/examples authored by
-humans are never rewritten, and unmarked requests that uniquely match method+path are
-adopted rather than duplicated. Deleted operations default to stale-marking;
+**Ownership.** Managed-request metadata lives in the collection-level
+`extensions.x-sentinel.operations` index (the official schema forbids extra properties on
+request roots), recording each operation's identity (operationId preferred, else
+method+normalized path), contract-derived content hash, and which params/headers/body were
+sentinel-managed. Each request binds to its entry via a single `info.tags` entry
+(`x-sentinel:<key>`). Everything else is user territory: values inside known fields survive
+merges, scripts/tests/auth/docs/examples authored by humans are never rewritten, and
+unmarked requests that uniquely match method+path are adopted rather than duplicated.
+Identity transitions (operationId added/removed) merge old index entries into new ones so
+user-stored fields survive. Deleted operations default to stale-marking;
 `removeDeletedOperations` is the only path to deletion.
+
+**Schema gate.** Every sync validates the serialized output against a pinned copy of the
+official OpenCollection v1.0 JSON Schema before any write; failure blocks the collection,
+workspace, reports and state file with precise per-path diagnostics. The same pinned schema
+drives tests, making Bruno import compatibility machine-checked rather than assumed.
 
 **Change detection.** The incremental fingerprint hashes a prose-stripped projection of
 each operation (schemas minus description/summary/title/x-*). Documentation-only edits do

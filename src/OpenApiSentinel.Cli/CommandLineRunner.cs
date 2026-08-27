@@ -139,13 +139,36 @@ public static class CommandLineRunner
             return ExitCodes.InvalidInput;
         }
 
-        var config = LoadConfig(parsed, console);
+        // Config discovery happens here (not inside LoadConfig) so the workflow can tell a
+        // MISSING default config apart from an explicit one and bootstrap when appropriate.
+        var explicitConfig = parsed.Value("config");
+        var configPath = explicitConfig ?? FindDefaultConfig();
+        SentinelConfiguration config;
+        if (configPath is null)
+        {
+            config = new SentinelConfiguration();
+        }
+        else if (!File.Exists(configPath))
+        {
+            if (explicitConfig is not null)
+            {
+                throw new SentinelConfigException($"Configuration file not found: '{configPath}'.");
+            }
+
+            config = new SentinelConfiguration();
+        }
+        else
+        {
+            config = LoadConfigFromPath(configPath, console);
+        }
+
         string? sourceOverride = parsed.Value("source") ?? (parsed.Positional.Count > 1 ? parsed.Positional[1] : null);
 
         var request = new BrunoSyncRequest
         {
             SubCommand = subCommand,
             Config = config,
+            ConfigPath = configPath,
             DryRun = parsed.Has("dry-run"),
             Verbose = parsed.Has("verbose"),
             SourceOverride = sourceOverride,
@@ -153,6 +176,7 @@ public static class CommandLineRunner
             ReportDirOverride = parsed.Value("report-dir"),
             RemoveDeletedOperationsOverride = parsed.Has("remove-deleted") ? true : null,
             AllowRemoteOverride = parsed.Has("allow-remote"),
+            AllowPrivateNetworkOverride = parsed.Has("allow-private-network"),
             ExamplesEnabledOverride = !parsed.Has("no-examples"),
             OperationFilter = parsed.Value("operation"),
             PathFilter = parsed.Value("path"),
@@ -209,6 +233,11 @@ public static class CommandLineRunner
         if (path is null)
             return new SentinelConfiguration();
 
+        return LoadConfigFromPath(path, console);
+    }
+
+    private static SentinelConfiguration LoadConfigFromPath(string path, IConsoleWriter console)
+    {
         var warnings = new List<string>();
         var config = SentinelConfigLoader.Load(path, w => warnings.Add(w));
         foreach (var warning in warnings)
@@ -305,7 +334,16 @@ public static class CommandLineRunner
 
                     sync      把 OpenAPI contract 同步成 Bruno collection（OpenCollection YAML），
                               保留人工 values / scripts / tests / docs / auth，並可自動產生測試範例。
+                              產出前會以官方 OpenCollection v1.0 schema 驗證，未通過絕不寫檔。
                     examples  只（重）產生測試範例；可用 --operation 或 --path 縮小範圍。
+
+                    一鍵初始化（第一次使用不需要手動建立任何檔案或資料夾）：
+                      openapi-sentinel bruno sync --source <file-or-url>
+
+                      若 openapi-sentinel.yml 不存在會自動建立；api-contract/ 底下的
+                      openapi/、bruno/、bruno-workspace/、scenarios/、reports/ 一併自動生成。
+                      之後在 Bruno 直接「開啟集合」選 api-contract/bruno-workspace 即可，
+                      不需要每次 Import。第二次起只需執行 `openapi-sentinel bruno sync`。
 
                     options:
                       --source <file-or-url>    OpenAPI/Swagger 來源（覆寫設定檔 bruno.source）
@@ -319,13 +357,16 @@ public static class CommandLineRunner
                       --path <api-path>         examples：只處理此 API path 開頭的操作
                       --allow-remote            允許此 run 使用遠端來源／$refs
                                                 （需符合既有 remoteReferences 安全政策）
+                      --allow-private-network    明確允許本次使用 localhost／私有網路來源或 $refs
                       --verbose                 顯示每個操作的變更與保留明細
                       --no-color                純文字輸出
 
                     說明：
                       * 自動產生的範例名稱／描述預設為繁體中文（zh-TW）。
                       * authentication 不會被拿來產生失敗情境；既有 auth 設定永不改動。
-                      * 目錄式 (.bru) collection 不支援寫入，會明確報錯而非破壞內容。
+                      * 原生 Bruno workspace（bruno.json + .bru）可直接用 Collection → Open Collection 開啟。
+                      * Sentinel metadata 存放於 schema 合法的集合層 extensions.x-sentinel 索引，
+                        舊版 request-level x-sentinel 檔案會在下一次 sync 自動遷移。
                     """);
                 break;
 
@@ -360,6 +401,7 @@ public static class CommandLineRunner
               --debug                                 show stack traces on internal errors
               --config <path>                         explicit configuration file
               --allow-remote                          enable remote references for this run
+              --allow-private-network                 allow localhost/private-network remote sources or refs for this Bruno run
               --baseline <file>                       suppress findings listed in baseline
               --update-baseline <file>                write current findings as the new baseline
               -o/--output <path>                      write primary format to a file

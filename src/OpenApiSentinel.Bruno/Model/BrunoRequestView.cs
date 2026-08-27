@@ -72,6 +72,10 @@ public sealed class BrunoRequestView
 
     public YamlMappingNode ItemNode => item;
 
+    /// <summary>The request's display name (info.name); null when unset.</summary>
+    public string? Name =>
+        BrunoYaml.AsString(BrunoYaml.Get(BrunoYaml.MappingOf(item, "info") ?? [], "name"));
+
     /// <summary>The http details mapping; creates it when missing.</summary>
     public YamlMappingNode Http
     {
@@ -123,7 +127,8 @@ public sealed class BrunoRequestView
     /// <summary>Returns the live params sequence (creating when needed) for mutation.</summary>
     public YamlSequenceNode ParamsSequence() => BrunoYaml.GetOrCreateSequence(Http, "params");
 
-    /// <summary>Replaces the whole params list; null removes the key entirely.</summary>
+    /// <summary>Replaces the whole params list; null removes the key entirely.
+    /// Every row carries an explicit <c>type</c> (query|path): the official schema REQUIRES it.</summary>
     public void SetParams(IEnumerable<(string Name, string Value, string Type, bool Enabled)> rows)
     {
         var list = rows.ToList();
@@ -139,10 +144,8 @@ public sealed class BrunoRequestView
             var map = new YamlMappingNode();
             BrunoYaml.SetString(map, "name", row.Name);
             BrunoYaml.SetString(map, "value", row.Value);
-            if (!string.Equals(row.Type, "query", StringComparison.Ordinal))
-            {
-                BrunoYaml.SetString(map, "type", row.Type);
-            }
+            BrunoYaml.SetString(map, "type",
+                string.Equals(row.Type, "path", StringComparison.Ordinal) ? "path" : "query");
 
             if (!row.Enabled)
             {
@@ -199,7 +202,6 @@ public sealed class BrunoRequestView
                 var map = new YamlMappingNode();
                 BrunoYaml.SetString(map, "name", name);
                 BrunoYaml.SetString(map, "value", value ?? "");
-                BrunoYaml.SetBool(map, "enabled", true);
                 var created = new BrunoKeyValueRow(map);
                 keep.Add(created);
             }
@@ -256,6 +258,116 @@ public sealed class BrunoRequestView
         BrunoYaml.SetString(body, "type", "json");
         BrunoYaml.Set(body, "data", new YamlScalarNode(json) { Style = ScalarStyle.Literal });
         BrunoYaml.Set(Http, "body", body);
+    }
+
+    /// <summary>Sets (or replaces) the body with a form-style body ("multipart-form" or
+    /// "form-urlencoded") matching the official OpenCollection HttpRequestBody schema.</summary>
+    public void SetFormBody(string kind, IReadOnlyList<FormRow> rows)
+    {
+        var body = new YamlMappingNode();
+        BrunoYaml.SetString(body, "type", kind);
+        var data = new YamlSequenceNode();
+        foreach (var row in rows)
+        {
+            var map = new YamlMappingNode();
+            BrunoYaml.SetString(map, "name", row.Name);
+            if (string.Equals(kind, "multipart-form", StringComparison.Ordinal))
+            {
+                BrunoYaml.SetString(map, "type", row.IsFile ? "file" : "text");
+                if (row.Value.Contains('\n', StringComparison.Ordinal))
+                {
+                    // Multi-part values are strings per the official schema; newline content
+                    // stays a single scalar (literal style) so YAML keeps it lossless.
+                    BrunoYaml.Set(map, "value", new YamlScalarNode(row.Value) { Style = ScalarStyle.Literal });
+                }
+                else
+                {
+                    BrunoYaml.SetString(map, "value", row.Value);
+                }
+            }
+            else
+            {
+                BrunoYaml.SetString(map, "value", row.Value);
+            }
+
+            if (!row.Enabled)
+            {
+                BrunoYaml.SetBool(map, "disabled", true);
+            }
+
+            data.Children.Add(map);
+        }
+
+        BrunoYaml.Set(body, "data", data);
+        BrunoYaml.Set(Http, "body", body);
+    }
+
+    /// <summary>Sets (or replaces) the body with a plain-text body.</summary>
+    public void SetTextBody(string text)
+        => SetTextLikeBody("text", text);
+
+    /// <summary>Sets (or replaces) the body with an XML body.</summary>
+    public void SetXmlBody(string xml)
+        => SetTextLikeBody("xml", xml);
+
+    private void SetTextLikeBody(string type, string text)
+    {
+        var body = new YamlMappingNode();
+        BrunoYaml.SetString(body, "type", type);
+        BrunoYaml.Set(body, "data", new YamlScalarNode(text) { Style = ScalarStyle.Literal });
+        BrunoYaml.Set(Http, "body", body);
+    }
+
+    /// <summary>Reads form-style body rows ("multipart-form" / "form-urlencoded"); empty when absent.</summary>
+    public IReadOnlyList<FormRow> FormRows()
+    {
+        var body = BodyOrNull;
+        if (body is null || BrunoYaml.SequenceOf(body, "data") is not { } data)
+        {
+            return [];
+        }
+
+        var type = BodyType;
+        var isMultipart = string.Equals(type, "multipart-form", StringComparison.Ordinal);
+        var rows = new List<FormRow>();
+        foreach (var map in BrunoYaml.MappingItems(data))
+        {
+            var name = BrunoYaml.AsString(BrunoYaml.Get(map, "name"));
+            if (name is null)
+            {
+                continue;
+            }
+
+            var value = BrunoYaml.Get(map, "value") switch
+            {
+                YamlScalarNode { Value: not null } s => s.Value,
+                YamlSequenceNode seq => string.Join("|", seq.Children
+                    .Select(c => c is YamlScalarNode { Value: not null } sv ? sv.Value : "")),
+                _ => "",
+            };
+
+            var isFile = isMultipart &&
+                         string.Equals(BrunoYaml.AsString(BrunoYaml.Get(map, "type")), "file", StringComparison.Ordinal);
+            var enabled = BrunoYaml.AsBool(BrunoYaml.Get(map, "disabled")) != true;
+            rows.Add(new FormRow(name, value, isFile, enabled));
+        }
+
+        return rows;
+    }
+
+    /// <summary>Raw text of a <c>body: {type: text|xml, data: ...}</c> mapping; null otherwise.</summary>
+    public string? TextBodyRaw
+    {
+        get
+        {
+            var body = BodyOrNull;
+            if (body is null || BodyType is not ("text" or "xml"))
+            {
+                return null;
+            }
+
+            return BrunoYaml.AsString(BrunoYaml.Get(body, "data"));
+        }
     }
 
     /// <summary>Removes the body entirely (e.g. contract no longer declares one).</summary>

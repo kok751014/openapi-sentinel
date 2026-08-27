@@ -7,7 +7,11 @@ using OpenApiSentinel.OpenApi.Model;
 namespace OpenApiSentinel.Cli;
 
 /// <summary>Loaded specification plus diagnostics from reference resolution.</summary>
-public sealed record AnalysisOutcome(ApiDocument Document, int UnresolvedExternalRefs);
+/// <param name="Document">The normalized API document.</param>
+/// <param name="UnresolvedExternalRefs">Count of external refs that could not be resolved.</param>
+/// <param name="Loaded">The raw entry document as loaded (file bytes/HTTP body); used by
+/// the Bruno bootstrap snapshot. Null for sources without a single raw entry (stdin).</param>
+public sealed record AnalysisOutcome(ApiDocument Document, int UnresolvedExternalRefs, LoadedSpec? Loaded = null);
 
 /// <summary>Loads one specification through the full pipeline: load → parse → resolve → normalize.</summary>
 public static class AnalysisPipeline
@@ -17,13 +21,16 @@ public static class AnalysisPipeline
         RemoteFetchPolicy remotePolicy,
         IReadOnlyList<EnvHeader> envHeaders,
         bool allowRemoteOverride = false,
+        bool allowPrivateNetworkOverride = false,
         ProcessingLimits? limits = null,
         bool allowAboveDocumentTree = false,
         CancellationToken ct = default)
     {
-        var policy = allowRemoteOverride && !remotePolicy.Enabled
-            ? remotePolicy with { Enabled = true }
-            : remotePolicy;
+        var policy = remotePolicy with
+        {
+            Enabled = remotePolicy.Enabled || allowRemoteOverride,
+            AllowPrivateNetwork = remotePolicy.AllowPrivateNetwork || allowPrivateNetworkOverride,
+        };
 
         var loader = new SpecLoader(policy, envHeaders);
         LoadedSpec loaded;
@@ -52,7 +59,8 @@ public static class AnalysisPipeline
 
         return new AnalysisOutcome(
             OpenApiNormalizer.Normalize(root),
-            RefResolver.CountUnresolvedMarkers(root));
+            RefResolver.CountUnresolvedMarkers(root),
+            loaded);
     }
 }
 

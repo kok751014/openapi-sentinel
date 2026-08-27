@@ -1,7 +1,9 @@
 # Bruno 測試情境產生器（Scenario Generator）
 
-`openapi-sentinel bruno sync` / `bruno examples` 會為每個 operation 自動產生
-「可直接在 Bruno 點擊 Send」的測試範例。情境分兩層：
+產生的 Bruno 測試情境在 v1.1.0 屬於實驗功能，`bruno.examples.enabled` **預設為 false**。
+一般 `openapi-sentinel bruno sync` 仍會完整產生 request/body/params/headers，但不會建立
+example blocks 或 scenario 檔。要使用既有產生器，請明確設定 `enabled: true`，或執行
+明確的 `bruno examples` 命令。情境分兩層：
 
 ## Layer 1 — 由 OpenAPI 規格推導（自動）
 
@@ -65,7 +67,10 @@ bruno:
     scenariosPath: ./api-contract/scenarios/openapi-sentinel.scenarios.yml
 ```
 
-Layer 2 情境附加在 Layer 1 之後，不受 `maxPerOperation` 截斷；
+Layer 2 情境附加在 Layer 1 之後，不受 `maxPerOperation` 截斷；設定為 false 時不會讀取、
+建立或更新 scenario 檔。使用者手寫 Bruno examples 永遠保留；只有 Sentinel metadata
+registry 明確登記的 example 才會在停用時移除。舊 native workspace 沒有該 registry 時，
+Sentinel 會保守保留原有 examples，避免猜測所有權。
 從檔案移除的情境會在下次同步時自動清理。
 
 ## 只重跑範例
@@ -85,5 +90,5 @@ openapi-sentinel bruno examples --path /users             # 路徑前綴
 - 不改動既有 Bruno auth / environment / token scripts
 - 不把任何 bearer token 或 secret 寫進產出檔或報告
 
-若操作依合約要求認證，僅在 `x-sentinel.requiresAuth` 記錄並在 docs 加註，
+若操作依合約要求認證，僅在集合層 `extensions.x-sentinel` 索引記錄 `requiresAuth` 並在 docs 加註，
 由 Bruno 原本的 collection/environment/auth 流程處理。

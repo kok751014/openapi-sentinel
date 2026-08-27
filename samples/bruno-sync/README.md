@@ -1,6 +1,7 @@
 # Bruno Sync 範例
 
-展示 OpenAPI Sentinel 的 Bruno 同步 + 繁體中文測試情境產生：
+展示 OpenAPI Sentinel 的 Bruno 同步 + 繁體中文測試情境產生（此 sample 明確 opt-in；v1.1.0
+產品預設為停用）：
 required/optional、enum、min/max、requestBody、宣告的 200/400/404 回應，
 以及一個商業情境檔。
 
@@ -27,15 +28,18 @@ openapi-sentinel bruno sync --config ./openapi-sentinel.yml --verbose
 
 ```
 api-contract/
-├─ bruno/collection.yml     # 單檔 OpenCollection YAML，可直接用 Bruno 開啟
+├─ bruno/collection.yml     # 單檔 OpenCollection YAML（可交換／備份）
+├─ bruno-workspace/         # 資料夾式 workspace：Bruno 直接「開啟集合」這個目錄，免 Import
 └─ reports/
    ├─ bruno-sync-report.html
    └─ bruno-sync-report.json
 ```
 
+> 產出前會以官方 OpenCollection v1.0 schema 驗證；未通過絕不寫檔。
+
 ### 觀察重點（第一輪）
 
-- `成功－完整參數`、`失敗－缺少 customerId`、`邊界值－quantity 使用最大允許值`
+- 此 sample 的設定以 `examples.enabled: true` 明確啟用，因此 `成功－完整參數`、`失敗－缺少 customerId`、`邊界值－quantity 使用最大允許值`
   等繁中範例直接出現在 collection 的 examples 中。
 - 商業情境「成功－一般訂單」「失敗－客戶不存在」來自 scenarios.yml。
 

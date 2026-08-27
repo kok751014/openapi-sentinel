@@ -30,6 +30,14 @@ public sealed record BrunoSyncReport
     [JsonPropertyName("collectionPath")]
     public string CollectionPath { get; init; } = "";
 
+    /// <summary>Version of the official OpenCollection schema the output was validated against.</summary>
+    [JsonPropertyName("openCollectionSchemaVersion")]
+    public string OpenCollectionSchemaVersion { get; init; } = OpenApiSentinel.Bruno.Validation.OpenCollectionSchemaValidator.SchemaVersion;
+
+    /// <summary>Result of the mandatory pre-write official-schema validation gate.</summary>
+    [JsonPropertyName("schemaValidation")]
+    public BrunoSyncReportSchemaValidation SchemaValidation { get; init; } = new();
+
     [JsonPropertyName("summary")]
     public BrunoSyncReportSummary Summary { get; init; } = new();
 
@@ -41,6 +49,13 @@ public sealed record BrunoSyncReport
 
     [JsonPropertyName("warnings")]
     public IReadOnlyList<string> Warnings { get; init; } = [];
+}
+
+public sealed record BrunoSyncReportSchemaValidation
+{
+    /// <summary>"passed" — the gate refuses any other value to reach a report.</summary>
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "passed";
 }
 
 public sealed record BrunoSyncReportSummary

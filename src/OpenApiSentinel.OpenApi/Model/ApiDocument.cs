@@ -86,6 +86,9 @@ public sealed class Operation
 
     public string? Summary { get; init; }
 
+    /// <summary>Full operation description (additive; preserved verbatim in generated docs).</summary>
+    public string? Description { get; init; }
+
     public bool Deprecated { get; init; }
 
     public IReadOnlyList<string> Tags { get; init; } = [];
@@ -181,6 +184,13 @@ public sealed class ResponseInfo
     public required IReadOnlyDictionary<string, SchemaInfo> Content { get; init; }
 
     public required IReadOnlyList<HeaderInfo> Headers { get; init; }
+
+    /// <summary>
+    /// Explicit media-type-level <c>example:</c> / first <c>examples:</c> entry per content
+    /// type (additive; captured for example generation, never used by comparison).
+    /// </summary>
+    public IReadOnlyDictionary<string, System.Text.Json.Nodes.JsonNode> MediaExamples { get; init; } =
+        new Dictionary<string, System.Text.Json.Nodes.JsonNode>(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class HeaderInfo

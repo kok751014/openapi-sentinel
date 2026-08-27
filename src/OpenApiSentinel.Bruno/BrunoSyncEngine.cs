@@ -23,6 +23,7 @@ public sealed class BrunoSyncEngine
     private readonly ScenarioGenerator? generator;
     private readonly IReadOnlyList<BusinessScenario> businessScenarios;
     private readonly string toolVersion;
+    private SentinelMetaStore store = null!;
 
     public BrunoSyncEngine(
         BrunoSyncSettings syncSettings,
@@ -83,6 +84,15 @@ public sealed class BrunoSyncEngine
 
         var baseUrl = ResolveBaseUrl(document);
         var collection = existing ?? BrunoCollectionDocument.CreateNew(CollectionNameFor(document));
+        store = SentinelMetaStore.For(collection);
+
+        // One-time migration: legacy generator versions stored metadata in an illegal
+        // request-level x-sentinel block. Move it into the schema-legal collection-level
+        // index before anything reads identity, so old files sync forward automatically.
+        foreach (var note in store.MigrateLegacyItemBlocks(collection))
+        {
+            warnings.Add(note);
+        }
 
         // ---- Build the operation inventory from the contract ----
         var operations = new List<(OperationIdentity Identity, Operation Operation, string ContentHash)>();
@@ -119,9 +129,9 @@ public sealed class BrunoSyncEngine
                 currentFolders[item] = folderSegments;
             }
 
-            // Sentinel-marked requests are indexed by their recorded identity regardless of
+            // Sentinel-bound requests are indexed by their recorded identity regardless of
             // whether it is operationId- or method+path-based.
-            var identity = item.IdentityOf();
+            var identity = item.IdentityOf(store);
             if (identity is not null)
             {
                 if (!markedIndex.TryAdd(identity.StableKey, item))
@@ -172,7 +182,7 @@ public sealed class BrunoSyncEngine
                 continue;
             }
 
-            var identity = item.IdentityOf();
+            var identity = item.IdentityOf(store);
             var method = identity?.Method;
             var path = identity?.NormalizedPath;
             if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(path))
@@ -184,7 +194,7 @@ public sealed class BrunoSyncEngine
 
             if (syncSettings.RemoveDeletedOperations)
             {
-                RemoveItem(collection, item);
+                RemoveItem(collection, item, key);
                 outcomes.Add(new OperationSyncOutcome
                 {
                     Action = OperationAction.Removed,
@@ -196,7 +206,7 @@ public sealed class BrunoSyncEngine
             }
             else
             {
-                BrunoYaml.SetBool(item.Sentinel, "stale", true);
+                BrunoYaml.SetBool(store.GetOrCreateEntry(key), "stale", true);
                 outcomes.Add(new OperationSyncOutcome
                 {
                     Action = OperationAction.Stale,
@@ -242,7 +252,7 @@ public sealed class BrunoSyncEngine
             var actual = string.Join("/", current);
             itemWarnings.Add($"合約標籤對應的資料夾為「{desired}」；此 Request 目前位於「{actual}」。依保留原則不自動搬移，可自行調整標籤或移動 Request。");
         }
-        var storedHash = item.StoredContentHash();
+        var storedHash = item.StoredContentHash(store);
         var structuralChange = storedHash != contentHash;
         // An unmarked (user-created) request that we adopt counts as newly managed.
         var action = item.IsSentinelManaged ? OperationAction.Updated : OperationAction.Added;
@@ -250,7 +260,7 @@ public sealed class BrunoSyncEngine
         if (!structuralChange)
         {
             RefreshMeta(item, identity, contentHash, RequiresAuth(operation));
-            SyncExamples(item, identity, operation, request, baseUrl, changes, preserved);
+            SyncExamples(item, identity, operation, request, baseUrl, changes, preserved, itemWarnings);
 
             if (changes.Count == 0 && preserved.Count == 0)
             {
@@ -290,14 +300,26 @@ public sealed class BrunoSyncEngine
             request.Url = url;
         }
 
+        // ---- display name hygiene ----
+        // Names are FROZEN at creation (preservation-first: contract prose changes and user
+        // renames never churn existing names). Only exception: a stored name violating the
+        // concise-name policy (e.g. pre-fix HTML/multiline summaries leaking into names)
+        // is sanitized in place.
+        var sanitizedName = ConciseName(request.Name ?? "");
+        if (!string.Equals(request.Name, sanitizedName, StringComparison.Ordinal))
+        {
+            request.SetName(sanitizedName);
+            changes.Add($"名稱已整理為安全簡潔格式：{sanitizedName}");
+        }
+
         // ---- params (query + path) ----
-        MergeParams(item, request, operation, changes, preserved);
+        MergeParams(item, request, operation, changes, preserved, identity: identity);
 
         // ---- headers ----
-        MergeHeaderParams(item, request, operation, changes, preserved);
+        MergeHeaderParams(item, request, operation, changes, preserved, identity);
 
         // ---- body ----
-        MergeBody(item, request, operation, changes, preserved, itemWarnings);
+        MergeBody(item, request, operation, changes, preserved, itemWarnings, identity);
 
         // ---- docs (contract summary/description) ----
         if (!syncSettings.PreserveDocs)
@@ -335,7 +357,7 @@ public sealed class BrunoSyncEngine
         }
 
         RefreshMeta(item, identity, contentHash, RequiresAuth(operation));
-        SyncExamples(item, identity, operation, request, baseUrl, changes, preserved);
+        SyncExamples(item, identity, operation, request, baseUrl, changes, preserved, itemWarnings);
 
         return new OperationSyncOutcome
         {
@@ -357,9 +379,20 @@ public sealed class BrunoSyncEngine
 
     private void RefreshMeta(BrunoItem item, OperationIdentity identity, string contentHash, bool requiresAuth)
     {
-        item.WriteIdentity(identity, contentHash);
-        item.SetGeneratorVersion(toolVersion);
-        var meta = item.Sentinel;
+        var previousKey = item.SentinelTagKey;
+        item.WriteIdentity(store, identity, contentHash);
+        item.SetGeneratorVersion(store, toolVersion);
+        var meta = store.GetOrCreateEntry(identity.StableKey);
+
+        // Identity transition (operationId added/removed since the last sync): carry every
+        // extra field from the old index entry onto the new one — nothing user-stored is
+        // silently dropped — then retire the orphaned entry.
+        if (previousKey is { } old && !string.Equals(old, identity.StableKey, StringComparison.Ordinal))
+        {
+            store.MergeAndRemoveEntry(old, identity.StableKey);
+            meta = store.GetOrCreateEntry(identity.StableKey);
+        }
+
         BrunoYaml.SetBool(meta, "requiresAuth", requiresAuth);
         BrunoYaml.RemoveKey(meta, "stale");
     }
@@ -371,10 +404,12 @@ public sealed class BrunoSyncEngine
         BrunoRequestView request,
         string baseUrl,
         List<string> changes,
-        List<string> preserved)
+        List<string> preserved,
+        List<string>? warnings = null)
     {
         if (generator is null)
         {
+            RemoveRecordedExamples(item, request, changes);
             return;
         }
 
@@ -389,8 +424,17 @@ public sealed class BrunoSyncEngine
         // Layer 2 — business scenarios declared in openapi-sentinel.scenarios.yml.
         scenarios.AddRange(BuildBusinessScenarios(identity, baseSnapshot));
 
+        // Honest response-example reporting: when the contract documents no derivable
+        // outcome for success/failure probes, say so instead of silently shipping
+        // examples without expected responses.
+        var (_, successDocumented) = ResponseExampleFactory.ForSuccess(operation);
+        if (!successDocumented && warnings is not null)
+        {
+            warnings.Add($"此操作的「成功」情境未附預期回應：{ResponseExampleFactory.UnavailableNote}");
+        }
+
         var examplesSeq = request.ExamplesSequence();
-        var recorded = item.RecordedExamples();
+        var recorded = item.RecordedExamples(store);
         var nameToIndex = new Dictionary<string, int>(StringComparer.Ordinal);
         for (var i = 0; i < examplesSeq.Children.Count; i++)
         {
@@ -450,7 +494,37 @@ public sealed class BrunoSyncEngine
             }
         }
 
-        item.WriteRecordedExamples(registry);
+        item.WriteRecordedExamples(store, registry);
+    }
+
+    /// <summary>
+    /// Disabling generated examples removes only entries recorded in Sentinel's per-request
+    /// registry. An unmarked example is user content, including a legacy native-workspace
+    /// example whose old <c>.bru</c> file predates the ownership sidecar.
+    /// </summary>
+    private void RemoveRecordedExamples(BrunoItem item, BrunoRequestView request, List<string> changes)
+    {
+        var recorded = item.RecordedExamples(store);
+        if (recorded.Count == 0)
+        {
+            return;
+        }
+
+        var names = recorded.Select(entry => entry.Name).ToHashSet(StringComparer.Ordinal);
+        if (request.ExamplesOrNull is { } examples)
+        {
+            for (var i = examples.Children.Count - 1; i >= 0; i--)
+            {
+                if (examples.Children[i] is YamlDotNet.RepresentationModel.YamlMappingNode map &&
+                    BrunoYaml.AsString(BrunoYaml.Get(map, "name")) is { } name && names.Contains(name))
+                {
+                    examples.Children.RemoveAt(i);
+                    changes.Add($"停用 Sentinel 產生範例：{name}");
+                }
+            }
+        }
+
+        item.WriteRecordedExamples(store, []);
     }
 
     private IEnumerable<GeneratedScenario> BuildBusinessScenarios(OperationIdentity identity, ScenarioRequest baseSnapshot)
@@ -534,10 +608,9 @@ public sealed class BrunoSyncEngine
                 var row = new YamlDotNet.RepresentationModel.YamlMappingNode();
                 BrunoYaml.SetString(row, "name", param.Name);
                 BrunoYaml.SetString(row, "value", param.Value);
-                if (!string.Equals(param.Type, "query", StringComparison.Ordinal))
-                {
-                    BrunoYaml.SetString(row, "type", param.Type);
-                }
+                // The official schema REQUIRES type on every param row.
+                BrunoYaml.SetString(row, "type",
+                    string.Equals(param.Type, "path", StringComparison.Ordinal) ? "path" : "query");
 
                 if (!param.Enabled)
                 {
@@ -564,9 +637,83 @@ public sealed class BrunoSyncEngine
             });
             BrunoYaml.Set(request, "body", body);
         }
+        else if (scenario.Request.FormRows is { Count: > 0 } formRows)
+        {
+            var body = new YamlDotNet.RepresentationModel.YamlMappingNode();
+            BrunoYaml.SetString(body, "type",
+                scenario.Request.FormKind == BodyKind.MultipartForm ? "multipart-form" : "form-urlencoded");
+            var data = new YamlDotNet.RepresentationModel.YamlSequenceNode();
+            foreach (var row in formRows)
+            {
+                var map = new YamlDotNet.RepresentationModel.YamlMappingNode();
+                BrunoYaml.SetString(map, "name", row.Name);
+                if (scenario.Request.FormKind == BodyKind.MultipartForm)
+                {
+                    BrunoYaml.SetString(map, "type", row.IsFile ? "file" : "text");
+                }
+
+                BrunoYaml.SetString(map, "value", row.Value);
+                if (!row.Enabled)
+                {
+                    BrunoYaml.SetBool(map, "disabled", true);
+                }
+
+                data.Children.Add(map);
+            }
+
+            BrunoYaml.Set(body, "data", data);
+            BrunoYaml.Set(request, "body", body);
+        }
         else
         {
             BrunoYaml.RemoveKey(request, "body");
+        }
+
+        // ---- expected response (documented OpenAPI behavior only) ----
+        if (scenario.Response is { } response)
+        {
+            var responseNode = new YamlDotNet.RepresentationModel.YamlMappingNode();
+            if (response.Status is { } status)
+            {
+                BrunoYaml.SetInt(responseNode, "status", status);
+            }
+
+            if (!string.IsNullOrEmpty(response.StatusText))
+            {
+                BrunoYaml.SetString(responseNode, "statusText", response.StatusText);
+            }
+
+            if (response.Headers.Count > 0)
+            {
+                var responseHeaders = new YamlDotNet.RepresentationModel.YamlSequenceNode();
+                foreach (var header in response.Headers)
+                {
+                    var row = new YamlDotNet.RepresentationModel.YamlMappingNode();
+                    BrunoYaml.SetString(row, "name", header.Name);
+                    BrunoYaml.SetString(row, "value", header.Value);
+                    responseHeaders.Children.Add(row);
+                }
+
+                BrunoYaml.Set(responseNode, "headers", responseHeaders);
+            }
+
+            if (!string.IsNullOrEmpty(response.BodyData) || response.BodyType == "binary")
+            {
+                var responseBody = new YamlDotNet.RepresentationModel.YamlMappingNode();
+                BrunoYaml.SetString(responseBody, "type", response.BodyType);
+                BrunoYaml.Set(responseBody, "data",
+                    new YamlDotNet.RepresentationModel.YamlScalarNode(response.BodyData ?? "")
+                    {
+                        Style = YamlDotNet.Core.ScalarStyle.Literal,
+                    });
+                BrunoYaml.Set(responseNode, "body", responseBody);
+            }
+
+            BrunoYaml.Set(node, "response", responseNode);
+        }
+        else
+        {
+            BrunoYaml.RemoveKey(node, "response");
         }
     }
 
@@ -603,15 +750,21 @@ public sealed class BrunoSyncEngine
         }
 
         string? body = null;
-        if (operation.RequestBody is { } requestBody &&
-            SchemaLooksLikeJson(requestBody) &&
-            ScenarioGenerator.PrimaryBodySchema(requestBody) is { } schema)
+        BodyKind formKind = BodyKind.None;
+        IReadOnlyList<FormRow>? formRows = null;
+        if (operation.RequestBody is { } requestBody)
         {
-            headers.Insert(0, ("Content-Type", "application/json", true));
-            var sample = SampleValueFactory.Sample(schema, SampleValueFactory.Depth.Full, level: 2);
-            if (sample is not null)
+            // ONE canonical producer feeds both the operation's default body and every
+            // generated example — their structural shapes can never diverge.
+            var canonical = CanonicalBodyFactory.Create(requestBody, SampleValueFactory.Depth.Full);
+            body = canonical.Kind == BodyKind.Json ? canonical.Json : null;
+            formKind = canonical.Kind is BodyKind.MultipartForm or BodyKind.FormUrlEncoded ? canonical.Kind : BodyKind.None;
+            formRows = canonical.Rows;
+
+            var contentType = canonical.ContentType;
+            if (contentType is not null)
             {
-                body = sample.ToJsonString(JsonWriterOptionsIndented);
+                headers.Insert(0, ("Content-Type", contentType, true));
             }
         }
 
@@ -620,7 +773,7 @@ public sealed class BrunoSyncEngine
             headers.Add(("Cookie", string.Join("; ", cookieParts.Order(StringComparer.Ordinal)), true));
         }
 
-        return new ScenarioRequest(identity.Method, url, parameters, headers, body);
+        return new ScenarioRequest(identity.Method, url, parameters, headers, body, formKind, formRows);
     }
 
     private static readonly JsonSerializerOptions JsonWriterOptionsIndented = new()
@@ -629,18 +782,8 @@ public sealed class BrunoSyncEngine
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    internal static bool SchemaLooksLikeJson(RequestBodyInfo body)
-    {
-        foreach (var contentType in body.Content.Keys)
-        {
-            if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    internal static bool SchemaLooksLikeJson(RequestBodyInfo body) =>
+        CanonicalBodyFactory.ResolveKind(body) == BodyKind.Json;
 
     private static string SampleText(ParameterInfo parameter) =>
         SampleValueFactory.ParameterSampleText(parameter);
@@ -679,15 +822,33 @@ public sealed class BrunoSyncEngine
         var preserved = new List<string>();
         var itemWarnings = new List<string>();
 
-        MergeParams(item, request, operation, changes, preserved, creating: true);
-        MergeHeaderParams(item, request, operation, changes, preserved, creating: true);
+        MergeParams(item, request, operation, changes, preserved, creating: true, identity: identity);
+        MergeHeaderParams(item, request, operation, changes, preserved, identity, creating: true);
 
-        if (operation.RequestBody is { } requestBody && SchemaLooksLikeJson(requestBody) &&
-            ScenarioGenerator.PrimaryBodySchema(requestBody) is { } bodySchema)
+        if (operation.RequestBody is { } requestBody)
         {
-            var merged = JsonBodyMerger.Merge(existingJson: null, bodySchema);
-            request.SetJsonBody(merged.Json);
-            MarkBodyManaged(item);
+            // Same canonical factory as the generated examples: an array contract produces
+            // an array default body, an object contract an object body — never {}.
+            var canonical = CanonicalBodyFactory.Create(requestBody, SampleValueFactory.Depth.Full);
+            switch (canonical.Kind)
+            {
+                case BodyKind.Json when canonical.Json is not null:
+                    request.SetJsonBody(canonical.Json);
+                    MarkBodyManaged(item, identity);
+                    break;
+                case BodyKind.MultipartForm or BodyKind.FormUrlEncoded when canonical.Rows is { Count: > 0 }:
+                    request.SetFormBody(canonical.Kind == BodyKind.MultipartForm ? "multipart-form" : "form-urlencoded", canonical.Rows);
+                    MarkBodyManaged(item, identity);
+                    break;
+                case BodyKind.Text when canonical.Text is not null:
+                    request.SetTextBody(canonical.Text);
+                    MarkBodyManaged(item, identity);
+                    break;
+                case BodyKind.Xml when canonical.Text is not null:
+                    request.SetXmlBody(canonical.Text);
+                    MarkBodyManaged(item, identity);
+                    break;
+            }
         }
 
         var docs = BuildDocs(operation);
@@ -697,7 +858,7 @@ public sealed class BrunoSyncEngine
         }
 
         RefreshMeta(item, identity, contentHash, RequiresAuth(operation));
-        SyncExamples(item, identity, operation, request, baseUrl, changes, preserved);
+        SyncExamples(item, identity, operation, request, baseUrl, changes, preserved, itemWarnings);
 
         return new OperationSyncOutcome
         {
@@ -710,13 +871,74 @@ public sealed class BrunoSyncEngine
         };
     }
 
-    private static void MarkBodyManaged(BrunoItem item) =>
-        BrunoYaml.SetBool(item.Sentinel, "managedBody", true);
+    /// <summary>
+    /// The index entry metadata writes go to: the item's currently bound entry when it has
+    /// one (so a pre-RefreshMeta write survives identity transitions via the merge), or —
+    /// for freshly created items that have no tag yet — the new operation's canonical entry.
+    /// </summary>
+    private YamlDotNet.RepresentationModel.YamlMappingNode MetaTarget(BrunoItem item, OperationIdentity identity) =>
+        store.GetOrCreateEntry(item.SentinelTagKey ?? identity.StableKey);
+
+    private void MarkBodyManaged(BrunoItem item, OperationIdentity identity) =>
+        BrunoYaml.SetBool(MetaTarget(item, identity), "managedBody", true);
+
+    /// <summary>
+    /// Concise display/file name for a request: OpenAPI summary → operationId →
+    /// "METHOD /path". Documentation prose NEVER becomes the name: HTML markup is stripped,
+    /// newlines/control characters collapse to single spaces, and length is capped — while
+    /// the full summary + description remain available verbatim for docs.
+    /// </summary>
+    public static string DisplayRequestName(OperationIdentity identity, Operation operation)
+    {
+        var candidate = !string.IsNullOrWhiteSpace(operation.Summary)
+            ? operation.Summary
+            : !string.IsNullOrWhiteSpace(identity.OperationId)
+                ? identity.OperationId
+                : $"{identity.Method} {identity.NormalizedPath}";
+        return ConciseName(candidate!);
+    }
+
+    /// <summary>Cross-platform-safe concise naming: HTML stripped, whitespace collapsed,
+    /// hard length cap. Useful zh-TW names survive untouched.</summary>
+    public static string ConciseName(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        var inTag = false;
+        foreach (var ch in text)
+        {
+            switch (ch)
+            {
+                case '<':
+                    inTag = true;
+                    sb.Append(' ');
+                    break;
+                case '>':
+                    inTag = false;
+                    break;
+                case '\r' or '\n' or '\t' when !inTag:
+                    sb.Append(' ');
+                    break;
+                default:
+                    if (!inTag && !char.IsControl(ch))
+                    {
+                        sb.Append(ch);
+                    }
+
+                    break;
+            }
+        }
+
+        var result = Regex.Replace(sb.ToString(), @" {2,}", " ").Trim();
+        if (result.Length > 80)
+        {
+            result = result[..80].TrimEnd();
+        }
+
+        return result.Length == 0 ? "untitled" : result;
+    }
 
     private static string DefaultRequestName(OperationIdentity identity, Operation operation) =>
-        string.IsNullOrWhiteSpace(operation.Summary)
-            ? $"{identity.Method} {identity.NormalizedPath}"
-            : operation.Summary!.Trim();
+        DisplayRequestName(identity, operation);
 
     internal static IReadOnlyList<string> FolderSegments(Operation operation)
     {
@@ -771,8 +993,23 @@ public sealed class BrunoSyncEngine
         return text.Trim().Length == 0 ? "untitled" : text.Trim();
     }
 
-    private static string? BuildDocs(Operation operation) =>
-        string.IsNullOrWhiteSpace(operation.Summary) ? null : operation.Summary!.Trim();
+    /// <summary>Full documentation text: summary AND description preserved verbatim (the
+    /// concise name is derived separately; backend wording is never "corrected").</summary>
+    private static string? BuildDocs(Operation operation)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(operation.Summary))
+        {
+            parts.Add(operation.Summary!.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(operation.Description))
+        {
+            parts.Add(operation.Description!.Trim());
+        }
+
+        return parts.Count == 0 ? null : string.Join("\n\n", parts);
+    }
 
     private void MergeParams(
         BrunoItem item,
@@ -780,7 +1017,8 @@ public sealed class BrunoSyncEngine
         Operation operation,
         List<string> changes,
         List<string> preserved,
-        bool creating = false)
+        bool creating = false,
+        OperationIdentity? identity = null)
     {
         var existingRows = request.Params();
         var existingByName = new Dictionary<string, BrunoKeyValueRow>(StringComparer.Ordinal);
@@ -869,7 +1107,8 @@ public sealed class BrunoSyncEngine
             finalRows.Add(row);
         }
 
-        WriteManagedParams(item, finalRows.Where(r => contractAllNames.Contains(r.Name)).Select(r => r.Name));
+        WriteManagedParams(item, finalRows.Where(r => contractAllNames.Contains(r.Name)).Select(r => r.Name),
+            identity ?? throw new BrunoSyncException("internal: MergeParams requires an identity."));
 
         if (!RowsEqual(finalRows, existingRows))
         {
@@ -877,10 +1116,10 @@ public sealed class BrunoSyncEngine
         }
     }
 
-    private static HashSet<string> ReadManagedParams(BrunoItem item)
+    private HashSet<string> ReadManagedParams(BrunoItem item)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
-        if (item.SentinelOrNull is not { } meta ||
+        if (item.SentinelTagKey is not { } key || store.EntryOrNull(key) is not { } meta ||
             BrunoYaml.SequenceOf(meta, "managedParams") is not { } seq)
         {
             return names;
@@ -897,9 +1136,9 @@ public sealed class BrunoSyncEngine
         return names;
     }
 
-    private static void WriteManagedParams(BrunoItem item, IEnumerable<string> names)
+    private void WriteManagedParams(BrunoItem item, IEnumerable<string> names, OperationIdentity identity)
     {
-        var meta = item.Sentinel;
+        var meta = MetaTarget(item, identity);
         var list = names.Order(StringComparer.Ordinal).ToList();
         if (list.Count == 0)
         {
@@ -940,12 +1179,13 @@ public sealed class BrunoSyncEngine
         return true;
     }
 
-    private static void MergeHeaderParams(
+    private void MergeHeaderParams(
         BrunoItem item,
         BrunoRequestView request,
         Operation operation,
         List<string> changes,
         List<string> preserved,
+        OperationIdentity identity,
         bool creating = false)
     {
         var contractHeaders = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -976,7 +1216,7 @@ public sealed class BrunoSyncEngine
         // Sentinel manages exactly the union of previously- and currently-declared contract
         // headers so future removals drop them while purely manual headers survive forever.
         var managedAfter = managedBefore.Union(contractHeaders.Keys).ToHashSet(StringComparer.Ordinal);
-        WriteManagedHeaders(item, managedAfter);
+        WriteManagedHeaders(item, managedAfter, identity);
 
         if (!creating)
         {
@@ -1022,10 +1262,10 @@ public sealed class BrunoSyncEngine
         return SampleText(parameter);
     }
 
-    private static HashSet<string> ReadManagedHeaders(BrunoItem item)
+    private HashSet<string> ReadManagedHeaders(BrunoItem item)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
-        if (item.SentinelOrNull is not { } meta ||
+        if (SentinelEntryOrNull(item) is not { } meta ||
             BrunoYaml.SequenceOf(meta, "managedHeaders") is not { } seq)
         {
             return names;
@@ -1042,9 +1282,9 @@ public sealed class BrunoSyncEngine
         return names;
     }
 
-    private static void WriteManagedHeaders(BrunoItem item, HashSet<string> names)
+    private void WriteManagedHeaders(BrunoItem item, HashSet<string> names, OperationIdentity identity)
     {
-        var meta = item.Sentinel;
+        var meta = MetaTarget(item, identity);
         if (names.Count == 0)
         {
             BrunoYaml.RemoveKey(meta, "managedHeaders");
@@ -1066,20 +1306,20 @@ public sealed class BrunoSyncEngine
         Operation operation,
         List<string> changes,
         List<string> preserved,
-        List<string> itemWarnings)
+        List<string> itemWarnings,
+        OperationIdentity identity)
     {
         var contractBody = operation.RequestBody;
-        var hasJsonContract = contractBody is not null && SchemaLooksLikeJson(contractBody) &&
-                              ScenarioGenerator.PrimaryBodySchema(contractBody) is not null;
+        var contractKind = contractBody is null ? BodyKind.None : CanonicalBodyFactory.ResolveKind(contractBody);
 
-        if (!hasJsonContract)
+        if (contractKind is BodyKind.None || contractBody is null)
         {
             if (request.BodyOrNull is not null)
             {
                 if (IsBodyManaged(item))
                 {
                     request.RemoveBody();
-                    ClearBodyManaged(item);
+                    ClearBodyManaged(item, identity);
                     changes.Add("移除請求主體（合約已無 requestBody）");
                 }
                 else
@@ -1091,20 +1331,52 @@ public sealed class BrunoSyncEngine
             return;
         }
 
-        var schema = ScenarioGenerator.PrimaryBodySchema(contractBody!)!;
-        var mode = request.BodyType;
-        if (mode is not null && !string.Equals(mode, "json", StringComparison.Ordinal))
+        var contractMode = contractKind switch
         {
-            itemWarnings.Add($"請求主體模式為 '{mode}'，與合約 JSON 內容不一致；已保留使用者內容，未自動改寫。");
+            BodyKind.Json => "json",
+            BodyKind.MultipartForm => "multipart-form",
+            BodyKind.FormUrlEncoded => "form-urlencoded",
+            BodyKind.Xml => "xml",
+            _ => "text",
+        };
+
+        var mode = request.BodyType;
+        if (mode is not null && !string.Equals(mode, contractMode, StringComparison.Ordinal))
+        {
+            itemWarnings.Add($"請求主體模式為 '{mode}'，與合約宣告的 '{contractMode}' 不一致；已保留使用者內容，未自動改寫。");
             return;
         }
 
+        switch (contractKind)
+        {
+            case BodyKind.Json:
+                MergeJsonBody(item, request, contractBody, changes, preserved, itemWarnings, identity);
+                break;
+            case BodyKind.MultipartForm or BodyKind.FormUrlEncoded:
+                MergeFormBody(item, request, contractBody, contractKind, changes, preserved, identity);
+                break;
+            case BodyKind.Text or BodyKind.Xml:
+                MergeTextBody(item, request, contractBody, contractKind, changes, preserved, identity);
+                break;
+        }
+    }
+
+    private void MergeJsonBody(
+        BrunoItem item,
+        BrunoRequestView request,
+        RequestBodyInfo contractBody,
+        List<string> changes,
+        List<string> preserved,
+        List<string> itemWarnings,
+        OperationIdentity identity)
+    {
+        var schema = ScenarioGenerator.PrimaryBodySchema(contractBody)!;
         var existingRaw = request.JsonBodyRaw;
         if (existingRaw is not null && !syncSettings.PreserveManualValues)
         {
             var regenerated = SampleValueFactory.Sample(schema, SampleValueFactory.Depth.Full, level: 2);
             request.SetJsonBody((regenerated as JsonObject ?? new JsonObject()).ToJsonString(JsonWriterOptionsIndented));
-            MarkBodyManaged(item);
+            MarkBodyManaged(item, identity);
             changes.Add("請求主體已由合約重新產生（preserveManualValues=false）");
             return;
         }
@@ -1127,7 +1399,7 @@ public sealed class BrunoSyncEngine
         if (changed)
         {
             request.SetJsonBody(outcome.Json);
-            MarkBodyManaged(item);
+            MarkBodyManaged(item, identity);
             foreach (var note in outcome.Notes)
             {
                 if (note.StartsWith("added-optional:", StringComparison.Ordinal))
@@ -1153,11 +1425,200 @@ public sealed class BrunoSyncEngine
         }
     }
 
-    private static bool IsBodyManaged(BrunoItem item) =>
-        BrunoYaml.AsBool(BrunoYaml.Get(item.SentinelOrNull ?? new YamlDotNet.RepresentationModel.YamlMappingNode(), "managedBody")) == true;
+    private void MergeFormBody(
+        BrunoItem item,
+        BrunoRequestView request,
+        RequestBodyInfo contractBody,
+        BodyKind kind,
+        List<string> changes,
+        List<string> preserved,
+        OperationIdentity identity)
+    {
+        var canonical = CanonicalBodyFactory.Create(contractBody, SampleValueFactory.Depth.Full);
+        var contractRows = canonical.Rows ?? [];
+        var contractNames = contractRows.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
+        var existingRows = request.FormRows();
 
-    private static void ClearBodyManaged(BrunoItem item) =>
-        BrunoYaml.RemoveKey(item.Sentinel, "managedBody");
+        var managedBefore = ReadManagedFormFields(item);
+        var result = new List<FormRow>();
+        foreach (var existing in existingRows)
+        {
+            if (!contractNames.Contains(existing.Name))
+            {
+                if (managedBefore.Contains(existing.Name))
+                {
+                    changes.Add($"移除已從合約刪除的表單欄位：{existing.Name}");
+                    continue;
+                }
+
+                preserved.Add($"保留人工表單欄位：{existing.Name}");
+            }
+
+            result.Add(existing);
+        }
+
+        var changed = false;
+        foreach (var contractRow in contractRows)
+        {
+            var index = result.FindIndex(r => string.Equals(r.Name, contractRow.Name, StringComparison.Ordinal));
+            if (index < 0)
+            {
+                result.Add(contractRow);
+                changed = true;
+                changes.Add(contractRow.IsFile
+                    ? $"新增檔案欄位：{contractRow.Name}（請於送出前選擇實際檔案；佔位值不會讀取本機檔案）"
+                    : $"新增表單欄位：{contractRow.Name}");
+                continue;
+            }
+
+            var current = result[index];
+            string nextValue;
+            if (current.IsFile || contractRow.IsFile)
+            {
+                // Never overwrite a chosen file path; only an empty value takes the placeholder.
+                nextValue = string.IsNullOrWhiteSpace(current.Value) ? contractRow.Value : current.Value;
+            }
+            else if (!syncSettings.PreserveManualValues || string.IsNullOrWhiteSpace(current.Value))
+            {
+                nextValue = contractRow.Value;
+            }
+            else
+            {
+                nextValue = current.Value;
+            }
+
+            var nextEnabled = current.Enabled && contractRow.Enabled;
+            if (!string.Equals(current.Value, nextValue, StringComparison.Ordinal) || current.Enabled != nextEnabled)
+            {
+                result[index] = current with { Value = nextValue, Enabled = nextEnabled };
+                changed = true;
+            }
+        }
+
+        WriteManagedFormFields(item, contractNames, identity);
+
+        if (changed || !FormRowsEqual(result, existingRows.ToList()))
+        {
+            request.SetFormBody(kind == BodyKind.MultipartForm ? "multipart-form" : "form-urlencoded", result);
+            MarkBodyManaged(item, identity);
+            if (!changed && existingRows.Count > 0)
+            {
+                preserved.Add("保留既有表單欄位值");
+            }
+        }
+        else if (existingRows.Count > 0)
+        {
+            preserved.Add("保留既有表單欄位值");
+        }
+    }
+
+    private void MergeTextBody(
+        BrunoItem item,
+        BrunoRequestView request,
+        RequestBodyInfo contractBody,
+        BodyKind kind,
+        List<string> changes,
+        List<string> preserved,
+        OperationIdentity identity)
+    {
+        var existing = request.TextBodyRaw;
+        if (!syncSettings.PreserveManualValues || string.IsNullOrEmpty(existing))
+        {
+            var canonical = CanonicalBodyFactory.Create(contractBody, SampleValueFactory.Depth.Full);
+            if (canonical.Text is null)
+            {
+                return;
+            }
+
+            var changed = !string.Equals(existing, canonical.Text, StringComparison.Ordinal);
+            if (changed || existing is null)
+            {
+                if (kind == BodyKind.Xml)
+                {
+                    request.SetXmlBody(canonical.Text);
+                }
+                else
+                {
+                    request.SetTextBody(canonical.Text);
+                }
+                MarkBodyManaged(item, identity);
+                changes.Add(existing is null ? "新增文字請求主體" : "文字請求主體已由合約重新產生");
+            }
+
+            return;
+        }
+
+        preserved.Add("保留人工文字請求主體");
+    }
+
+    private static bool FormRowsEqual(List<FormRow> a, List<FormRow> b)
+    {
+        if (a.Count != b.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < a.Count; i++)
+        {
+            if (!string.Equals(a[i].Name, b[i].Name, StringComparison.Ordinal) ||
+                !string.Equals(a[i].Value, b[i].Value, StringComparison.Ordinal) ||
+                a[i].IsFile != b[i].IsFile ||
+                a[i].Enabled != b[i].Enabled)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private HashSet<string> ReadManagedFormFields(BrunoItem item)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (SentinelEntryOrNull(item) is not { } meta ||
+            BrunoYaml.SequenceOf(meta, "managedFormFields") is not { } seq)
+        {
+            return names;
+        }
+
+        foreach (var child in seq.Children)
+        {
+            if (child is YamlDotNet.RepresentationModel.YamlScalarNode { Value: not null } scalar)
+            {
+                names.Add(scalar.Value);
+            }
+        }
+
+        return names;
+    }
+
+    private void WriteManagedFormFields(BrunoItem item, IEnumerable<string> names, OperationIdentity identity)
+    {
+        var meta = MetaTarget(item, identity);
+        var list = names.Order(StringComparer.Ordinal).ToList();
+        if (list.Count == 0)
+        {
+            BrunoYaml.RemoveKey(meta, "managedFormFields");
+            return;
+        }
+
+        var seq = new YamlDotNet.RepresentationModel.YamlSequenceNode();
+        foreach (var name in list)
+        {
+            seq.Children.Add(BrunoYaml.Scalar(name));
+        }
+
+        BrunoYaml.Set(meta, "managedFormFields", seq);
+    }
+
+    private YamlDotNet.RepresentationModel.YamlMappingNode? SentinelEntryOrNull(BrunoItem item) =>
+        item.SentinelTagKey is { } key ? store.EntryOrNull(key) : null;
+
+    private bool IsBodyManaged(BrunoItem item) =>
+        BrunoYaml.AsBool(BrunoYaml.Get(SentinelEntryOrNull(item) ?? new YamlDotNet.RepresentationModel.YamlMappingNode(), "managedBody")) == true;
+
+    private void ClearBodyManaged(BrunoItem item, OperationIdentity identity) =>
+        BrunoYaml.RemoveKey(MetaTarget(item, identity), "managedBody");
 
     private static string? NormalizeJson(string? json)
     {
@@ -1288,10 +1749,14 @@ public sealed class BrunoSyncEngine
         return BrunoPathParamRegex.Replace(path, "$1{$2}");
     }
 
-    private static void RemoveItem(BrunoCollectionDocument collection, BrunoItem target)
+    private static void RemoveItem(BrunoCollectionDocument collection, BrunoItem target, string stableKey)
     {
         _ = RemoveFromSequence(BrunoYaml.SequenceOf(collection.Root, "items"), target);
+        SentinelMetaStoreExtensionsRemove(collection.Root, stableKey);
     }
+
+    private static void SentinelMetaStoreExtensionsRemove(YamlDotNet.RepresentationModel.YamlMappingNode root, string stableKey) =>
+        new SentinelMetaStore(root).RemoveEntry(stableKey);
 
     private static bool RemoveFromSequence(YamlDotNet.RepresentationModel.YamlSequenceNode? seq, BrunoItem target)
     {

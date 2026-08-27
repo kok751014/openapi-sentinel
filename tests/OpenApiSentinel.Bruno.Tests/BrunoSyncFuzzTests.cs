@@ -144,17 +144,23 @@ public class BrunoSyncFuzzTests
             Assert.Equal(yamlAfterFirst, collection.ToYaml());
 
             // I2+I3 — evolving to B is crash-free, deterministic across independent runs,
-            // and preserves user content planted inside x-sentinel on PRE-EXISTING requests
-            // (newly added requests legitimately have none).
+            // and preserves user content planted inside the meta index on PRE-EXISTING
+            // requests (newly added requests legitimately have none).
             var yamlBeforeEvolution = collection.ToYaml();
 
             static (BrunoCollectionDocument Clone, HashSet<BrunoItem> Annotated) PrepareClone(string yaml)
             {
                 var clone = BrunoCollectionDocument.Parse(yaml, "clone.yml");
+                var store = SentinelMetaStore.For(clone);
                 var annotated = new HashSet<BrunoItem>(System.Collections.Generic.ReferenceEqualityComparer.Instance);
                 foreach (var item in clone.AllRequests())
                 {
-                    BrunoYaml.SetString(item.Sentinel, "userNote", "keep-me");
+                    if (item.SentinelTagKey is not { } key)
+                    {
+                        continue;
+                    }
+
+                    BrunoYaml.SetString(store.GetOrCreateEntry(key), "userNote", "keep-me");
                     annotated.Add(item);
                 }
 
@@ -174,8 +180,9 @@ public class BrunoSyncFuzzTests
                     continue;
                 }
 
-                Assert.Equal("keep-me",
-                    BrunoYaml.AsString(BrunoYaml.Get(item.SentinelOrNull ?? new YamlDotNet.RepresentationModel.YamlMappingNode(), "userNote")));
+                var entry = item.SentinelEntry(clone1);
+                Assert.NotNull(entry);
+                Assert.Equal("keep-me", BrunoYaml.AsString(BrunoYaml.Get(entry!, "userNote")));
             }
         }
     }

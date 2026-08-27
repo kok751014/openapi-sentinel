@@ -48,6 +48,7 @@ internal sealed class SpecPair : IDisposable
     }
 }
 
+[Collection("process-cwd")]
 public class CommandLineRunnerTests
 {
     public const string BaseV1 = """
@@ -540,6 +541,7 @@ public class FileArtifactColorTests
     }
 }
 
+[Collection("process-cwd")]
 public class GlobalFlagTests
 {
     [Fact]

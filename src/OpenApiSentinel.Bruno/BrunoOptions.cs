@@ -11,7 +11,15 @@ public sealed record BrunoConfiguration
     /// <summary>Bruno collection target: an OpenCollection YAML file path.</summary>
     public string? CollectionPath { get; init; }
 
-    /// <summary>Directory for bruno-sync-report.html / .json.</summary>
+    /// <summary>
+    /// Directory of the folder-based OpenCollection workspace Bruno Desktop opens directly
+    /// (opencollection.yml + one YAML file per request/folder). Null = default
+    /// ./api-contract/bruno-workspace next to the config. Generated from the SAME canonical
+    /// model as the bundled collection so the two never drift.
+    /// </summary>
+    public string? WorkspacePath { get; init; }
+
+    /// <summary>Directory for timestamped bruno-sync-report-yyyyMMdd-HHmmss.html / .json pairs.</summary>
     public string? ReportPath { get; init; }
 
     /// <summary>Only "auto" (OpenCollection YAML) is currently supported; validated by the loader.</summary>
@@ -42,7 +50,11 @@ public sealed record BrunoSyncSettings
 /// <summary><c>bruno.examples:</c> Layer-1/2 scenario generation policy.</summary>
 public sealed record BrunoExampleSettings
 {
-    public bool Enabled { get; init; } = true;
+    /// <summary>
+    /// Experimental generated examples are opt-in for v1.1.0. Normal request/body/parameter
+    /// generation is independent of this setting.
+    /// </summary>
+    public bool Enabled { get; init; }
 
     public string Language { get; init; } = ScenarioTexts.LanguageTag;
 

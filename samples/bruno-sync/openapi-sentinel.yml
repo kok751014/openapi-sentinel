@@ -11,7 +11,7 @@ bruno:
     removeDeletedOperations: false   # 被移除的操作標示「失效」而不刪檔
 
   examples:
-    enabled: true
+    enabled: true                    # 範例專案明確 opt-in；v1.1.0 產品預設為 false
     language: zh-TW                  # 自動情境名稱／描述使用繁體中文
     ignoreAuthentication: true       # 不自動產生驗證失敗情境
     maxPerOperation: 8               # 每個操作最多 8 個自動情境

@@ -57,7 +57,7 @@ OpenAPI Sentinel tells you:
 | **CI-native** | Stable exit codes, SARIF/JUnit, baselines, suppressions, and machine-readable output |
 | **Professional reports** | Console, JSON, Markdown, PR summary, and single-file HTML with filtering and search |
 | **Release guidance** | Semantic version recommendation and generated API changelog support |
-| **Bruno collection sync** | Incrementally sync a contract into a Bruno OpenCollection YAML file with preservation of manual values/scripts/tests/docs/auth — plus auto-generated Traditional-Chinese test scenarios per operation |
+| **Bruno collection sync** | One-click bootstrap (`bruno sync --source …`) creates config, layout and a Bruno folder workspace automatically; every output is validated against the official OpenCollection v1.0 schema before being written; incremental sync preserves manual values/scripts/tests/docs/auth. Experimental Traditional-Chinese generated scenarios are opt-in for v1.1.0. |
 
 See the [compatibility model](docs/compatibility-model.md) and
 [rule catalog](docs/rules.md) for the detailed semantics.

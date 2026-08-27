@@ -1,11 +1,15 @@
 {
   "schemaVersion": "bruno-sync/1.0",
   "toolVersion": "1.0.0",
-  "generatedAtUtc": "2026-08-25T03:21:55Z",
+  "generatedAtUtc": "2026-08-26T09:38:27Z",
   "dryRun": false,
   "skipped": false,
   "source": "./openapi-v1.yaml",
   "collectionPath": "./api-contract/bruno/collection.yml",
+  "openCollectionSchemaVersion": "1.0.0",
+  "schemaValidation": {
+    "status": "passed"
+  },
   "summary": {
     "operationsAdded": 2,
     "operationsUpdated": 0,

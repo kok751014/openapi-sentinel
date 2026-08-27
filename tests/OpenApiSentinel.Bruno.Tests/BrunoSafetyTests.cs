@@ -52,10 +52,10 @@ public class BrunoSafetyTests
         Assert.Contains(reparsed.AllRequests(), i => i.IsHttpRequest);
 
         var request = reparsed.AllRequests().Single(i => i.IsHttpRequest);
-        Assert.NotNull(request.IdentityOf());
+        Assert.NotNull(request.IdentityOf(reparsed));
         // The hostile operationId is preserved verbatim INSIDE a scalar value,
         // never interpreted as YAML structure.
-        Assert.Contains("script: alert(1)", request.IdentityOf()!.OperationId, StringComparison.Ordinal);
+        Assert.Contains("script: alert(1)", request.IdentityOf(reparsed)!.OperationId, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,13 +79,21 @@ public class BrunoSafetyTests
 
         var (collection, outcome) = Run(spec);
         var report = BrunoWorkflowBridge.Build(outcome);
-
         var html = BrunoSyncHtmlReporter.Render(report);
-        Assert.DoesNotContain("<script>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("&lt;script&gt;", html, StringComparison.Ordinal);
 
-        var json = BrunoSyncJsonReporter.Render(report);
-        Assert.Contains("<script>", json, StringComparison.Ordinal); // JSON keeps raw text for machines
+        // Naming policy strips HTML markup BEFORE anything reaches reports: a spec summary
+        // carrying script tags must not survive into any rendered artifact.
+        Assert.DoesNotContain("<script>", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("&lt;script&gt;", html, StringComparison.OrdinalIgnoreCase);
+
+        // Non-tag prose from the summary survives (stripped, harmless).
+        Assert.Contains("alert(", html, StringComparison.Ordinal);
+
+        // No raw markup from any spec-derived surface reaches the report unescaped.
+        Assert.DoesNotContain("<b>", html, StringComparison.OrdinalIgnoreCase);
+
+        var jsonEscaped = BrunoSyncJsonReporter.Render(report);
+        Assert.DoesNotContain("<script>", jsonEscaped, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -185,7 +193,7 @@ internal static class BrunoWorkflowBridge
 {
     internal static BrunoSyncReport Build(BrunoSyncOutcome outcome)
     {
-        var operations = outcome.Operations.Select(o => new BrunoSyncReportOperation
+        var operations = BrunoSyncReportPolicy.DetailOperations(outcome).Select(o => new BrunoSyncReportOperation
         {
             Action = o.Action switch
             {
@@ -287,8 +295,9 @@ public class BrunoPathRobustnessTests
     [Fact]
     public void Relative_Paths_Resolve_Against_Base_Directory()
     {
-        var resolved = OpenApiSentinel.Bruno.BrunoPaths.Resolve("./api-contract/c.yml", "/base/config-dir");
-        Assert.StartsWith("/base/config-dir", resolved, StringComparison.Ordinal);
+        var baseDirectory = Path.Combine(Path.GetTempPath(), "base", "config-dir");
+        var resolved = OpenApiSentinel.Bruno.BrunoPaths.Resolve("./api-contract/c.yml", baseDirectory);
+        Assert.StartsWith(Path.GetFullPath(baseDirectory), resolved, StringComparison.Ordinal);
         Assert.EndsWith("c.yml", resolved, StringComparison.Ordinal);
     }
 
@@ -343,7 +352,16 @@ public class SymlinkCollectionTests : IDisposable
         var linkDir = Path.Combine(root, "link");
         Directory.CreateDirectory(linkDir);
         var linkPath = Path.Combine(linkDir, "collection.yml");
-        File.CreateSymbolicLink(linkPath, Path.GetRelativePath(linkDir, realPath));
+        try
+        {
+            File.CreateSymbolicLink(linkPath, Path.GetRelativePath(linkDir, realPath));
+        }
+        catch (IOException ex) when (OperatingSystem.IsWindows() && ex.HResult == unchecked((int)0x80070522))
+        {
+            // Windows without Developer Mode/SeCreateSymbolicLinkPrivilege cannot create
+            // a fixture link, so the behavior is covered on capable Windows/Unix runners.
+            return;
+        }
 
         const string updated = "opencollection: \"1.0.0\"\ninfo:\n  name: synced\n";
         SafeFileWriter.Write(linkPath, updated);
@@ -351,7 +369,7 @@ public class SymlinkCollectionTests : IDisposable
         // The link itself survives...
         Assert.True(new FileInfo(linkPath).LinkTarget is not null, "symlink was destroyed by write");
         // ...the resolved target carries the new content...
-        Assert.Equal(updated.Replace("\\n", Environment.NewLine), File.ReadAllText(realPath));
+        Assert.Equal(updated, File.ReadAllText(realPath));
         // ...and reading back through the link sees it too.
         Assert.Equal(File.ReadAllText(realPath), File.ReadAllText(linkPath));
     }
@@ -366,6 +384,6 @@ public class SymlinkCollectionTests : IDisposable
         SafeFileWriter.Write(plain, "new\n");
 
         Assert.Null(new FileInfo(plain).LinkTarget);
-        Assert.Equal("new" + Environment.NewLine, File.ReadAllText(plain));
+        Assert.Equal("new\n", File.ReadAllText(plain));
     }
 }

@@ -65,9 +65,23 @@ references resolve locally rather than over the network, and consider splitting 
 
 ## Bruno sync
 
-- **"collection 目標是一個目錄" / exit 3** — Sentinel syncs single-file OpenCollection YAML
-  only. Point `bruno.collectionPath` at a `.yml` file; convert a `.bru` directory via
+- **`Import OpenCollection failed` in Bruno (older versions)** — fixed: generated
+  collections are now validated against the official OpenCollection v1.0 schema before
+  being written, so illegal shapes (request-level metadata blocks, params without `type`,
+  numeric-typed values) can no longer be emitted. Re-run `bruno sync`; legacy files are
+  migrated automatically. Prefer opening the folder workspace directly
+  (`api-contract/bruno-workspace/<project>`) instead of importing the single file.
+- **"collection 目標是一個目錄" / exit 3** — Sentinel syncs OpenCollection YAML only.
+  Point `bruno.collectionPath` at a `.yml` file; convert a `.bru` directory via
   Bruno's OpenCollection export first (see [bruno-sync](bruno-sync.md#支援格式)).
+- **`OpenCollection validation failed: … is not an allowed property` / exit 2** — the
+  gate refused to write because something (usually a hand-added key on a request root)
+  violates the official schema. The message names the exact path. Move custom data into
+  `extensions.x-sentinel.operations[<key>]` (collection level) or an `info.tags` entry;
+  nothing was written, so your files are untouched.
+- **Workspace and bundled collection disagree** — when both exist the WORKSPACE is the
+  canonical source; bundled `collection.yml` is regenerated from it. Do not hand-edit the
+  bundled file expecting changes to survive (see [bruno-sync](bruno-sync.md#workspace-與-bundled-collection-的角色)).
 - **`No API contract changes detected.` but you expected changes** — the incremental state
   hashes the contract surface sync derives from; documentation-only edits intentionally do
   not trigger churn. Delete the hidden `<collection>.yml.sentinel-state.json` to force a
@@ -75,9 +89,10 @@ references resolve locally rather than over the network, and consider splitting 
 - **Examples missing** — check `bruno.examples.enabled` is not false. Note that an explicit
   `openapi-sentinel bruno examples` command overrides `enabled: false`, while plain
   `sync` respects it (`--no-examples` suppresses everywhere).
-- **Manual values reverted?** They should not be — preservation is tested end-to-end.
-  Verify you are editing the same file the config resolves to (paths resolve against the
-  CONFIG FILE's directory, not your shell's cwd) and that `preserveManualValues` is true.
+- **Manual values reverted?** They should not be — preservation is tested end-to-end,
+  including edits made inside workspace request files. Verify you are editing the file
+  Sentinel actually reads (workspace first, else the config-resolved collection) and that
+  `preserveManualValues` is true.
 - **Header/cookie parameters in examples** — declared header params and a composite Cookie
   row are included automatically; if they are absent, the examples predate this feature —
   re-run `bruno examples`.

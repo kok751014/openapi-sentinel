@@ -372,8 +372,10 @@ public static class SampleValueFactory
         };
     }
 
-    /// <summary>A value violating the declared string type/format for validation-failure scenarios.</summary>
-    public static JsonNode ViolatingValue(SchemaInfo schema, ViolationKind kind)
+    /// <summary>A value violating the declared string type/format for validation-failure scenarios.
+    /// Returns null when the violation cannot be represented with a safe same-type value
+    /// (e.g. an invalid-enum probe for a boolean enum already covering true+false).</summary>
+    public static JsonNode? ViolatingValue(SchemaInfo schema, ViolationKind kind)
     {
         var primary = NonNullPrimaryType(schema);
         return kind switch
@@ -387,7 +389,7 @@ public static class SampleValueFactory
                 "object" => new JsonArray(),
                 _ => JsonValue.Create("sentinel-type-probe"),
             },
-            ViolationKind.InvalidEnum => JsonValue.Create("__sentinel_invalid_enum__"),
+            ViolationKind.InvalidEnum => SameTypeInvalidEnumValue(schema),
             ViolationKind.BelowMinimum => JsonValue.Create(LongKeywordLoose(schema, "minimum") is { } min ? min - 1 : (LongKeywordLoose(schema, "exclusiveMinimum") ?? 0) - 1),
             ViolationKind.AboveMaximum => JsonValue.Create(LongKeywordLoose(schema, "maximum") is { } max ? max + 1 : (LongKeywordLoose(schema, "exclusiveMaximum") ?? 0) + 1),
             ViolationKind.MaxLengthExceeded =>
@@ -467,7 +469,7 @@ public static class SampleValueFactory
         return kind switch
         {
             ViolationKind.WrongType => primary is not null,
-            ViolationKind.InvalidEnum => HasNonEmptyEnum(schema),
+            ViolationKind.InvalidEnum => HasNonEmptyEnum(schema) && SameTypeInvalidEnumValue(schema) is not null,
             ViolationKind.BelowMinimum => primary is "integer" or "number" &&
                 (LongKeywordLoose(schema, "minimum").HasValue || LongKeywordLoose(schema, "exclusiveMinimum").HasValue),
             ViolationKind.AboveMaximum => primary is "integer" or "number" &&
@@ -521,6 +523,184 @@ public static class SampleValueFactory
 
         return [];
     }
+
+    /// <summary>
+    /// A deterministic invalid-enum probe that keeps the SAME primitive type as the declared
+    /// enum values: integer enums get an out-of-set integer, number enums an out-of-set
+    /// number, string enums an out-of-set string. Returns null when no same-type value can
+    /// violate the enum (a boolean enum covering both true and false) — callers must skip
+    /// the scenario instead of mixing failure concepts. Nullable enums are handled by their
+    /// non-null members; negative and sparse sets by min/max stepping; int edge sets wrap.
+    /// </summary>
+    public static JsonNode? SameTypeInvalidEnumValue(SchemaInfo schema)
+    {
+        var values = EnumValues(schema);
+        if (values.Count == 0)
+        {
+            // Composition-declared enums: probe the first oneOf/anyOf branch (same policy
+            // as FirstEnumValue).
+            foreach (var keyword in (ReadOnlySpan<string>)["oneOf", "anyOf"])
+            {
+                if (schema.CompositionOf(keyword) is { Count: > 0 } branches && branches[0] is JsonObject branch)
+                {
+                    values = EnumValues(Wrap(branch, schema.Spec));
+                    if (values.Count > 0)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (values.Count == 0)
+        {
+            return null;
+        }
+
+        // The probe's primitive type follows the FIRST declared value (enums are
+        // homogeneous in practice; mixed-type enums follow their first member).
+        var first = values[0];
+        switch (first)
+        {
+            case JsonValue v when v.TryGetValue<long>(out _) && IsIntegralJson(v):
+            {
+                var longs = values
+                    .OfType<JsonValue>()
+                    .Select(x => x.TryGetValue<long>(out var l) ? l : 0L)
+                    .ToList();
+                if (longs.Count == 0)
+                {
+                    return null;
+                }
+
+                // Deterministic step just outside the declared set: above the maximum, or
+                // below the minimum when the set saturates the top of the long range.
+                long candidate;
+                var max = longs.Max();
+                if (max < long.MaxValue)
+                {
+                    candidate = max + 1;
+                }
+                else
+                {
+                    var min = longs.Min();
+                    if (min == long.MinValue)
+                    {
+                        return null; // entire long range covered — no same-type violation exists
+                    }
+
+                    candidate = min - 1;
+                }
+
+                if (ContainsLong(values, candidate))
+                {
+                    return null; // saturated set — cannot represent a same-type violation safely
+                }
+
+                return JsonValue.Create(candidate);
+            }
+
+            case JsonValue v when v.TryGetValue<double>(out _) && !IsIntegralJson(v):
+            {
+                var doubles = values
+                    .OfType<JsonValue>()
+                    .Select(x => x.TryGetValue<double>(out var d) ? d : double.NaN)
+                    .Where(d => !double.IsNaN(d))
+                    .ToList();
+                if (doubles.Count == 0)
+                {
+                    return null;
+                }
+
+                double candidate;
+                var doubleMax = doubles.Max();
+                if (double.IsPositiveInfinity(doubleMax))
+                {
+                    var min = doubles.Min();
+                    if (double.IsNegativeInfinity(min))
+                    {
+                        return null;
+                    }
+
+                    candidate = min - 1;
+                }
+                else
+                {
+                    candidate = doubleMax + 1;
+                }
+
+                while (double.IsInfinity(candidate) || doubles.Any(d => d == candidate))
+                {
+                    if (double.IsPositiveInfinity(candidate))
+                    {
+                        return null;
+                    }
+
+                    candidate += 1;
+                }
+
+                return JsonValue.Create(candidate);
+            }
+
+            case JsonValue v when v.TryGetValue<string>(out _):
+            {
+                const string baseProbe = "__sentinel_invalid_enum__";
+                if (!ContainsString(values, baseProbe))
+                {
+                    return JsonValue.Create(baseProbe);
+                }
+
+                for (var i = 2; i < 100; i++)
+                {
+                    var candidate = $"{baseProbe}_{i}";
+                    if (!ContainsString(values, candidate))
+                    {
+                        return JsonValue.Create(candidate);
+                    }
+                }
+
+                return null;
+            }
+
+            case JsonValue v when v.TryGetValue<bool>(out _):
+            {
+                // A boolean outside {true,false} does not exist. Only fabricate a scenario
+                // when the enum leaves one of the two real booleans unused — sending it is
+                // a genuine same-type enum violation.
+                var hasTrue = values.Any(n => n is JsonValue b && b.TryGetValue<bool>(out var bv) && bv);
+                var hasFalse = values.Any(n => n is JsonValue b && b.TryGetValue<bool>(out var bv) && !bv);
+                if (!hasTrue)
+                {
+                    return JsonValue.Create(true);
+                }
+
+                if (!hasFalse)
+                {
+                    return JsonValue.Create(false);
+                }
+
+                return null;
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    private static bool IsIntegralJson(JsonValue value)
+    {
+        // Distinguish 1 from 1.0: System.Text.Json reports both through TryGetValue<long>,
+        // so inspect the raw text for a decimal part / exponent.
+        var raw = value.ToJsonString();
+        return !(raw.Contains('.', StringComparison.Ordinal) ||
+                 raw.Contains('e', StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsLong(IReadOnlyList<JsonNode?> values, long candidate) =>
+        values.Any(n => n is JsonValue v && v.TryGetValue<long>(out var l) && l == candidate);
+
+    private static bool ContainsString(IReadOnlyList<JsonNode?> values, string candidate) =>
+        values.Any(n => n is JsonValue v && v.TryGetValue<string>(out var s) && s == candidate);
 
     /// <summary>The first declared enum value (deterministic).</summary>
     public static JsonNode? FirstEnumValue(SchemaInfo schema)

@@ -93,6 +93,8 @@ public static class BrunoSyncHtmlReporter
         sb.Append("<section><h2>結果資訊</h2><table>");
         Row(sb, "來源 OpenAPI", report.Source);
         Row(sb, "Bruno Collection 路徑", report.CollectionPath);
+        Row(sb, "OpenCollection Schema", report.OpenCollectionSchemaVersion);
+        Row(sb, "Schema Validation", report.SchemaValidation.Status == "passed" ? "PASS" : "FAILED");
         Row(sb, "工具版本", report.ToolVersion);
         Row(sb, "模式", report.DryRun ? "dry-run（預覽，不修改檔案）" : report.Skipped ? "增量略過（無合約變更）" : "同步");
         sb.Append("</table></section>\n");

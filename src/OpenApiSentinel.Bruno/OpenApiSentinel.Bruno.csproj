@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Validation\opencollection.schema.json" CopyToOutputDirectory="Never" />
+    <InternalsVisibleTo Include="OpenApiSentinel.Bruno.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpenApiSentinel.Core\OpenApiSentinel.Core.csproj" />
     <ProjectReference Include="..\OpenApiSentinel.OpenApi\OpenApiSentinel.OpenApi.csproj" />
   </ItemGroup>

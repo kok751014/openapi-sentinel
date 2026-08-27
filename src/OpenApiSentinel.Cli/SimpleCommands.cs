@@ -20,7 +20,7 @@ public static class SimpleCommands
         IConsoleWriter console, CancellationToken ct)
     {
         var outcome = await AnalysisPipeline.LoadDocumentAsync(
-            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, config.Limits,
+            source, config.RemoteReferences, config.HeaderEnv, allowRemoteOverride, false, config.Limits,
             config.AllowAboveDocumentTree, ct);
         var doc = outcome.Document;
         var paths = doc.Paths.Count;

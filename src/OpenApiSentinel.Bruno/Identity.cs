@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using OpenApiSentinel.Core;
 using OpenApiSentinel.OpenApi.Model;
@@ -27,9 +28,11 @@ public sealed record OperationIdentity(string? OperationId, string Method, strin
 }
 
 /// <summary>
-/// Sentinel-managed metadata stored inside each generated request item under
-/// <c>x-sentinel:</c>. This block is what distinguishes contract-derived state from
-/// user-maintained content and what keeps identity stable across file reorganizations.
+/// Sentinel-managed metadata stored in the collection-level
+/// <c>extensions.x-sentinel.operations["&lt;StableKey&gt;"]</c> index. Items bind to their entry via
+/// the schema-legal <c>info.tags</c> binding tag. This block is what distinguishes
+/// contract-derived state from user-maintained content and what keeps identity stable
+/// across file reorganizations.
 /// </summary>
 public static class SentinelMetaKeys
 {
@@ -46,18 +49,34 @@ public static class SentinelMetaKeys
 
 public static class OperationIdentityExtensions
 {
-    public static OperationIdentity? IdentityOf(this Model.BrunoItem item)
+    /// <summary>
+    /// Resolves the stored identity of a request: its binding tag selects the index entry,
+    /// whose method/path (or legacy identityKey) fields define identity. Null when the item
+    /// is unbound or its entry carries no usable identity.
+    /// </summary>
+    public static OperationIdentity? IdentityOf(this Model.BrunoItem item, SentinelMetaStore store)
     {
-        if (item.SentinelOrNull is not { } meta)
+        var key = item.SentinelTagKey;
+        if (key is null)
         {
             return null;
         }
 
+        // The entry may have been removed by hand — treat as unmarked rather than crash.
+        if (store.EntryOrNull(key) is not { } meta)
+        {
+            return null;
+        }
+
+        return IdentityFromEntry(key, meta);
+    }
+
+    private static OperationIdentity? IdentityFromEntry(string stableKey, YamlMappingNode meta)
+    {
         var opIdRaw = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.OperationId));
         var opId = string.IsNullOrWhiteSpace(opIdRaw) ? null : opIdRaw!.Trim();
         var method = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.Method));
         var path = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.Path));
-        var identityKey = BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.IdentityKey));
 
         // Explicit method/path fields are authoritative (always written together).
         if (!string.IsNullOrWhiteSpace(method) && !string.IsNullOrWhiteSpace(path))
@@ -65,26 +84,15 @@ public static class OperationIdentityExtensions
             return new OperationIdentity(opId, method!.ToUpperInvariant(), OperationIdentity.NormalizePath(path!));
         }
 
-        if (!string.IsNullOrWhiteSpace(identityKey))
+        // Legacy entries may only carry the composite key ("opid:x" / "m+p:M /p").
+        if (stableKey.StartsWith("opid:", StringComparison.Ordinal))
         {
-            return FromStoredIdentityKey(identityKey!, opId);
+            return new OperationIdentity(stableKey[5..], "", "");
         }
 
-        return null;
-    }
-
-    private static OperationIdentity? FromStoredIdentityKey(string identityKey, string? opId)
-    {
-        // opid:<operationId>
-        if (identityKey.StartsWith("opid:", StringComparison.Ordinal))
+        if (stableKey.StartsWith("m+p:", StringComparison.Ordinal))
         {
-            return new OperationIdentity(identityKey[5..], "", "");
-        }
-
-        // m+p:METHOD /path
-        if (identityKey.StartsWith("m+p:", StringComparison.Ordinal))
-        {
-            var body = identityKey[4..];
+            var body = stableKey[4..];
             var space = body.IndexOf(' ');
             if (space > 0)
             {
@@ -95,9 +103,11 @@ public static class OperationIdentityExtensions
         return null;
     }
 
-    public static void WriteIdentity(this Model.BrunoItem item, OperationIdentity identity, string contentHash)
+    /// <summary>Binds the item to this identity's index entry and records the current content hash.</summary>
+    public static void WriteIdentity(this Model.BrunoItem item, SentinelMetaStore store, OperationIdentity identity, string contentHash)
     {
-        var meta = item.Sentinel;
+        item.BindSentinelTag(identity.StableKey);
+        var meta = store.GetOrCreateEntry(identity.StableKey);
         BrunoYaml.SetString(meta, SentinelMetaKeys.OperationId, identity.OperationId);
         BrunoYaml.SetString(meta, SentinelMetaKeys.Method, identity.Method);
         BrunoYaml.SetString(meta, SentinelMetaKeys.Path, identity.NormalizedPath);
@@ -105,21 +115,47 @@ public static class OperationIdentityExtensions
         BrunoYaml.SetString(meta, SentinelMetaKeys.ContentHash, contentHash);
     }
 
-    public static string? StoredContentHash(this Model.BrunoItem item) =>
-        item.SentinelOrNull is { } meta ? BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.ContentHash)) : null;
+    public static string? StoredContentHash(this Model.BrunoItem item, SentinelMetaStore store) =>
+        item.SentinelTagKey is { } key && store.EntryOrNull(key) is { } meta
+            ? BrunoYaml.AsString(BrunoYaml.Get(meta, SentinelMetaKeys.ContentHash))
+            : null;
 
-    public static void SetGeneratorVersion(this Model.BrunoItem item, string version) =>
-        BrunoYaml.SetString(item.Sentinel, SentinelMetaKeys.GeneratorVersion, version);
+    public static void SetGeneratorVersion(this Model.BrunoItem item, SentinelMetaStore store, string version) =>
+        BrunoYaml.SetString(store.GetOrCreateEntry(item.SentinelTagKey ?? throw new InvalidOperationException(
+                "generatorVersion requires a bound identity; call WriteIdentity first.")),
+            SentinelMetaKeys.GeneratorVersion, version);
 
     /// <summary>Reads the recorded generated-example registry as an ordered id → name list.</summary>
-    public static List<(string Id, string Name)> RecordedExamples(this Model.BrunoItem item)
+    public static List<(string Id, string Name)> RecordedExamples(this Model.BrunoItem item, SentinelMetaStore store)
     {
-        var result = new List<(string, string)>();
-        if (item.SentinelOrNull is not { } meta)
+        if (item.SentinelTagKey is not { } key || store.EntryOrNull(key) is not { } meta)
         {
-            return result;
+            return [];
         }
 
+        return GeneratedExampleRegistry.Read(meta);
+    }
+
+    public static void WriteRecordedExamples(this Model.BrunoItem item, SentinelMetaStore store, IReadOnlyList<(string Id, string Name)> entries)
+    {
+        GeneratedExampleRegistry.Write(store.GetOrCreateEntry(item.SentinelTagKey!), entries);
+    }
+}
+
+/// <summary>
+/// Preserves the collection-level generated-example registry through native <c>.bru</c>
+/// metadata. Only names explicitly registered here are Sentinel-owned; all other examples
+/// remain user content and are never removed by the disabled-example gate.
+/// </summary>
+internal static class GeneratedExampleRegistry
+{
+    private const int MaxEncodedLength = 65536;
+
+    private sealed record Entry(string Id, string Name);
+
+    internal static List<(string Id, string Name)> Read(YamlMappingNode meta)
+    {
+        var result = new List<(string, string)>();
         if (BrunoYaml.SequenceOf(meta, SentinelMetaKeys.GeneratedExamples) is not { } seq)
         {
             return result;
@@ -138,9 +174,8 @@ public static class OperationIdentityExtensions
         return result;
     }
 
-    public static void WriteRecordedExamples(this Model.BrunoItem item, IReadOnlyList<(string Id, string Name)> entries)
+    internal static void Write(YamlMappingNode meta, IReadOnlyList<(string Id, string Name)> entries)
     {
-        var meta = item.Sentinel;
         if (entries.Count == 0)
         {
             BrunoYaml.RemoveKey(meta, SentinelMetaKeys.GeneratedExamples);
@@ -157,6 +192,34 @@ public static class OperationIdentityExtensions
         }
 
         BrunoYaml.Set(meta, SentinelMetaKeys.GeneratedExamples, seq);
+    }
+
+    internal static string Encode(IReadOnlyList<(string Id, string Name)> entries) =>
+        Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(entries.Select(entry => new Entry(entry.Id, entry.Name))));
+
+    internal static IReadOnlyList<(string Id, string Name)> Decode(string encoded)
+    {
+        if (encoded.Length == 0 || encoded.Length > MaxEncodedLength)
+        {
+            return [];
+        }
+
+        try
+        {
+            var entries = JsonSerializer.Deserialize<Entry[]>(Convert.FromBase64String(encoded));
+            return entries is null
+                ? []
+                : [.. entries.Where(entry => !string.IsNullOrEmpty(entry.Id) && !string.IsNullOrEmpty(entry.Name))
+                    .Select(entry => (entry.Id, entry.Name))];
+        }
+        catch (FormatException)
+        {
+            return [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 }
 

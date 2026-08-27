@@ -243,10 +243,11 @@ public class BusinessScenarioMergeTests
     public void Business_Scenarios_Become_Examples_With_Their_Own_Bodies()
     {
         var doc = TestSupport.NormalizeSpec(Spec);
-        var generator = new ScenarioGenerator(new BrunoExampleSettings());
+        var exampleSettings = new BrunoExampleSettings { Enabled = true };
+        var generator = new ScenarioGenerator(exampleSettings);
         var engine = new BrunoSyncEngine(
             new BrunoSyncSettings(),
-            new BrunoExampleSettings(),
+            exampleSettings,
             "t",
             generator,
             Scenarios());
@@ -313,14 +314,15 @@ public class BusinessScenarioMergeTests
     public void Removed_Business_Scenario_Is_Cleaned_Up_On_Resync()
     {
         var doc = TestSupport.NormalizeSpec(Spec);
-        var generator = new ScenarioGenerator(new BrunoExampleSettings());
+        var exampleSettings = new BrunoExampleSettings { Enabled = true };
+        var generator = new ScenarioGenerator(exampleSettings);
 
         var engineWithBiz = new BrunoSyncEngine(
-            new BrunoSyncSettings(), new BrunoExampleSettings(), "t", generator, Scenarios());
+            new BrunoSyncSettings(), exampleSettings, "t", generator, Scenarios());
         var (collection, _) = engineWithBiz.Sync(null, doc);
 
         var engineNoBiz = new BrunoSyncEngine(
-            new BrunoSyncSettings(), new BrunoExampleSettings(), "t", generator, []);
+            new BrunoSyncSettings(), exampleSettings, "t", generator, []);
         var (collection2, _) = engineNoBiz.Sync(collection, doc);
 
         var request = Enumerable.First(collection2.AllRequests());

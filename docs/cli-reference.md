@@ -64,10 +64,14 @@ Refuses to overwrite without `--force`.
 
 ### `bruno <sync|examples> [options]`
 
-Sync an OpenAPI contract into a single-file Bruno OpenCollection YAML collection,
-preserving user-maintained values/scripts/tests/docs/auth, and generate
-Traditional-Chinese test scenarios. Full guides: docs/bruno-sync.md and
-docs/bruno-scenarios.md.
+Sync an OpenAPI contract into a Bruno OpenCollection output (bundled YAML plus a
+folder-based workspace Bruno opens directly), preserving user-maintained
+values/scripts/tests/docs/auth. Traditional-Chinese generated test scenarios are experimental and
+disabled by default for v1.1.0; enable them explicitly in `bruno.examples.enabled` or run the
+explicit `bruno examples` command.
+Every output is validated against the pinned official OpenCollection v1.0 schema
+before anything is written; a missing config with `--source` bootstraps one
+automatically. Full guides: docs/bruno-sync.md and docs/bruno-scenarios.md.
 
 ```
 openapi-sentinel bruno sync [options]
@@ -82,10 +86,11 @@ openapi-sentinel bruno examples [options]
 | `--config <path>` | both | Explicit configuration file |
 | `--dry-run` | both | Analyze and print planned changes without writing anything |
 | `--remove-deleted` | sync | Delete requests whose operations were removed (default: mark stale) |
-| `--no-examples` | sync | Skip scenario generation for this run |
+| `--no-examples` | sync | Skip generated scenarios for this run, even when config explicitly enables them |
 | `--operation <operationId>` | examples | Process only this operation |
 | `--path <api-path>` | examples | Process only operations under this API path prefix |
 | `--allow-remote` | both | Permit remote sources/refs for this run (subject to the same `remoteReferences` security policy as compare) |
+| `--allow-private-network` | both | Explicitly permit localhost/private-network remote sources or refs for this run; `--allow-remote` is still required. |
 | `--verbose` | both | Per-operation change/preservation details |
 | `--no-color` | both | Plain text output |
 
@@ -93,9 +98,18 @@ Behavior notes:
 
 - Incremental skip: when the contract fingerprint, bruno config, example config and
   business-scenario file are unchanged since the last successful sync, the run prints
-  `No API contract changes detected.` / `Nothing to update.` and exits 0 immediately.
-- Reports `bruno-sync-report.html` (zh-TW, offline) and `bruno-sync-report.json`
-  (schema `bruno-sync/1.0`) are written after every non-skipped sync.
+  `No API contract changes detected.` / `Nothing to update.` and exits 0 immediately; it does
+  not create or touch report files.
+- Generated examples are default-off. Disabling them does not disable normal request generation;
+  the first disable sync may remove Sentinel-recorded examples, and the next unchanged sync
+  stabilizes without an artificial report.
+- Meaningful contract changes produce a retained UTC-timestamped pair:
+  `bruno-sync-report-yyyyMMdd-HHmmss.html` (zh-TW, offline) and matching `.json`
+  (schema `bruno-sync/1.0`, with `openCollectionSchemaVersion` and
+  `schemaValidation.status`). A same-second collision adds one matching numeric suffix to both
+  names; unchanged operation details are omitted while their summary count remains.
+- Schema gate: validation failure (exit 2) blocks the collection, workspace, reports and
+  state file — nothing is partially written.
 - Exit codes follow the shared contract below; conflicts surface as report entries and
   warnings without changing the exit code.
 
@@ -124,7 +138,7 @@ removals or renames bump `schemaVersion`. Top-level structure:
 ```json
 {
   "schemaVersion": "1.0",
-  "toolVersion": "1.0.0",
+  "toolVersion": "1.1.0",
   "result": "passed",
   "oldContractName": "old.yaml",
   "newContractName": "new.yaml",
