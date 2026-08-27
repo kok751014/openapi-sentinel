@@ -409,6 +409,7 @@ public sealed class BrunoSyncEngine
     {
         if (generator is null)
         {
+            RemoveRecordedExamples(item, request, changes);
             return;
         }
 
@@ -494,6 +495,36 @@ public sealed class BrunoSyncEngine
         }
 
         item.WriteRecordedExamples(store, registry);
+    }
+
+    /// <summary>
+    /// Disabling generated examples removes only entries recorded in Sentinel's per-request
+    /// registry. An unmarked example is user content, including a legacy native-workspace
+    /// example whose old <c>.bru</c> file predates the ownership sidecar.
+    /// </summary>
+    private void RemoveRecordedExamples(BrunoItem item, BrunoRequestView request, List<string> changes)
+    {
+        var recorded = item.RecordedExamples(store);
+        if (recorded.Count == 0)
+        {
+            return;
+        }
+
+        var names = recorded.Select(entry => entry.Name).ToHashSet(StringComparer.Ordinal);
+        if (request.ExamplesOrNull is { } examples)
+        {
+            for (var i = examples.Children.Count - 1; i >= 0; i--)
+            {
+                if (examples.Children[i] is YamlDotNet.RepresentationModel.YamlMappingNode map &&
+                    BrunoYaml.AsString(BrunoYaml.Get(map, "name")) is { } name && names.Contains(name))
+                {
+                    examples.Children.RemoveAt(i);
+                    changes.Add($"停用 Sentinel 產生範例：{name}");
+                }
+            }
+        }
+
+        item.WriteRecordedExamples(store, []);
     }
 
     private IEnumerable<GeneratedScenario> BuildBusinessScenarios(OperationIdentity identity, ScenarioRequest baseSnapshot)
@@ -811,6 +842,10 @@ public sealed class BrunoSyncEngine
                     break;
                 case BodyKind.Text when canonical.Text is not null:
                     request.SetTextBody(canonical.Text);
+                    MarkBodyManaged(item, identity);
+                    break;
+                case BodyKind.Xml when canonical.Text is not null:
+                    request.SetXmlBody(canonical.Text);
                     MarkBodyManaged(item, identity);
                     break;
             }
@@ -1301,6 +1336,7 @@ public sealed class BrunoSyncEngine
             BodyKind.Json => "json",
             BodyKind.MultipartForm => "multipart-form",
             BodyKind.FormUrlEncoded => "form-urlencoded",
+            BodyKind.Xml => "xml",
             _ => "text",
         };
 
@@ -1319,8 +1355,8 @@ public sealed class BrunoSyncEngine
             case BodyKind.MultipartForm or BodyKind.FormUrlEncoded:
                 MergeFormBody(item, request, contractBody, contractKind, changes, preserved, identity);
                 break;
-            default:
-                MergeTextBody(item, request, contractBody, changes, preserved, identity);
+            case BodyKind.Text or BodyKind.Xml:
+                MergeTextBody(item, request, contractBody, contractKind, changes, preserved, identity);
                 break;
         }
     }
@@ -1480,6 +1516,7 @@ public sealed class BrunoSyncEngine
         BrunoItem item,
         BrunoRequestView request,
         RequestBodyInfo contractBody,
+        BodyKind kind,
         List<string> changes,
         List<string> preserved,
         OperationIdentity identity)
@@ -1496,7 +1533,14 @@ public sealed class BrunoSyncEngine
             var changed = !string.Equals(existing, canonical.Text, StringComparison.Ordinal);
             if (changed || existing is null)
             {
-                request.SetTextBody(canonical.Text);
+                if (kind == BodyKind.Xml)
+                {
+                    request.SetXmlBody(canonical.Text);
+                }
+                else
+                {
+                    request.SetTextBody(canonical.Text);
+                }
                 MarkBodyManaged(item, identity);
                 changes.Add(existing is null ? "新增文字請求主體" : "文字請求主體已由合約重新產生");
             }

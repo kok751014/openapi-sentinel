@@ -4,8 +4,8 @@ namespace OpenApiSentinel.Cli.Tests;
 
 /// <summary>
 /// §6A/§6B one-click bootstrap: the very first `bruno sync --source …` in an empty project
-/// must create config, layout directories, scenario template, bundled collection, Bruno
-/// workspace and reports — and a missing local source must fail clearly without creating
+/// must create config, layout directories, bundled collection, Bruno workspace and reports —
+/// while experimental generated scenarios remain disabled — and a missing local source must fail clearly without creating
 /// fake inputs. Dry-run plans everything but touches nothing.
 /// </summary>
 [Collection("process-cwd")]
@@ -71,9 +71,10 @@ public sealed class BrunoBootstrapTests : IDisposable
 
         Assert.True(File.Exists(Path.Combine(root, "openapi-sentinel.yml")));
         Assert.True(File.Exists(Path.Combine(root, "api-contract/bruno/collection.yml")));
-        Assert.True(File.Exists(Path.Combine(root, "api-contract/scenarios/openapi-sentinel.scenarios.yml")));
-        Assert.True(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.html")));
-        Assert.True(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.json")));
+        Assert.False(Directory.Exists(Path.Combine(root, "api-contract/scenarios")));
+        var reports = Path.Combine(root, "api-contract/reports");
+        Assert.Single(Directory.EnumerateFiles(reports, "bruno-sync-report-*.html"));
+        Assert.Single(Directory.EnumerateFiles(reports, "bruno-sync-report-*.json"));
         Assert.True(Directory.Exists(Path.Combine(root, "api-contract/openapi")));
 
         // Folder-based workspace in the official OpenCollection filesystem format.
@@ -82,11 +83,9 @@ public sealed class BrunoBootstrapTests : IDisposable
         // The generated config is directly reusable (valid keys, correct quoting).
         var configText = File.ReadAllText(Path.Combine(root, "openapi-sentinel.yml"));
         Assert.Contains("workspacePath", configText, StringComparison.Ordinal);
-
-        // The scenario template is valid YAML with zh-TW comments and no fake scenarios.
-        var template = File.ReadAllText(Path.Combine(root, "api-contract/scenarios/openapi-sentinel.scenarios.yml"));
-        Assert.Contains("scenarios: []", template, StringComparison.Ordinal);
-        Assert.Contains("商業情境", template, StringComparison.Ordinal);
+        Assert.Contains("enabled: false", configText, StringComparison.Ordinal);
+        Assert.DoesNotContain("成功－完整參數",
+            File.ReadAllText(Path.Combine(root, "api-contract/bruno/collection.yml")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -108,6 +107,42 @@ public sealed class BrunoBootstrapTests : IDisposable
             Environment.CurrentDirectory = previous;
         }
         Assert.Contains("No API contract changes detected.", string.Join("\n", second.OutLines), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Bootstrap_Config_For_Local_Source_Does_Not_Enable_Remote_Loading()
+    {
+        var configPath = WriteFile("openapi-sentinel.yml", BrunoBootstrap.ConfigTemplate(
+            "./swagger.json", enableRemote: false, allowPrivateNetwork: false));
+
+        var config = SentinelConfigLoader.Load(configPath);
+
+        Assert.False(config.RemoteReferences.Enabled);
+        Assert.False(config.RemoteReferences.AllowPrivateNetwork);
+    }
+
+    [Fact]
+    public void Bootstrap_Config_For_Public_Remote_Persists_Only_Remote_OptIn()
+    {
+        var configPath = WriteFile("openapi-sentinel.yml", BrunoBootstrap.ConfigTemplate(
+            "https://api.example.com/swagger.json", enableRemote: true, allowPrivateNetwork: false));
+
+        var config = SentinelConfigLoader.Load(configPath);
+
+        Assert.True(config.RemoteReferences.Enabled);
+        Assert.False(config.RemoteReferences.AllowPrivateNetwork);
+    }
+
+    [Fact]
+    public void Bootstrap_Config_For_Private_Remote_Persists_Explicit_Private_OptIn()
+    {
+        var configPath = WriteFile("openapi-sentinel.yml", BrunoBootstrap.ConfigTemplate(
+            "https://localhost:7099/swagger/backend/swagger.json", enableRemote: true, allowPrivateNetwork: true));
+
+        var config = SentinelConfigLoader.Load(configPath);
+
+        Assert.True(config.RemoteReferences.Enabled);
+        Assert.True(config.RemoteReferences.AllowPrivateNetwork);
     }
 
     [Fact]
@@ -160,6 +195,7 @@ public sealed class BrunoBootstrapTests : IDisposable
         Assert.Equal(2, exit);
         Assert.Contains(console.ErrorLines, l => l.Contains("not found", StringComparison.OrdinalIgnoreCase));
         Assert.False(File.Exists(Path.Combine(root, "does-not-exist.yaml")));
+        Assert.False(File.Exists(Path.Combine(root, "openapi-sentinel.yml")));
         Assert.False(Directory.Exists(Path.Combine(root, "api-contract")));
     }
 
@@ -233,7 +269,8 @@ public sealed class BrunoBootstrapTests : IDisposable
         Assert.Contains("customExtra: 不合法欄位", File.ReadAllText(Path.Combine(root, "api-contract/bruno/collection.yml")), StringComparison.Ordinal);
         Assert.False(Directory.Exists(Path.Combine(root, "api-contract/bruno-workspace")));
         Assert.False(Directory.EnumerateFiles(Path.Combine(root, "api-contract/bruno"), "*.sentinel-state.json", SearchOption.TopDirectoryOnly).Any());
-        Assert.False(File.Exists(Path.Combine(root, "api-contract/reports/bruno-sync-report.html")));
+        var reports = Path.Combine(root, "api-contract/reports");
+        Assert.False(Directory.Exists(reports));
     }
 
     [Fact]

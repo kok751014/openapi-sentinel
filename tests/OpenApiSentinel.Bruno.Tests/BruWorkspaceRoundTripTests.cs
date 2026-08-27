@@ -86,8 +86,9 @@ public class BruWorkspaceRoundTripTests : IDisposable
 
         // 2nd sync over the same contract keeps the manual value (preserveManualValues).
         var settings = new BrunoSyncSettings { PreserveManualValues = true };
-        var engine2 = new BrunoSyncEngine(settings, new BrunoExampleSettings(), "test",
-            new ScenarioGenerator(new BrunoExampleSettings()));
+        var exampleSettings = new BrunoExampleSettings { Enabled = true };
+        var engine2 = new BrunoSyncEngine(settings, exampleSettings, "test",
+            new ScenarioGenerator(exampleSettings));
         var (updated, outcome) = engine2.Sync(result.Document, doc1);
         var updatedItem = TestSupport.FindRequest(updated, "新增動物")!;
         var updatedRows = new BrunoRequestView(updatedItem.Node).FormRows();

@@ -176,6 +176,7 @@ public static class CommandLineRunner
             ReportDirOverride = parsed.Value("report-dir"),
             RemoveDeletedOperationsOverride = parsed.Has("remove-deleted") ? true : null,
             AllowRemoteOverride = parsed.Has("allow-remote"),
+            AllowPrivateNetworkOverride = parsed.Has("allow-private-network"),
             ExamplesEnabledOverride = !parsed.Has("no-examples"),
             OperationFilter = parsed.Value("operation"),
             PathFilter = parsed.Value("path"),
@@ -356,13 +357,14 @@ public static class CommandLineRunner
                       --path <api-path>         examples：只處理此 API path 開頭的操作
                       --allow-remote            允許此 run 使用遠端來源／$refs
                                                 （需符合既有 remoteReferences 安全政策）
+                      --allow-private-network    明確允許本次使用 localhost／私有網路來源或 $refs
                       --verbose                 顯示每個操作的變更與保留明細
                       --no-color                純文字輸出
 
                     說明：
                       * 自動產生的範例名稱／描述預設為繁體中文（zh-TW）。
                       * authentication 不會被拿來產生失敗情境；既有 auth 設定永不改動。
-                      * 目錄式 (.bru) collection 不支援寫入，會明確報錯而非破壞內容。
+                      * 原生 Bruno workspace（bruno.json + .bru）可直接用 Collection → Open Collection 開啟。
                       * Sentinel metadata 存放於 schema 合法的集合層 extensions.x-sentinel 索引，
                         舊版 request-level x-sentinel 檔案會在下一次 sync 自動遷移。
                     """);
@@ -399,6 +401,7 @@ public static class CommandLineRunner
               --debug                                 show stack traces on internal errors
               --config <path>                         explicit configuration file
               --allow-remote                          enable remote references for this run
+              --allow-private-network                 allow localhost/private-network remote sources or refs for this Bruno run
               --baseline <file>                       suppress findings listed in baseline
               --update-baseline <file>                write current findings as the new baseline
               -o/--output <path>                      write primary format to a file

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text.Json;
 using OpenApiSentinel.Bruno;
 using OpenApiSentinel.Bruno.Model;
@@ -37,7 +38,14 @@ public sealed record BrunoSyncRequest
     /// run ONLY when explicitly requested. Never defaulted on.</summary>
     public bool AllowRemoteOverride { get; init; }
 
+    /// <summary>Explicit one-run opt-in for localhost/private remote sources and refs.
+    /// This never enables remote loading by itself; <c>--allow-remote</c> remains required.</summary>
+    public bool AllowPrivateNetworkOverride { get; init; }
+
     public bool ExamplesEnabledOverride { get; init; } = true;
+
+    /// <summary>Clock for report timestamps; defaults to UTC system time and is injectable for tests.</summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     /// <summary>Filter to a single operationId (examples command).</summary>
     public string? OperationFilter { get; init; }
@@ -49,8 +57,7 @@ public sealed record BrunoSyncRequest
 /// <summary>Implements the bruno sync / examples commands end-to-end.</summary>
 public static class BrunoWorkflow
 {
-    private const string ReportHtmlName = "bruno-sync-report.html";
-    private const string ReportJsonName = "bruno-sync-report.json";
+    internal sealed record ReportArtifactPaths(string HtmlPath, string JsonPath, string Timestamp);
 
     /// <summary>Mirrors the bootstrap config template values for dry-run (nothing written).</summary>
     private static BrunoConfiguration BootstrappedBruno(string source) => new()
@@ -83,6 +90,8 @@ public static class BrunoWorkflow
         // openapi-sentinel.yml and adopt its defaults immediately. Never overwrite an
         // existing user config.
         var bootstrapped = false;
+        string? bootstrapConfigPath = null;
+        string? bootstrapConfigContent = null;
         var haveConfig = request.ConfigPath is not null && File.Exists(request.ConfigPath);
         if (!haveConfig)
         {
@@ -96,18 +105,34 @@ public static class BrunoWorkflow
 
             var newConfigPath = Path.GetFullPath(Path.Combine(
                 Directory.GetCurrentDirectory(), request.ConfigPath ?? BrunoBootstrap.DefaultConfigFileName));
+            var isRemoteBootstrapSource = Uri.TryCreate(rawSource, UriKind.Absolute, out var bootstrapUri) &&
+                                          bootstrapUri.Scheme is "http" or "https";
+            var remotePolicy = isRemoteBootstrapSource
+                ? new RemoteFetchPolicy
+                {
+                    Enabled = request.AllowRemoteOverride,
+                    AllowPrivateNetwork = request.AllowPrivateNetworkOverride,
+                }
+                : config.RemoteReferences;
+
+            // Do not write bootstrap configuration until every source and schema gate has
+            // succeeded. A rejected URL or invalid document must leave no misleading config.
+            bruno = BootstrappedBruno(rawSource);
+            config = config with
+            {
+                Bruno = bruno,
+                RemoteReferences = remotePolicy,
+                ConfigBaseDirectory = Directory.GetCurrentDirectory(),
+            };
+            baseDir = config.ConfigBaseDirectory;
+            bootstrapConfigPath = newConfigPath;
+            bootstrapConfigContent = BrunoBootstrap.ConfigTemplate(
+                rawSource,
+                enableRemote: isRemoteBootstrapSource && request.AllowRemoteOverride,
+                allowPrivateNetwork: isRemoteBootstrapSource && request.AllowPrivateNetworkOverride);
             if (request.DryRun)
             {
                 console.Out($"[預計建立] openapi-sentinel.yml");
-                bruno = BootstrappedBruno(rawSource);
-            }
-            else
-            {
-                SafeFileWriter.Write(newConfigPath, BrunoBootstrap.ConfigTemplate(rawSource));
-                console.Out($"[建立] openapi-sentinel.yml");
-                config = SentinelConfigLoader.Load(newConfigPath);
-                bruno = config.Bruno!;
-                baseDir = config.ConfigBaseDirectory;
             }
 
             bootstrapped = true;
@@ -167,34 +192,18 @@ public static class BrunoWorkflow
         var outcomeDoc = await AnalysisPipeline.LoadDocumentAsync(
             source, config.RemoteReferences, config.HeaderEnv,
             allowRemoteOverride: request.AllowRemoteOverride,
+            allowPrivateNetworkOverride: request.AllowPrivateNetworkOverride,
             config.Limits, config.AllowAboveDocumentTree, ct);
         var document = outcomeDoc.Document;
 
         // Remote sources get a deterministic snapshot of the RAW entry document as fetched
         // (never resolved/normalized, never any auth header content) for reviewable diffs.
-        // Local files are never copied or modified. Dry-run never writes it.
+        // Local files are never copied or modified. Writes are deferred until both schema
+        // gates pass so a failed bootstrap never leaves partial output behind.
         var isRemoteSource = Uri.TryCreate(source, UriKind.Absolute, out var srcUri) &&
                              srcUri.Scheme is "http" or "https";
         var openApiDir = BrunoPaths.Resolve(BrunoBootstrap.OpenApiDirRelative, baseDir);
         var snapshotFile = Path.Combine(openApiDir, BrunoBootstrap.SnapshotFileName);
-        var needOpenApiDir = bootstrapped || isRemoteSource;
-        if (isRemoteSource && !request.DryRun)
-        {
-            BrunoPaths.EnsureDirectoryAvailable(openApiDir);
-            Directory.CreateDirectory(openApiDir);
-            var snapshotContent = outcomeDoc.Loaded?.Content ?? "";
-            if (!File.Exists(snapshotFile) ||
-                !string.Equals(File.ReadAllText(snapshotFile), snapshotContent, StringComparison.Ordinal))
-            {
-                SafeFileWriter.Write(snapshotFile, snapshotContent);
-            }
-        }
-        else if (needOpenApiDir && !request.DryRun && !Directory.Exists(openApiDir))
-        {
-            BrunoPaths.EnsureDirectoryAvailable(openApiDir);
-            Directory.CreateDirectory(openApiDir);
-            console.Out($"[建立] {BrunoBootstrap.OpenApiDirRelative}");
-        }
 
         // ---- incremental fast path ----
         var settings = bruno.Sync with { RemoveDeletedOperations = request.RemoveDeletedOperationsOverride ?? bruno.Sync.RemoveDeletedOperations };
@@ -206,22 +215,10 @@ public static class BrunoWorkflow
         var examples = bruno.Examples with { Enabled = examplesEnabled };
         var toolVersion = ToolVersion.Get();
 
-        // Scenario template bootstrap (§6B) runs BEFORE the incremental-state computation:
-        // the first run records the template's hash so the second run can take the
-        // unchanged fast path. The template contains no fake data; loading it is a no-op;
-        // an existing file is never overwritten.
-        if (examples.Enabled && !string.IsNullOrWhiteSpace(examples.ScenariosPath))
-        {
-            var scenariosFullPath = BrunoPaths.Resolve(examples.ScenariosPath!, baseDir);
-            if (!File.Exists(scenariosFullPath) && !request.DryRun)
-            {
-                var scenariosDir = Path.GetDirectoryName(scenariosFullPath);
-                BrunoPaths.EnsureDirectoryAvailable(scenariosFullPath);
-                Directory.CreateDirectory(string.IsNullOrEmpty(scenariosDir) ? "." : scenariosDir);
-                SafeFileWriter.Write(scenariosFullPath, BrunoBootstrap.ScenarioTemplate);
-                console.Out($"[建立] {examples.ScenariosPath}");
-            }
-        }
+        // The empty scenario template is committed only after both schema gates pass. Use
+        // its prospective hash now so the second run can take the unchanged fast path.
+        var scenarioTemplatePending = examples.Enabled && !string.IsNullOrWhiteSpace(examples.ScenariosPath) &&
+                                      !File.Exists(BrunoPaths.Resolve(examples.ScenariosPath!, baseDir));
 
         var statePath = ResolveStatePath(settings.StatePath, collectionFile, baseDir);
         // A state path colliding with the collection (or a report artifact) would replace
@@ -230,14 +227,6 @@ public static class BrunoWorkflow
         {
             throw new SentinelConfigException(
                 $"'bruno.sync.statePath' ('{statePath}') must not point at the collection file itself.");
-        }
-
-        var reportHtml = Path.Combine(reportDir, "bruno-sync-report.html");
-        var reportJson = Path.Combine(reportDir, "bruno-sync-report.json");
-        if (PathsCollide(statePath, reportHtml) || PathsCollide(statePath, reportJson))
-        {
-            throw new SentinelConfigException(
-                $"'bruno.sync.statePath' ('{statePath}') collides with a sync-report artifact path.");
         }
 
         var stateDir = Path.GetDirectoryName(statePath);
@@ -254,7 +243,8 @@ public static class BrunoWorkflow
             SourceHash = ContractFingerprint.Compute(document),
             BrunoConfigHash = HashJson(JsonSerializer.Serialize(settings)),
             ExampleConfigHash = HashJson(JsonSerializer.Serialize(examples)),
-            ScenariosFileHash = HashOptionalFile(examples.ScenariosPath, baseDir),
+            ScenariosFileHash = HashOptionalFile(examples.ScenariosPath, baseDir) ??
+                                (scenarioTemplatePending ? HashText(BrunoBootstrap.ScenarioTemplate) : null),
             LastSyncUtc = DateTime.UtcNow.ToString("u"),
         };
 
@@ -275,6 +265,7 @@ public static class BrunoWorkflow
             console.Out("OpenAPI Sentinel Bruno Sync");
             console.Out("No API contract changes detected.");
             console.Out("Nothing to update.");
+            console.Out("[sentinel] no API contract changes; report generation skipped");
             return ExitCodes.Ok;
         }
 
@@ -361,6 +352,17 @@ public static class BrunoWorkflow
         var finalOutcome = syncOutcome.Warnings.SequenceEqual(allWarnings)
             ? syncOutcome
             : syncOutcome with { Warnings = allWarnings };
+        var writeReport = BrunoSyncReportPolicy.HasMeaningfulChanges(finalOutcome);
+        var reportTimestamp = writeReport ? GetReportTimestamp(request) : (DateTimeOffset?)null;
+        var reportPaths = reportTimestamp is { } timestamp
+            ? ResolveReportArtifactPaths(reportDir, timestamp)
+            : null;
+        if (reportPaths is not null &&
+            (PathsCollide(statePath, reportPaths.HtmlPath) || PathsCollide(statePath, reportPaths.JsonPath)))
+        {
+            throw new SentinelConfigException(
+                $"'bruno.sync.statePath' ('{statePath}') collides with a sync-report artifact path.");
+        }
 
         // ---- official OpenCollection schema gate (bundled interchange artifact) ----
         // generate → serialize → validate against the pinned official v1.0 schema.
@@ -410,6 +412,34 @@ public static class BrunoWorkflow
         // ---- persist ----
         if (!request.DryRun && !finalOutcome.Skipped)
         {
+            if (isRemoteSource)
+            {
+                BrunoPaths.EnsureDirectoryAvailable(openApiDir);
+                Directory.CreateDirectory(openApiDir);
+                var snapshotContent = outcomeDoc.Loaded?.Content ?? "";
+                if (!File.Exists(snapshotFile) ||
+                    !string.Equals(File.ReadAllText(snapshotFile), snapshotContent, StringComparison.Ordinal))
+                {
+                    SafeFileWriter.Write(snapshotFile, snapshotContent);
+                }
+            }
+            else if (bootstrapped && !Directory.Exists(openApiDir))
+            {
+                BrunoPaths.EnsureDirectoryAvailable(openApiDir);
+                Directory.CreateDirectory(openApiDir);
+                console.Out($"[建立] {BrunoBootstrap.OpenApiDirRelative}");
+            }
+
+            if (scenarioTemplatePending)
+            {
+                var scenariosFullPath = BrunoPaths.Resolve(examples.ScenariosPath!, baseDir);
+                var scenariosDir = Path.GetDirectoryName(scenariosFullPath);
+                BrunoPaths.EnsureDirectoryAvailable(scenariosFullPath);
+                Directory.CreateDirectory(string.IsNullOrEmpty(scenariosDir) ? "." : scenariosDir);
+                SafeFileWriter.Write(scenariosFullPath, BrunoBootstrap.ScenarioTemplate);
+                console.Out($"[建立] {examples.ScenariosPath}");
+            }
+
             if (!string.IsNullOrEmpty(collectionParent))
             {
                 BrunoPaths.EnsureDirectoryAvailable(collectionParent);
@@ -423,20 +453,34 @@ public static class BrunoWorkflow
                 console.Out($"[建立] {change}");
             }
 
-            var report = BuildReport(finalOutcome, request,
-                request.SourceOverride is null ? rawSource : source, rawCollectionPath, toolVersion);
-            Directory.CreateDirectory(reportDir);
-            var htmlPath = Path.Combine(reportDir, ReportHtmlName);
-            var jsonPath = Path.Combine(reportDir, ReportJsonName);
-            SafeFileWriter.Write(htmlPath, BrunoSyncHtmlReporter.Render(report));
-            SafeFileWriter.Write(jsonPath, BrunoSyncJsonReporter.Render(report));
+            if (reportPaths is not null && reportTimestamp is { } capturedReportTimestamp)
+            {
+                var report = BuildReport(finalOutcome, request,
+                    request.SourceOverride is null ? rawSource : source, rawCollectionPath, toolVersion, capturedReportTimestamp);
+                Directory.CreateDirectory(reportDir);
+                SafeFileWriter.Write(reportPaths.HtmlPath, BrunoSyncHtmlReporter.Render(report));
+                SafeFileWriter.Write(reportPaths.JsonPath, BrunoSyncJsonReporter.Render(report));
+            }
+            else
+            {
+                console.Out("[sentinel] no API contract changes; report generation skipped");
+            }
 
             // State is written LAST: any artifact failure above leaves it stale so the next
             // run re-syncs instead of wrongly skipping.
             BrunoSyncStateStore.Write(statePath, expectedState with { LastSyncUtc = DateTime.UtcNow.ToString("u") });
 
-            console.Out($"已寫入報告：{htmlPath}");
-            console.Out($"             {jsonPath}");
+            if (bootstrapConfigPath is not null && bootstrapConfigContent is not null)
+            {
+                SafeFileWriter.Write(bootstrapConfigPath, bootstrapConfigContent);
+                console.Out("[建立] openapi-sentinel.yml");
+            }
+
+            if (reportPaths is not null)
+            {
+                console.Out($"已寫入報告：{reportPaths.HtmlPath}");
+                console.Out($"             {reportPaths.JsonPath}");
+            }
         }
         else if (request.DryRun)
         {
@@ -577,10 +621,10 @@ public static class BrunoWorkflow
         BrunoSyncRequest request,
         string source,
         string collectionFile,
-        string toolVersion)
+        string toolVersion,
+        DateTimeOffset reportTimestamp)
     {
-        _ = request;
-        var operations = outcome.Operations.Select(o => new BrunoSyncReportOperation
+        var operations = BrunoSyncReportPolicy.DetailOperations(outcome).Select(o => new BrunoSyncReportOperation
         {
             Action = o.Action switch
             {
@@ -604,7 +648,7 @@ public static class BrunoWorkflow
         return new BrunoSyncReport
         {
             ToolVersion = toolVersion,
-            GeneratedAtUtc = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+            GeneratedAtUtc = reportTimestamp.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             DryRun = request.DryRun,
             Skipped = outcome.Skipped,
             Source = source,
@@ -626,6 +670,27 @@ public static class BrunoWorkflow
             Conflicts = [.. outcome.Conflicts.Select(c => new BrunoSyncReportConflict(c.Kind, c.Detail))],
             Warnings = [.. outcome.Warnings],
         };
+    }
+
+    internal static DateTimeOffset GetReportTimestamp(BrunoSyncRequest request) =>
+        request.TimeProvider.GetUtcNow();
+
+    /// <summary>Allocates a UTC timestamped HTML/JSON pair without ever overwriting history.
+    /// A same-second collision receives the same deterministic numeric suffix on both files.</summary>
+    internal static ReportArtifactPaths ResolveReportArtifactPaths(string reportDir, DateTimeOffset timestamp)
+    {
+        var stamp = timestamp.UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        for (var suffix = 0; ; suffix++)
+        {
+            var suffixText = suffix == 0 ? "" : $"-{suffix:D2}";
+            var baseName = $"bruno-sync-report-{stamp}{suffixText}";
+            var htmlPath = Path.Combine(reportDir, baseName + ".html");
+            var jsonPath = Path.Combine(reportDir, baseName + ".json");
+            if (!File.Exists(htmlPath) && !File.Exists(jsonPath))
+            {
+                return new ReportArtifactPaths(htmlPath, jsonPath, stamp + suffixText);
+            }
+        }
     }
 
     private static void RenderConsoleSummary(
@@ -714,6 +779,9 @@ public static class BrunoWorkflow
     }
 
     private static string HashJson(string text) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+
+    private static string HashText(string text) =>
+        Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
 
     private static string? HashOptionalFile(string? path, string? baseDir)
     {

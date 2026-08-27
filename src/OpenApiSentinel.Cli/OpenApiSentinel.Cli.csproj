@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" LinkBase="docs" />
+    <InternalsVisibleTo Include="OpenApiSentinel.Cli.Tests" />
   </ItemGroup>
 
 </Project>

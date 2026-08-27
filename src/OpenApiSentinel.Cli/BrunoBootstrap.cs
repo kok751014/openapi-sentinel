@@ -19,8 +19,13 @@ public static class BrunoBootstrap
     public const string SnapshotFileName = "source-snapshot.json";
 
     /// <summary>Production-ready default configuration written on first sync.</summary>
-    public static string ConfigTemplate(string source)
+    public static string ConfigTemplate(string source, bool enableRemote, bool allowPrivateNetwork)
     {
+        var remoteReferences = enableRemote
+            ? "\nremoteReferences:\n  enabled: true\n" +
+              (allowPrivateNetwork ? "  allowPrivateNetwork: true\n" : "")
+            : "";
+
         return $"""
         # OpenAPI Sentinel 設定（由第一次 `bruno sync` 自動產生）
         # 文件：docs/configuration.md
@@ -42,11 +47,14 @@ public static class BrunoBootstrap
             removeDeletedOperations: false
 
           examples:
-            enabled: true
+            # Experimental generated examples are disabled by default in v1.1.0.
+            # Set true explicitly to generate scenario example blocks.
+            enabled: false
             language: zh-TW
             ignoreAuthentication: true
             maxPerOperation: 8
             scenariosPath: "{DefaultScenariosPath}"
+        {remoteReferences}
         """;
     }
 

@@ -55,6 +55,13 @@ public static class BruItemWriter
         var url = BrunoYaml.AsString(BrunoYaml.Get(http, "url")) ?? "";
         var methodBlock = new BruBlock { Name = method, Kind = BruBlockKind.Dictionary };
         methodBlock.Pairs.Add(new BruPair("url", true, url));
+        if (BrunoBodyMode(http) is { } bodyMode)
+        {
+            // Bruno's HTTP parser uses this canonical mode to select the matching
+            // body:* block. Without it, Desktop can treat a POST/PUT as body-less.
+            methodBlock.Pairs.Add(new BruPair("body", true, bodyMode));
+        }
+
         blocks.Add(methodBlock);
 
         // ---- params: split query/path ----
@@ -145,6 +152,13 @@ public static class BruItemWriter
                 AddMeta(metaBlock, BruItemMapper.MetaKeyManagedBody, managedBody ? "true" : "false");
             }
 
+            var generatedExamples = GeneratedExampleRegistry.Read(sentinelEntry);
+            if (generatedExamples.Count > 0)
+            {
+                AddMeta(metaBlock, BruItemMapper.MetaKeyGeneratedExamples,
+                    GeneratedExampleRegistry.Encode(generatedExamples));
+            }
+
             blocks.Add(metaBlock);
         }
 
@@ -211,16 +225,17 @@ public static class BruItemWriter
     }
 
     private static BruPair ToPair(RowData row) =>
-        new(row.Name, row.Enabled, row.IsFile ? "@" + row.Value : row.Value);
+        new(row.Name, row.Enabled, row.IsFile ? BrunoFileValue(row.Value) : row.Value);
 
     private static void AppendBody(List<BruBlock> blocks, YamlMappingNode http)
     {
-        var bodyType = BrunoYaml.AsString(BrunoYaml.Get(http, "body") is YamlMappingNode b ? b : []);
         var body = BrunoYaml.MappingOf(http, "body");
         if (body is null)
         {
             return;
         }
+
+        var bodyType = BrunoYaml.AsString(BrunoYaml.Get(body, "type"));
 
         switch (bodyType)
         {
@@ -247,7 +262,7 @@ public static class BruItemWriter
                 };
                 foreach (var row in ReadRows(BrunoYaml.SequenceOf(body, "data")))
                 {
-                    var value = isMultipart && row.IsFile ? "@" + row.Value : row.Value;
+                    var value = isMultipart && row.IsFile ? BrunoFileValue(row.Value) : row.Value;
                     formBlock.Pairs.Add(new BruPair(row.Name, row.Enabled, value));
                 }
 
@@ -256,6 +271,23 @@ public static class BruItemWriter
             }
         }
     }
+
+    private static string? BrunoBodyMode(YamlMappingNode http)
+    {
+        var body = BrunoYaml.MappingOf(http, "body");
+        return body is null ? null : BrunoYaml.AsString(BrunoYaml.Get(body, "type")) switch
+        {
+            "json" => "json",
+            "multipart-form" => "multipartForm",
+            "form-urlencoded" => "formUrlEncoded",
+            "text" => "text",
+            "xml" => "xml",
+            "sparql" => "sparql",
+            _ => null,
+        };
+    }
+
+    private static string BrunoFileValue(string value) => "@file(" + value + ")";
 
     private static void AppendRuntime(List<BruBlock> blocks, BrunoItem item)
     {
@@ -309,7 +341,9 @@ public static class BruExampleWriter
     {
         var sb = new StringBuilder();
         sb.Append("example {\n");
-        var indent = new StringBuilder("    ");
+        // Bruno v2's example writer indents the example content by two spaces.
+        // Its nested request dictionaries then step through 4 and 6 spaces.
+        var indent = new StringBuilder("  ");
         var name = BrunoYaml.AsString(BrunoYaml.Get(example, "name"));
         if (!string.IsNullOrEmpty(name))
         {
@@ -353,7 +387,7 @@ public static class BruExampleWriter
 
     private static void WriteRequest(StringBuilder sb, YamlMappingNode request)
     {
-        var pad = new StringBuilder("        ");
+        var pad = new StringBuilder("    ");
         var url = BrunoYaml.AsString(BrunoYaml.Get(request, "url"));
         if (!string.IsNullOrEmpty(url))
         {
@@ -386,7 +420,7 @@ public static class BruExampleWriter
             sb.Append('\n').Append(pad).Append(label).Append(": {\n");
             foreach (var (key, value, enabled) in list)
             {
-                sb.Append("          ").Append(enabled ? "" : "~").Append(key).Append(": ").Append(value).Append('\n');
+                sb.Append("      ").Append(enabled ? "" : "~").Append(key).Append(": ").Append(value).Append('\n');
             }
 
             sb.Append(pad).Append("}\n");
@@ -401,7 +435,7 @@ public static class BruExampleWriter
             sb.Append('\n').Append(pad).Append("headers: {\n");
             foreach (var row in headerRows)
             {
-                sb.Append("          ").Append(row.Enabled ? "" : "~").Append(row.Name).Append(": ").Append(row.Value).Append('\n');
+                sb.Append("      ").Append(row.Enabled ? "" : "~").Append(row.Name).Append(": ").Append(row.Value).Append('\n');
             }
 
             sb.Append(pad).Append("}\n");
@@ -410,7 +444,7 @@ public static class BruExampleWriter
         if (BrunoYaml.MappingOf(request, "body") is { } body)
         {
             var type = BrunoYaml.AsString(BrunoYaml.Get(body, "type")) ?? "json";
-            sb.Append('\n').Append(pad).Append("mode: ").Append(type).Append('\n');
+            sb.Append('\n').Append(pad).Append("mode: ").Append(BrunoBodyMode(type)).Append('\n');
             switch (type)
             {
                 case "json":
@@ -427,10 +461,10 @@ public static class BruExampleWriter
                         var value = row.Value;
                         if (type == "multipart-form" && row.IsFile)
                         {
-                            value = "@" + value;
+                            value = BrunoFileValue(value);
                         }
 
-                        sb.Append("          ")
+                        sb.Append("      ")
                           .Append(row.Enabled ? "" : "~").Append(row.Name).Append(": ")
                           .Append(value).Append('\n');
                     }
@@ -444,7 +478,7 @@ public static class BruExampleWriter
 
     private static void WriteResponse(StringBuilder sb, YamlMappingNode response)
     {
-        var pad = new StringBuilder("        ");
+        var pad = new StringBuilder("    ");
         var status = BrunoYaml.AsInt(BrunoYaml.Get(response, "status"));
         var statusText = BrunoYaml.AsString(BrunoYaml.Get(response, "statusText"));
         if (status.HasValue || !string.IsNullOrEmpty(statusText))
@@ -452,12 +486,12 @@ public static class BruExampleWriter
             sb.Append('\n').Append(pad).Append("status: {\n");
             if (status.HasValue)
             {
-                sb.Append("          code: ").Append(status.Value).Append('\n');
+                sb.Append("      code: ").Append(status.Value).Append('\n');
             }
 
             if (!string.IsNullOrEmpty(statusText))
             {
-                sb.Append("          text: ").Append(statusText).Append('\n');
+                sb.Append("      text: ").Append(statusText).Append('\n');
             }
 
             sb.Append(pad).Append("}\n");
@@ -467,15 +501,15 @@ public static class BruExampleWriter
             BrunoYaml.AsString(BrunoYaml.Get(body, "type")) is { Length: > 0 } bodyType)
         {
             sb.Append('\n').Append(pad).Append("body: {\n");
-            sb.Append("          type: ").Append(bodyType).Append('\n');
+            sb.Append("      type: ").Append(bodyType).Append('\n');
             var content = BrunoYaml.AsString(BrunoYaml.Get(body, "data")) ?? "";
-            sb.Append("          content: '''\n");
+            sb.Append("      content: '''\n");
             foreach (var line in content.Replace("\r\n", "\n").Split('\n'))
             {
-                sb.Append(line.Length > 0 ? "            " + line + "\n" : "\n");
+                sb.Append(line.Length > 0 ? "        " + line + "\n" : "\n");
             }
 
-            sb.Append("        '''\n");
+            sb.Append("      '''\n");
             sb.Append(pad).Append("}\n");
         }
     }
@@ -490,11 +524,20 @@ public static class BruExampleWriter
         sb.Append('\n').Append(pad).Append(label).Append(": {\n");
         foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
         {
-            sb.Append("          ").Append(line).Append('\n');
+            sb.Append("      ").Append(line).Append('\n');
         }
 
         sb.Append(pad).Append("}\n");
     }
+
+    private static string BrunoBodyMode(string type) => type switch
+    {
+        "multipart-form" => "multipartForm",
+        "form-urlencoded" => "formUrlEncoded",
+        _ => type,
+    };
+
+    private static string BrunoFileValue(string value) => "@file(" + value + ")";
 
     private sealed record ExRow(string Name, string Value, string Type, bool Enabled, bool IsFile);
 

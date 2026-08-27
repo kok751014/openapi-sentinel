@@ -12,9 +12,7 @@ openapi-sentinel bruno sync
         ↓
 同步 Bruno Collection（單檔）+ Bruno Workspace（資料夾式）
         ↓
-自動產生繁體中文測試情境
-        ↓
-bruno-sync-report.html / .json
+bruno-sync-report-yyyymmdd-HHmmss.html / .json（成對歷程）
 ```
 
 ## 一鍵開始（Auto Bootstrap）
@@ -25,8 +23,11 @@ bruno-sync-report.html / .json
 # 本機 OpenAPI / Swagger
 openapi-sentinel bruno sync --source ./swagger.json
 
-# 或遠端 URL（遵循既有 remoteReferences／--allow-remote 安全政策）
-openapi-sentinel bruno sync --source "https://localhost:7099/swagger/backend/swagger.json" --allow-remote
+# 公開 HTTPS URL：明確同意遠端讀取，權限會寫入新設定檔
+openapi-sentinel bruno sync --source "https://api.example.com/swagger.json" --allow-remote
+
+# localhost／私有網路 HTTPS URL：兩個安全 opt-in 都必須明確給出
+openapi-sentinel bruno sync --source "https://localhost:7099/swagger/backend/swagger.json" --allow-remote --allow-private-network
 ```
 
 Sentinel 會自動完成：
@@ -35,38 +36,79 @@ Sentinel 會自動完成：
 [建立] openapi-sentinel.yml                       # production-ready 預設設定（已存在時永不覆蓋）
 [建立] api-contract/openapi/                      # 遠端來源另存原始入口文件快照 source-snapshot.json
 [建立] api-contract/bruno/collection.yml          # 單檔 OpenCollection（可交換／備份）
-[建立] api-contract/bruno-workspace/<專案名>/      # Bruno 直接開啟的資料夾式 workspace
-[建立] api-contract/scenarios/openapi-sentinel.scenarios.yml   # 可編輯的商業情境範本
-[建立] api-contract/reports/bruno-sync-report.html/.json
+[建立] api-contract/bruno-workspace/               # Bruno 原生 bruno.json + .bru workspace
+[建立] api-contract/reports/bruno-sync-report-yyyymmdd-HHmmss.html/.json
 ```
 
-之後在 **Bruno → Open Collection** 直接選擇 `api-contract/bruno-workspace/<專案名>`
+之後在 **Bruno → Collection → Open Collection** 直接選擇 `api-contract/bruno-workspace`
 即可，**不需要每次 Import**。日常增量同步直接執行：
 
 ```bash
 openapi-sentinel bruno sync    # 讀取自動產生的設定，不需再給 --source
 ```
 
-`<專案名>` 由目前工作目錄（git repo 名稱）安全推導，並做 Windows/Linux/macOS
-檔名字元 sanitize；workspace 與 bundled collection 由**同一個 canonical model**
-產生，內容永遠一致。
+request 與資料夾名稱會做 Windows/Linux/macOS-safe sanitize；workspace 與 bundled
+collection 由**同一個 canonical model**產生，保持語意一致。
 
 安全規則：輸出目錄自動建立時不允許越界寫入、parent 若是既有檔案會明確報錯、
 不覆寫任何既有檔案；`source` 是輸入，檔案不存在時明確失敗（exit 2）、
 **绝不會**建立假的 OpenAPI 檔。遠端來源的快照是「原始入口文件」原文
 （非 resolved 文件），僅供 review diff，不含任何 header/token 內容。
 
-## 支援格式
+## 輸出與安全 opt-in
 
-| 格式 | 支援度 |
-|------|--------|
-| 單檔 OpenCollection YAML（`opencollection: "1.0.0"` + 巢狀 `items:`） | ✅ 完整支援：讀取、寫入、增量合併、round-trip 保留未知鍵 |
-| OpenCollection 資料夾式 workspace（`opencollection.yml` + `folder.yml` + 每 Request 一個 `.yml`，`bundled: false`） | ✅ 正式支援：讀取、寫入、增量合併 |
-| 舊版 v1.1.0 generator 產物（request-level `x-sentinel` 區塊、缺 `type` 的 params、非法 `enabled:` 列） | ✅ 自動遷移：下一次 sync 時搬進合法位置並補齊，不 silent-drop 任何 metadata |
-| Bruno 目錄式 collection（`bruno.json` + `*.bru`） | ❌ 明確拒絕（exit 3），不會嘗試寫入 |
+第一次成功同步會建立：
 
-`.bru` 是區塊式的自訂文字格式，不是 YAML。為了遵守「不可 silent corruption」原則，
-本版本只寫 OpenCollection YAML。
+```text
+<project-root>/
+├─ openapi-sentinel.yml
+└─ api-contract/
+   ├─ openapi/                         # 遠端入口文件快照（僅遠端來源）
+   ├─ bruno/collection.yml             # bundled interchange/backup/review artifact
+   ├─ bruno-workspace/
+   │  ├─ bruno.json
+   │  └─ ... native .bru requests/folders
+   └─ reports/bruno-sync-report-yyyymmdd-HHmmss.html and .json（成對歷程）
+```
+
+本機檔案不需要安全旗標。公開 HTTPS URL 必須在第一次使用時加
+`--allow-remote`，產生的設定檔會包含：
+
+```yaml
+remoteReferences:
+  enabled: true
+```
+
+localhost、link-local 或 private-network HTTPS URL 還必須加
+`--allow-private-network`；成功後設定檔會再包含：
+
+```yaml
+remoteReferences:
+  enabled: true
+  allowPrivateNetwork: true
+```
+
+這兩個權限只會在使用者明確指定時寫入，第二次起才能安全地直接執行
+`openapi-sentinel bruno sync`。未授權的私網/localhost 存取仍由 SSRF 防護拒絕。
+來源無法讀取、無效 OpenAPI 或任一 schema gate 失敗時，bootstrap 不會建立設定檔或
+產品輸出；`--dry-run` 永遠不寫入。
+
+## 產生範例（v1.1.0 暫時預設停用）
+
+`bruno.examples.enabled` 預設為 `false`。這只停用 Sentinel 產生的成功／失敗情境，**不會**
+停用一般 request、body、header、parameter、native workspace 或 bundled collection 的同步。
+要使用既有實驗性產生器，請明確設定：
+
+```yaml
+bruno:
+  examples:
+    enabled: true
+```
+
+停用時不會建立或讀取 `scenariosPath`。Sentinel 透過 collection metadata registry（並在新的
+native `.bru` request metadata 中保留該 sidecar）識別自己產生的 examples，僅移除這些已登記
+項目；使用者手寫 examples 會保留。沒有 registry 的舊 native workspace 會保守保留 examples，
+避免以名稱猜測所有權。未來版本修正相容性後可再考慮恢復預設啟用。
 
 ## 官方 Schema Validation Gate
 
@@ -140,7 +182,7 @@ extensions:
 | auth（`http.auth`）、environment、collection 設定 | 人工 | **永不更動** |
 | `docs` | 人工優先 | 有內容即保留；`preserveDocs: false` 時改為依合約重寫 |
 | 使用者自建範例（examples） | 人工 | 保留，永不刪改 |
-| Sentinel 產生的範例 | 合約 | 重新產生；情境消失時移除 |
+| Sentinel 產生的範例（已登記） | 合約 | `examples.enabled: true` 時重新產生；停用時移除已登記項目 |
 | 未綁定的人工檔案（workspace 內） | 人工 | 保留，永不刪除 |
 
 Body 合併採「結構歸合約、數值歸人」：新增 required 屬性會補上（含範例值），
@@ -157,12 +199,12 @@ Body 合併採「結構歸合約、數值歸人」：新增 required 屬性會�
 
 | 輸出 | 用途 |
 |------|------|
-| `api-contract/bruno-workspace/<專案名>/` | **日常工作目標**：Bruno 直接 Open Collection，免 Import。若 workspace 已存在，它就是 canonical 來源（優先於 bundled collection 讀取）。 |
+| `api-contract/bruno-workspace/` | **日常工作目標**：其中含 `bruno.json` + `.bru`；在 Bruno 選 **Collection → Open Collection**，免 Import。若 workspace 已存在，它就是 canonical 來源（優先於 bundled collection 讀取）。 |
 | `api-contract/bruno/collection.yml` | 可交換／備份／審查用 bundled artifact；由同一 model 產生，內容與 workspace 一致。 |
 
 注意：兩者都存在時以 **workspace 為準**；請不要手動編輯 bundled collection.yml
-後期待它被保留（該檔的角色是交換/備份）。workspace 內每個檔案在寫入前也逐一通過
-schema gate（root → Collection schema、folder.yml → Folder、request 檔 → HttpRequest）。
+後期待它被保留（該檔的角色是交換/備份）。bundled YAML 先通過 pinned OpenCollection
+schema，原生 `bruno.json`/`.bru` workspace 也有結構驗證後才寫入。
 
 ## Incremental state
 
@@ -175,6 +217,17 @@ schema gate（root → Collection schema、folder.yml → Folder、request 檔 �
 No API contract changes detected.
 Nothing to update.
 ```
+
+## 同步報告歷程
+
+只有偵測到有意義的合約變化（新增、更新、stale、移除或衝突）時才會建立報告。HTML 與 JSON
+會使用相同的 UTC 秒級時間戳記，命名為
+`bruno-sync-report-yyyyMMdd-HHmmss.html` 與 `bruno-sync-report-yyyyMMdd-HHmmss.json`，保留既有歷程；
+同一秒再次同步時會在兩個檔名上附加相同的安全序號（例如 `-01`），不覆寫舊報告。
+
+報告的摘要保留所有 operation 的計數（包含 unchanged），但明細清單只列出實際變化的
+operation；衝突與警告會在有報告時一併列出。沒有有意義變化時，sync 不會建立或碰觸 report
+目錄中的任何檔案。
 
 ## Dry Run
 
@@ -190,8 +243,8 @@ Nothing to update.
 
 ## 已知限制
 
-- 不解析 OpenAPI 的 response examples 來合成回應斷言；Sentinel 產生的範例不附
-  response 區塊。
+- response example 只在 contract 明確提供 example/default，或 schema 足以安全地產生
+  決定性範例時才建立；不會杜撰未記錄的商業結果。
 - query 參數的 style/explode 序列化差異未反映到 URL（文件化限制）。
 - workspace 模式的 environments 目錄由 Bruno 管理，Sentinel 不讀寫。
 - 舊版 request-level `x-sentinel` 檔案會自動遷移，但遷移僅在 sync 時發生；

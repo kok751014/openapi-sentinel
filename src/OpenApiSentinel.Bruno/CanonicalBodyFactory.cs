@@ -12,6 +12,7 @@ public enum BodyKind
     MultipartForm,
     FormUrlEncoded,
     Text,
+    Xml,
 }
 
 /// <summary>One key/value row of a form-style request body.</summary>
@@ -34,6 +35,7 @@ public sealed record CanonicalBody(
         BodyKind.MultipartForm => null, // transport adds the boundary
         BodyKind.FormUrlEncoded => "application/x-www-form-urlencoded",
         BodyKind.Text => "text/plain",
+        BodyKind.Xml => "application/xml",
         _ => null,
     };
 }
@@ -75,6 +77,11 @@ public static class CanonicalBodyFactory
                 return BodyKind.FormUrlEncoded;
             }
 
+            if (contentType.Contains("xml", StringComparison.OrdinalIgnoreCase))
+            {
+                return BodyKind.Xml;
+            }
+
             if (contentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase))
             {
                 return BodyKind.Text;
@@ -102,6 +109,7 @@ public static class CanonicalBodyFactory
             BodyKind.MultipartForm => Form(schema, depth, allowFiles: true),
             BodyKind.FormUrlEncoded => Form(schema, depth, allowFiles: false),
             BodyKind.Text => new CanonicalBody(BodyKind.Text, Text: SampleValueFactory.SampleString(schema)),
+            BodyKind.Xml => new CanonicalBody(BodyKind.Xml, Text: SampleValueFactory.SampleString(schema)),
             _ => CanonicalBody.None,
         };
     }
@@ -236,6 +244,7 @@ public static class CanonicalBodyFactory
                 BodyKind.MultipartForm => contentType.Contains("multipart", StringComparison.OrdinalIgnoreCase),
                 BodyKind.FormUrlEncoded => contentType.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase),
                 BodyKind.Text => contentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase),
+                BodyKind.Xml => contentType.Contains("xml", StringComparison.OrdinalIgnoreCase),
                 _ => false,
             };
 

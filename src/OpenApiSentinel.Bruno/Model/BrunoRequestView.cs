@@ -304,9 +304,16 @@ public sealed class BrunoRequestView
 
     /// <summary>Sets (or replaces) the body with a plain-text body.</summary>
     public void SetTextBody(string text)
+        => SetTextLikeBody("text", text);
+
+    /// <summary>Sets (or replaces) the body with an XML body.</summary>
+    public void SetXmlBody(string xml)
+        => SetTextLikeBody("xml", xml);
+
+    private void SetTextLikeBody(string type, string text)
     {
         var body = new YamlMappingNode();
-        BrunoYaml.SetString(body, "type", "text");
+        BrunoYaml.SetString(body, "type", type);
         BrunoYaml.Set(body, "data", new YamlScalarNode(text) { Style = ScalarStyle.Literal });
         BrunoYaml.Set(Http, "body", body);
     }
@@ -348,13 +355,13 @@ public sealed class BrunoRequestView
         return rows;
     }
 
-    /// <summary>Raw text of a <c>body: {type: text, data: ...}</c> mapping; null otherwise.</summary>
+    /// <summary>Raw text of a <c>body: {type: text|xml, data: ...}</c> mapping; null otherwise.</summary>
     public string? TextBodyRaw
     {
         get
         {
             var body = BodyOrNull;
-            if (body is null || !string.Equals(BodyType, "text", StringComparison.Ordinal))
+            if (body is null || BodyType is not ("text" or "xml"))
             {
                 return null;
             }

@@ -21,13 +21,16 @@ public static class AnalysisPipeline
         RemoteFetchPolicy remotePolicy,
         IReadOnlyList<EnvHeader> envHeaders,
         bool allowRemoteOverride = false,
+        bool allowPrivateNetworkOverride = false,
         ProcessingLimits? limits = null,
         bool allowAboveDocumentTree = false,
         CancellationToken ct = default)
     {
-        var policy = allowRemoteOverride && !remotePolicy.Enabled
-            ? remotePolicy with { Enabled = true }
-            : remotePolicy;
+        var policy = remotePolicy with
+        {
+            Enabled = remotePolicy.Enabled || allowRemoteOverride,
+            AllowPrivateNetwork = remotePolicy.AllowPrivateNetwork || allowPrivateNetworkOverride,
+        };
 
         var loader = new SpecLoader(policy, envHeaders);
         LoadedSpec loaded;

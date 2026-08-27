@@ -8,9 +8,9 @@ namespace OpenApiSentinel.Bruno;
 /// manage its generated examples incrementally. Blocks authored directly in Bruno Desktop
 /// (different layout) do not parse here and fall back to verbatim raw preservation.
 ///
-/// Recognized layout: children at indent 4; request/response sections open at 4 and close
-/// at 4; section fields at 8; dictionary rows at 10; text-family payloads sit at &gt;10
-/// until the exact closer "&lt;8&gt;}"; triple-single-quoted content ends at a line whose
+/// Recognized layout: children at indent 2; request/response sections open at 2 and close
+/// at 2; section fields at 4; dictionary rows at 6; text-family payloads sit at &gt;6
+/// until the exact closer "&lt;4&gt;}"; triple-single-quoted content ends at a line whose
 /// trim is "'''".
 /// </summary>
 public static class BruExampleParser
@@ -214,6 +214,11 @@ public static class BruExampleParser
                         {
                             // body:form-urlencoded / body:multipart-form → body{type,data}
                             var bodyType = field.Key == "body:multipart-form" ? "multipart-form" : "form-urlencoded";
+                            if (bodyType == "multipart-form")
+                            {
+                                MarkFileRows(rows);
+                            }
+
                             var bodyMap = new YamlMappingNode();
                             BrunoYaml.SetString(bodyMap, "type", bodyType);
                             BrunoYaml.Set(bodyMap, "data", rows);
@@ -368,6 +373,46 @@ public static class BruExampleParser
         }
 
         return true;
+    }
+
+    private static void MarkFileRows(YamlSequenceNode rows)
+    {
+        foreach (var row in rows.Children.OfType<YamlMappingNode>())
+        {
+            var value = BrunoYaml.AsString(BrunoYaml.Get(row, "value"));
+            if (value is null || !TryFileValue(value, out var paths))
+            {
+                BrunoYaml.SetString(row, "type", "text");
+                continue;
+            }
+
+            BrunoYaml.SetString(row, "type", "file");
+            if (paths.Count == 1)
+            {
+                BrunoYaml.SetString(row, "value", paths[0]);
+                continue;
+            }
+
+            var values = new YamlSequenceNode();
+            foreach (var path in paths)
+            {
+                values.Children.Add(BrunoYaml.Scalar(path));
+            }
+
+            BrunoYaml.Set(row, "value", values);
+        }
+    }
+
+    private static bool TryFileValue(string value, out List<string> paths)
+    {
+        paths = [];
+        if (!value.StartsWith("@file(", StringComparison.Ordinal) || !value.EndsWith(')'))
+        {
+            return false;
+        }
+
+        paths = value[6..^1].Split('|', StringSplitOptions.RemoveEmptyEntries).ToList();
+        return paths.Count > 0;
     }
 
     private static void AppendParams(YamlMappingNode target, YamlSequenceNode rows)

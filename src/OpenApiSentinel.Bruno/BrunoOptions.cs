@@ -19,7 +19,7 @@ public sealed record BrunoConfiguration
     /// </summary>
     public string? WorkspacePath { get; init; }
 
-    /// <summary>Directory for bruno-sync-report.html / .json.</summary>
+    /// <summary>Directory for timestamped bruno-sync-report-yyyyMMdd-HHmmss.html / .json pairs.</summary>
     public string? ReportPath { get; init; }
 
     /// <summary>Only "auto" (OpenCollection YAML) is currently supported; validated by the loader.</summary>
@@ -50,7 +50,11 @@ public sealed record BrunoSyncSettings
 /// <summary><c>bruno.examples:</c> Layer-1/2 scenario generation policy.</summary>
 public sealed record BrunoExampleSettings
 {
-    public bool Enabled { get; init; } = true;
+    /// <summary>
+    /// Experimental generated examples are opt-in for v1.1.0. Normal request/body/parameter
+    /// generation is independent of this setting.
+    /// </summary>
+    public bool Enabled { get; init; }
 
     public string Language { get; init; } = ScenarioTexts.LanguageTag;
 

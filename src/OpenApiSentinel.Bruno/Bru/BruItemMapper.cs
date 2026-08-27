@@ -26,6 +26,7 @@ public static class BruItemMapper
     public const string MetaKeyManagedHeaders = "x-sentinel-managed-headers";
     public const string MetaKeyManagedFormFields = "x-sentinel-managed-form-fields";
     public const string MetaKeyManagedBody = "x-sentinel-managed-body";
+    public const string MetaKeyGeneratedExamples = "x-sentinel-generated-examples";
 
     /// <summary>Maps a parsed .bru request file to a canonical request item.</summary>
     /// <returns>The canonical item plus the Sentinel index entry derived from its metadata block.</returns>
@@ -321,11 +322,9 @@ public static class BruItemMapper
                     BrunoYaml.SetString(row, "name", pair.RawKey);
                     if (block.Name == "body:multipart-form")
                     {
-                        if (pair.Value.StartsWith("@file(", StringComparison.Ordinal))
+                        if (TryFileValue(pair.Value, out var files))
                         {
                             BrunoYaml.SetString(row, "type", "file");
-                            var inner = pair.Value[6..^1];
-                            var files = inner.Split('|', StringSplitOptions.RemoveEmptyEntries);
                             if (files.Length == 1)
                             {
                                 BrunoYaml.SetString(row, "value", files[0]);
@@ -340,6 +339,13 @@ public static class BruItemMapper
 
                                 BrunoYaml.Set(row, "value", arr);
                             }
+                        }
+                        else if (pair.Value.StartsWith('@'))
+                        {
+                            // Compatibility for Sentinel files emitted before native writer
+                            // output was corrected to @file(...).
+                            BrunoYaml.SetString(row, "type", "file");
+                            BrunoYaml.SetString(row, "value", pair.Value[1..]);
                         }
                         else
                         {
@@ -366,6 +372,18 @@ public static class BruItemMapper
         }
 
         BrunoYaml.Set(http, "body", body);
+    }
+
+    private static bool TryFileValue(string value, out string[] files)
+    {
+        files = [];
+        if (!value.StartsWith("@file(", StringComparison.Ordinal) || !value.EndsWith(')'))
+        {
+            return false;
+        }
+
+        files = value[6..^1].Split('|', StringSplitOptions.RemoveEmptyEntries);
+        return files.Length > 0;
     }
 
     private static (string op, string value) SplitAssertion(string value)
@@ -417,6 +435,9 @@ public static class BruItemMapper
                     break;
                 case MetaKeyManagedBody:
                     BrunoYaml.SetBool(entry, "managedBody", pair.Value is "true");
+                    break;
+                case MetaKeyGeneratedExamples:
+                    GeneratedExampleRegistry.Write(entry, GeneratedExampleRegistry.Decode(pair.Value));
                     break;
             }
         }

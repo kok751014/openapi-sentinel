@@ -98,7 +98,7 @@ output:
   changelog: artifacts/CHANGELOG.md
   pr-summary: artifacts/pr-summary.md   # compact PR-comment markdown
 
-# ── Bruno collection sync + automatic test scenarios ─────────────────────
+# ── Bruno collection sync + experimental generated test scenarios ─────────
 # See docs/bruno-sync.md and docs/bruno-scenarios.md for the full guide.
 # All relative paths resolve against THIS configuration file's directory,
 # so MSBuild/CI invocations from any working directory behave identically.
@@ -107,7 +107,7 @@ bruno:
   source: ./swagger/v1/swagger.json     # OpenAPI/Swagger file or http(s) URL
   collectionPath: ./api-contract/bruno/collection.yml   # single-file OpenCollection YAML
   workspacePath: ./api-contract/bruno-workspace         # folder workspace Bruno opens directly
-  reportPath: ./api-contract/reports    # bruno-sync-report.html / .json land here
+  reportPath: ./api-contract/reports    # timestamped bruno-sync-report-yyyyMMdd-HHmmss.html / .json pairs land here
   format: auto                          # only "auto" (OpenCollection YAML) exists today
   sync:
     preserveManualValues: true          # keep user-edited param/body values on updates
@@ -117,7 +117,7 @@ bruno:
     removeDeletedOperations: false      # false = removed ops are reported stale (kept)
     statePath: ""                       # optional; default: hidden state file next to the collection
   examples:
-    enabled: true                       # generate 「可直接 Send」的測試範例 per operation
+    enabled: false                      # v1.1.0 default: generated examples are experimental and opt-in
     language: zh-TW                     # generated scenario names/descriptions (zh-TW only)
     ignoreAuthentication: true          # never auto-generate auth failure scenarios
     maxPerOperation: 8                  # hard cap of auto scenarios per operation (1-64)
@@ -140,6 +140,20 @@ Nested keys, dotted: `bruno.enabled`, `bruno.source`, `bruno.collectionPath`,
 - `bruno.sync.statePath` overrides the default incremental-state location
   (`<collection>.yml.sentinel-state.json` hidden file next to the collection).
 - The state file stores only hashes and a timestamp — never spec content or secrets.
+- `bruno.examples.enabled` defaults to `false` in v1.1.0. It controls only Sentinel-generated
+  example/scenario blocks; normal Bruno requests, bodies, headers and parameters are still
+  synchronized. Set it to `true` explicitly to enable the existing experimental generator.
+- When disabled, a missing `scenariosPath` is not created or read. Sentinel removes only examples
+  recorded in its ownership registry and preserves user-authored examples; an older native `.bru`
+  workspace without that registry is preserved conservatively.
+- `bruno.reportPath` retains timestamped UTC HTML/JSON report pairs only for meaningful
+  contract changes. Each pair shares one filename stem; unchanged-only syncs do not create or
+  modify report files.
+- A first `bruno sync --source <file-or-url>` creates this section automatically. For a
+  public HTTPS URL, add `--allow-remote`; the generated config persists only
+  `remoteReferences.enabled: true`. For localhost/private URLs, add both
+  `--allow-remote --allow-private-network`; it also persists
+  `allowPrivateNetwork: true`. These permissions are never enabled implicitly.
 
 ### `rules` overrides
 

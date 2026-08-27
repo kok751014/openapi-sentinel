@@ -170,7 +170,6 @@ public sealed class BrunoCollectionDocument
         {
             if (item.IsFolder)
             {
-                yield return item;
                 foreach (var nested in Enumerate(item.Children))
                 {
                     yield return nested;
