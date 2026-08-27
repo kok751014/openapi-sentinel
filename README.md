@@ -371,21 +371,14 @@ The release pipeline validates:
 
 ## Current status
 
-**v1.0.1 released.** The `main` branch has since gained the Bruno collection sync +
-scenario generator feature (see [CHANGELOG](CHANGELOG.md); recommended release: 1.1.0).
+**OpenAPI Sentinel 1.1.0.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
+and the [CHANGELOG](CHANGELOG.md) for release details.
 
-Current verified state of `main`:
+Current verified quality state:
 
-- **458 automated tests passing** (build 0 warnings/0 errors)
-- cross-platform CI matrix (Ubuntu / Windows / macOS) green on v1.0.1; remote CI runs are
-  currently paused by a billing issue on the repository owner's account — local gates
-  (build + full suite + release packaging) remain verified on every change
-- Windows, Linux, and macOS release packages generated and checksum-verified for v1.0.1
-- Docker image build verified in GitHub Actions (v1.0.1)
-- GitHub Release artifacts published with SHA-256 checksums
-- semantic compatibility review completed; security/dependency review completed
-- release packaging workflow verified end-to-end after the Bruno project addition
-  (isolated global-tool install reproduces the committed sample byte-for-byte)
+- `openapi-sentinel version` reports **1.1.0**
+- **551/551 automated tests passing**; Release build succeeds
+- `git diff --check` passes
 
 Current distribution work that is intentionally separate from the GitHub Release:
 

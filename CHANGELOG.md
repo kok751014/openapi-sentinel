@@ -7,6 +7,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning foll
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-27
+
 ### Fixed — Bruno OpenCollection import compatibility (release-blocker for 1.1.0)
 
 Real-world Bruno imports of the generated single-file collection failed with
@@ -69,7 +71,7 @@ official OpenCollection v1.0 schema before being written.
 - **Dry-run bootstrap preview** — `--dry-run` lists every planned directory/file
   (`[預計建立資料夾] …`) while leaving the filesystem byte-identical.
 
-### Added — Bruno collection sync + scenario generator (recommendation: release as 1.1.0)
+### Added — Bruno collection sync + scenario generator
 
 New product capability, fully backward-compatible: no existing command, flag, config key,
 report format or exit code changed behavior.
@@ -110,7 +112,7 @@ report format or exit code changed behavior.
 - Bruno commands honor the same remote-fetch security model as compare: `--allow-remote`
   or a fully opted-in `remoteReferences:` config is required for URL sources.
 
-Quality evidence at time of writing: 500/500 tests green across 7 test projects
+Quality evidence at time of writing: 551/551 tests green across 7 test projects
 (incl. a seeded differential fuzz harness for sync invariants, validated clean at 500
 seeds; official-schema conformance suites for bundled and workspace outputs); fidelity-
 preserving YAML round-trip tests; hostile-metadata security tests;
