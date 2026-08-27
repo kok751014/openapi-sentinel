@@ -13,11 +13,11 @@ and fails CI when your policy threshold is exceeded.
 ```text
 $ openapi-sentinel compare v1.yaml v2-breaking.yaml --fail-on high
 
-?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 OpenAPI Sentinel  1.0.1
-  samples/basic/v1.yaml  ?? samples/basic/v2-breaking.yaml
-  versions: 3.0.3  ?? 3.0.3
-?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  samples/basic/v1.yaml  â†’  samples/basic/v2-breaking.yaml
+  versions: 3.0.3  â†’  3.0.3
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 Result: FAILED
 
@@ -29,7 +29,7 @@ Summary
   Recommended version bump: MAJOR
 
 Findings
-[HIGH] CG2002  GET /orders ??parameters.channel
+[HIGH] CG2002  GET /orders â†’ parameters.channel
         Parameter 'channel' was added to GET /orders as required.
 ```
 
@@ -39,11 +39,11 @@ A text diff tells you that `required: false` became `required: true`.
 
 OpenAPI Sentinel tells you:
 
-- **What changed** ??request parameter `customerId` is now mandatory.
-- **Why it matters** ??existing clients that omit it may fail validation.
-- **Who is affected** ??callers of the affected operation.
-- **What to do** ??introduce it safely, migrate consumers, then enforce it.
-- **Which release** ??MAJOR, MINOR, PATCH, or NONE.
+- **What changed** â€” request parameter `customerId` is now mandatory.
+- **Why it matters** â€” existing clients that omit it may fail validation.
+- **Who is affected** â€” callers of the affected operation.
+- **What to do** â€” introduce it safely, migrate consumers, then enforce it.
+- **Which release** â€” MAJOR, MINOR, PATCH, or NONE.
 
 ## Highlights
 
@@ -51,13 +51,13 @@ OpenAPI Sentinel tells you:
 |---|---|
 | **85 rules + 3 engine checks** | Endpoints, parameters, request bodies, responses, schemas, security, callbacks, webhooks, and metadata using stable `CGxxxx` IDs |
 | **Direction-aware compatibility** | Request tightening and response widening are not treated as the same kind of change |
-| **Swagger/OpenAPI 2.0 ??3.2** | Swagger/OpenAPI 2.0, 3.0.x, 3.1.x, and 3.2.x in JSON or YAML |
+| **Swagger/OpenAPI 2.0 â†’ 3.2** | Swagger/OpenAPI 2.0, 3.0.x, 3.1.x, and 3.2.x in JSON or YAML |
 | **Multi-file specifications** | Internal, sibling-file, and controlled remote references |
 | **Offline & private by default** | No telemetry, analytics, AI service, account, or hosted backend is required for core analysis |
 | **CI-native** | Stable exit codes, SARIF/JUnit, baselines, suppressions, and machine-readable output |
 | **Professional reports** | Console, JSON, Markdown, PR summary, and single-file HTML with filtering and search |
 | **Release guidance** | Semantic version recommendation and generated API changelog support |
-| **Bruno collection sync** | One-click bootstrap (`bruno sync --source ?¦`) creates config, layout and a Bruno folder workspace automatically; every output is validated against the official OpenCollection v1.0 schema before being written; incremental sync preserves manual values/scripts/tests/docs/auth. Experimental Traditional-Chinese generated scenarios are opt-in for v1.1.0. |
+| **Bruno collection sync** | One-click bootstrap (`bruno sync --source â€¦`) creates config, layout and a Bruno folder workspace automatically; every output is validated against the official OpenCollection v1.0 schema before being written; incremental sync preserves manual values/scripts/tests/docs/auth. Experimental Traditional-Chinese generated scenarios are opt-in for v1.1.0. |
 
 See the [compatibility model](docs/compatibility-model.md) and
 [rule catalog](docs/rules.md) for the detailed semantics.
@@ -295,10 +295,10 @@ Read [docs/compatibility-model.md](docs/compatibility-model.md) for the detailed
 
 | Contract version | JSON | YAML | Notes |
 |---|:---:|:---:|---|
-| Swagger 2.0 | ??| ??| Body/formData normalized into the internal model |
-| OpenAPI 3.0.x | ??| ??| 3.0 nullability semantics |
-| OpenAPI 3.1.x | ??| ??| JSON Schema-style nullable/type-array semantics |
-| OpenAPI 3.2.x | ??| ??| 3.1+ compatibility semantics where applicable |
+| Swagger 2.0 | âœ… | âœ… | Body/formData normalized into the internal model |
+| OpenAPI 3.0.x | âœ… | âœ… | 3.0 nullability semantics |
+| OpenAPI 3.1.x | âœ… | âœ… | JSON Schema-style nullable/type-array semantics |
+| OpenAPI 3.2.x | âœ… | âœ… | 3.1+ compatibility semantics where applicable |
 
 ---
 
