@@ -20,3 +20,9 @@ sentinel-reports/
 
 # OpenAPI Sentinel incremental sync state (hashes only; safe to ignore — docs/bruno-sync.md)
 *.sentinel-state.json
+
+# local AI/Codex working notes
+/MASTER_PROMPT.md
+/LOOP_PROMPT.md
+/CODEX_HANDOFF_*.md
+/progress.md
