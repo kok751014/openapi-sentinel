@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.1] - 2026-08-28
+
+### Fixed
+
+- Simplified compare HTML reports to two primary content sections.
+- Changed compare HTML generated timestamps from UTC display to deterministic Taipei UTC+8.
+- Removed snapshot-status, version-recommendation, affected-endpoint, related-change and duplicate detail sections from HTML.
+- Fixed repeated endpoint prefixes and missing spacing before localized change-status suffixes.
+- Improved HTML-only semantic deduplication so identical logical changes render once without merging distinct properties, statuses, directions or endpoints.
+- Preserved concrete changed property/parameter targets so distinct findings no longer appear visually identical.
+
+### Changed
+
+- Unified breaking, review-needed and general changes into one changes section; all HTML change cards are collapsed by default.
+- The concise HTML summary now shows only immediate-attention, review and general-change counts.
+
+### Compatibility
+
+- Core comparison, policy evaluation, JSON, Markdown, SARIF, JUnit, baselines, suppressions and snapshot semantics are unchanged.
+
 ## [1.3.0] - 2026-08-27
 
 ### Added
