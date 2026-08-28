@@ -14,8 +14,10 @@ Use English when sharing the report with an English-speaking team:
 openapi-sentinel compare old.yaml new.yaml --html api-diff.html --html-lang en
 ```
 
-The HTML page groups exact duplicate rule events for readability only. CI policy and every
-machine-readable report continue to use the complete finding stream.
+The HTML page uses two primary sections, displays deterministic Taipei UTC+8 generation time, and starts
+all change cards collapsed. Its semantic presentation deduplication retains concrete property/parameter
+targets while grouping identical logical events only; CI policy and every machine-readable report continue
+to use the complete finding stream.
 
 This guide takes you from install to first CI verdict in five minutes.
 

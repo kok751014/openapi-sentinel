@@ -71,13 +71,15 @@ public sealed class RemoteSecurityAndSnapshotTests
     {
         using var specs = SpecPair.Create(CommandLineRunnerTests.BaseV1, CommandLineRunnerTests.SafeV2);
         var report = Path.Combine(Path.GetDirectoryName(specs.OldPath)!, "report.html");
+        var expected = File.ReadAllText(specs.NewPath);
         var console = new RecordingConsole();
 
         var exit = await Task.Run(() => CommandLineRunner.Run(
             ["compare", specs.OldPath, specs.NewPath, "--html", report, "--update-snapshot", "--fail-on", "high", "--no-color"], console));
 
         Assert.Equal(ExitCodes.Ok, exit);
-        Assert.Contains("已更新", File.ReadAllText(report), StringComparison.Ordinal);
+        Assert.Equal(expected, File.ReadAllText(specs.OldPath));
+        Assert.DoesNotContain("Snapshot 狀態", File.ReadAllText(report), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -96,17 +98,19 @@ public sealed class RemoteSecurityAndSnapshotTests
     }
 
     [Fact]
-    public async Task Snapshot_PolicyFailure_HtmlStatesThatSnapshotWasNotUpdated()
+    public async Task Snapshot_PolicyFailure_HtmlDoesNotChangeSnapshotSafety()
     {
         using var specs = SpecPair.Create(CommandLineRunnerTests.BaseV1, CommandLineRunnerTests.BreakingV2);
         var report = Path.Combine(Path.GetDirectoryName(specs.OldPath)!, "report.html");
+        var before = File.ReadAllText(specs.OldPath);
         var console = new RecordingConsole();
 
         var exit = await Task.Run(() => CommandLineRunner.Run(
             ["compare", specs.OldPath, specs.NewPath, "--html", report, "--update-snapshot", "--fail-on", "high", "--no-color"], console));
 
         Assert.Equal(ExitCodes.PolicyViolated, exit);
-        Assert.Contains("未更新", File.ReadAllText(report), StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllText(specs.OldPath));
+        Assert.DoesNotContain("Snapshot 狀態", File.ReadAllText(report), StringComparison.Ordinal);
     }
 
     [Theory]

@@ -8,9 +8,9 @@ JSON, Markdown, SARIF, JUnit, or Bruno output.
 
 ## HTML counts differ from JSON finding counts
 
-This is expected when the engine emitted exact duplicate events. HTML shows conservative distinct
-changes and reports the raw-event count separately. Policy, baselines, suppressions and JSON keep
-the original full finding set.
+This is expected when the engine emitted identical logical events. HTML shows semantic distinct changes
+without displaying raw/duplicate counters. Policy, baselines, suppressions and JSON keep the original full
+finding set.
 
 ## Exit codes
 

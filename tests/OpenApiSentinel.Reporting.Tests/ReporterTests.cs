@@ -231,10 +231,12 @@ public class HtmlReporterTests
         Assert.Contains("OpenAPI Sentinel", html, StringComparison.Ordinal);
         Assert.Contains("old.yaml", html, StringComparison.Ordinal);
         Assert.Contains("new.yaml", html, StringComparison.Ordinal);
-        Assert.Contains("2026-03-01 10:30:00", html, StringComparison.Ordinal);
-        Assert.Contains("MAJOR", html, StringComparison.Ordinal); // recommendation badge
-        Assert.Contains("已抑制的 Findings", html, StringComparison.Ordinal);
-        Assert.Contains("受影響的 Endpoint", html, StringComparison.Ordinal);
+        Assert.Contains("2026-03-01 18:30:00", html, StringComparison.Ordinal);
+        Assert.Contains("台北 UTC+8", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Generated (UTC)", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("版本建議", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Snapshot 狀態", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("受影響的 Endpoint", html, StringComparison.Ordinal);
         Assert.Contains("本次變更摘要", html, StringComparison.Ordinal);
     }
 
@@ -244,9 +246,9 @@ public class HtmlReporterTests
         var html = Render(TestResults.Failing());
         Assert.Contains(">未通過<", html, StringComparison.Ordinal);
         Assert.Contains("id=\"search\"", html, StringComparison.Ordinal);
-        Assert.Contains("id=\"f-compat\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"f-group\"", html, StringComparison.Ordinal);
         Assert.Contains("CG1001", html, StringComparison.Ordinal);
-        Assert.Contains("需要處理", html, StringComparison.Ordinal);
+        Assert.Contains("變更項目", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -272,21 +274,25 @@ public class HtmlReporterTests
     }
 
     [Fact]
-    public void HtmlPresentation_DeduplicatesOnlyExactEvents()
+    public void HtmlPresentation_DeduplicatesSemanticEvents_WithoutMutatingRawFindings()
     {
         var original = TestResults.Finding("CG5017", "Property removed", Severity.High, Compatibility.Breaking,
-            path: "/accounts/{id}", oldValue: "test");
+            path: "/accounts/{id}", oldValue: "test") with
+        {
+            Category = FindingCategory.Response,
+            Location = "GET /accounts/{id} responses.200.schema.properties.name",
+        };
+        var proseVariant = original with { Title = "Ref-expanded property removed", Explanation = "Different prose must not split the HTML item." };
         var differentValue = original with { OldValue = "other" };
         var result = TestResults.Passing() with
         {
-            Findings = [original, original, original, differentValue],
+            Findings = [original, original, proseVariant, differentValue],
             Summary = new ResultSummary { Total = 4, Breaking = 4, High = 4 },
             PolicyViolated = true,
         };
         var html = new HtmlReporter().Render(result, new ReporterOptions { HtmlLanguage = HtmlLanguage.En });
 
-        Assert.Contains("Raw rule events 4 · Distinct changes 2 · Duplicates collapsed 2", html, StringComparison.Ordinal);
-        Assert.Contains("Merged 3 identical rule events", html, StringComparison.Ordinal);
+        Assert.Equal(2, html.Split("<details class=\"finding\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(4, result.Findings.Count); // HTML did not mutate the engine result.
     }
 
@@ -298,7 +304,68 @@ public class HtmlReporterTests
         Assert.Contains("<html lang=\"zh-Hant-TW\">", zh, StringComparison.Ordinal);
         Assert.Contains("本次變更摘要", zh, StringComparison.Ordinal);
         Assert.Contains("<html lang=\"en\">", en, StringComparison.Ordinal);
-        Assert.Contains("Affected endpoints", en, StringComparison.Ordinal);
+        Assert.Contains("Changes", en, StringComparison.Ordinal);
+        Assert.Contains("Taipei UTC+8", en, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HtmlLayout_UsesTwoCards_AndAllFindingCardsStartCollapsed()
+    {
+        var html = Render(TestResults.Failing());
+
+        Assert.Equal(2, html.Split("<section class=\"card", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("<details class=\"finding\" open", html, StringComparison.Ordinal);
+        Assert.True(html.IndexOf("結果", StringComparison.Ordinal) < html.IndexOf("舊版合約", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("舊版合約", StringComparison.Ordinal) < html.IndexOf("新版合約", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("新版合約", StringComparison.Ordinal) < html.IndexOf("產生時間", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void HtmlPresentation_PreservesDistinctTargets_Statuses_AndEndpoints()
+    {
+        var foo = TestResults.Finding("CG5017", "Property removed", Severity.High, Compatibility.Breaking,
+            path: "/api/A", oldValue: "foo") with
+        {
+            Category = FindingCategory.Response,
+            Location = "GET /api/A responses.200.schema.properties.foo",
+        };
+        var bar = foo with { Location = "GET /api/A responses.200.schema.properties.bar", OldValue = "bar" };
+        var status404 = foo with { Location = "GET /api/A responses.404.schema.properties.foo" };
+        var request = foo with { Category = FindingCategory.RequestBody, Direction = ApiDirection.Request, Location = "GET /api/A requestBody.schema.properties.foo" };
+        var otherApi = foo with { Path = "/api/B", Location = "GET /api/B responses.200.schema.properties.foo" };
+        var result = TestResults.Passing() with { Findings = [foo, bar, status404, request, otherApi], PolicyViolated = true };
+
+        var html = Render(result);
+
+        Assert.Equal(5, html.Split("<details class=\"finding\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("responses 200 欄位 `foo` 已移除", html, StringComparison.Ordinal);
+        Assert.Contains("responses 200 欄位 `bar` 已移除", html, StringComparison.Ordinal);
+        Assert.Contains("responses 404 欄位 `foo` 已移除", html, StringComparison.Ordinal);
+        Assert.Contains("body 欄位 `foo` 已移除", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("GET /api/A GET /api/A", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("foo已移除", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HtmlEscapesContractAndFindingValues_InSummaryAndDataAttributes()
+    {
+        var result = TestResults.Passing() with
+        {
+            OldContractName = "<script>alert(1)</script>",
+            NewContractName = "\"<&>",
+            Findings = [TestResults.Finding("CG5017", "unsafe", Severity.High, Compatibility.Breaking, path: "/<x>") with
+            {
+                Category = FindingCategory.Response,
+                Location = "GET /<x> responses.200.schema.properties.<unsafe>",
+                OldValue = "<script>alert(1)</script>",
+            }],
+        };
+
+        var html = Render(result);
+
+        Assert.DoesNotContain("<script>alert(1)</script>", html, StringComparison.Ordinal);
+        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html, StringComparison.Ordinal);
+        Assert.Contains("&quot;&lt;&amp;&gt;", html, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -137,11 +137,13 @@ These codes are stable and safe to script against; do not parse console text for
 
 ## HTML report presentation
 
-HTML reports are offline single files and default to `zh-Hant-TW`. Their summary and cards use
-presentation-only exact-event deduplication, so the prominent count is **distinct changes** while
-the report also shows raw rule-event count. This does not modify policy evaluation, JSON, Markdown,
-SARIF, JUnit, baselines, fingerprints, suppressions, or rule evaluation. Breaking and review-needed
-changes appear before a collapsed non-breaking section; endpoint rows describe the observed change.
+HTML reports are offline single files and default to `zh-Hant-TW`. They have two primary sections:
+contract/result information with a concise three-count summary, then a unified changes list. Both language
+modes display deterministic Taipei UTC+8 generation time. Semantic HTML-only deduplication preserves
+concrete property and parameter targets while removing identical logical events; all cards start collapsed,
+with breaking, review-needed and general changes ordered in that sequence. This does not modify policy
+evaluation, JSON, Markdown, SARIF, JUnit, baselines, fingerprints, suppressions, snapshot behavior, or
+rule evaluation.
 
 ## JSON output contract
 
@@ -151,7 +153,7 @@ removals or renames bump `schemaVersion`. Top-level structure:
 ```json
 {
   "schemaVersion": "1.0",
-  "toolVersion": "1.3.0",
+  "toolVersion": "1.3.1",
   "result": "passed",
   "oldContractName": "old.yaml",
   "newContractName": "new.yaml",
