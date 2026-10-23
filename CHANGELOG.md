@@ -7,6 +7,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/); versioning foll
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-23
+
 ### Changed
 
 - OpenAPI Sentinel is now licensed under the Apache License 2.0, replacing the draft proprietary

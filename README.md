@@ -1,7 +1,7 @@
 # OpenAPI Sentinel
 
 [![CI](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v1.3.1-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.3.1)
+[![Release](https://img.shields.io/badge/release-v1.3.2-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.3.2)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **Catch breaking API contract changes before they reach production.**
@@ -376,12 +376,12 @@ The release pipeline validates:
 
 ## Current status
 
-**OpenAPI Sentinel 1.3.1.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
+**OpenAPI Sentinel 1.3.2.** See [RELEASE_NOTES.md](RELEASE_NOTES.md)
 and the [CHANGELOG](CHANGELOG.md) for release details.
 
 Current verified quality state:
 
-- `openapi-sentinel version` reports **1.3.1**
+- `openapi-sentinel version` reports **1.3.2**
 - **570/570 automated tests passing**; release verification is performed locally before publication
 - `git diff --check` passes
 

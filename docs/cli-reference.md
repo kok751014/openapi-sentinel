@@ -153,7 +153,7 @@ removals or renames bump `schemaVersion`. Top-level structure:
 ```json
 {
   "schemaVersion": "1.0",
-  "toolVersion": "1.3.1",
+  "toolVersion": "1.3.2",
   "result": "passed",
   "oldContractName": "old.yaml",
   "newContractName": "new.yaml",
