@@ -1,6 +1,9 @@
 # Pricing strategy (input draft)
 
 Not implemented in product logic — commercial input only, kept out of application code.
+No Pro edition is available today. This document does not affect the
+[Apache License 2.0](../../LICENSE) that covers this repository; see the
+[feature matrix](feature-matrix.md) for the Community/Pro boundary.
 
 ## Target buyers
 
@@ -24,8 +27,8 @@ Reasoning:
 - Lifetime tiers exist because devtools buyers distrust subscriptions early; annual wins later
   via predictable revenue — offer both at launch and watch mix.
 - Enterprise willingness-to-pay concentrates in: HTML report branding for customer-facing
-  reviews, custom org policy packs, SARIF/code-scanning integration, and support SLA —
-  all cheap for us to honor, valuable for compliance-driven buyers.
+  reviews, custom org policy packs, and support SLA — all cheap for us to honor, valuable for
+  compliance-driven buyers. SARIF/code-scanning integration is part of the open-source edition.
 
 ## Willingness-to-pay drivers
 

@@ -30,6 +30,13 @@ Pre-flight for publishing version X.Y.Z of OpenAPI Sentinel.
 - [ ] Docker image builds; non-root user can write mounted /workspace reports
 - [ ] `dotnet tool install -g` from packed .nupkg works; tool command name resolves
 
+## Licensing
+
+- [ ] Every archive, the .nupkg and the Docker image contain `LICENSE`, `NOTICE` and
+      `THIRD-PARTY-NOTICES.md`; self-contained archives also contain `licenses/dotnet-runtime-*`
+- [ ] .nupkg metadata declares `Apache-2.0`
+- [ ] THIRD-PARTY-NOTICES.md lists every bundled dependency (re-check after dependency updates)
+
 ## Release notes
 
 - [ ] RELEASE_NOTES.md template replaced with real highlights

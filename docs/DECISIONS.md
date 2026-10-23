@@ -363,3 +363,25 @@ Layer-2 business scenarios live exclusively in openapi-sentinel.scenarios.yml wi
 validation (duplicate names, unknown operationIds, status ranges) — the generator never
 invents business behavior. Authentication scenarios are out of scope by design; existing
 auth configuration is untouched.
+
+## 33. Open-source license: Apache-2.0
+
+The draft proprietary LICENSE (no redistribution without written permission) is replaced by
+the unmodified Apache License 2.0 text; the copyright notice lives in NOTICE. Earlier releases
+(v0.9.0–v1.3.1) are also made available under Apache-2.0.
+
+**Why Apache-2.0 over MIT:** an explicit patent grant, a contribution clause (§5) that licenses
+incoming pull requests on the same terms without a CLA, and an explicit exclusion of trademark
+rights (§6) that keeps the project name distinct from forks. Both are OSI-approved and permit
+proprietary add-ons built on top.
+
+**Supersedes the reporting split in decision 18:** interactive HTML, SARIF, JUnit and changelog
+generation are already implemented in this repository and therefore belong to the open-source
+edition. A Pro edition remains possible only as separate, additive modules (custom policy packs,
+branding, support); it cannot withdraw capabilities that were released under Apache-2.0.
+
+**Distribution consequences:** every published binary, the .NET tool package and the Docker image
+ship LICENSE, NOTICE and THIRD-PARTY-NOTICES.md (wired into `dotnet publish`/`dotnet pack` from
+the CLI project, so release scripts and the Dockerfile inherit them). Self-contained publishes
+also copy the .NET runtime's LICENSE.TXT and THIRD-PARTY-NOTICES.TXT from the resolved runtime
+pack into `licenses/`. NuGet metadata declares `Apache-2.0`.

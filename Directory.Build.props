@@ -19,11 +19,13 @@
 
     <!-- Product metadata (single source of truth for versioning) -->
     <Product>OpenAPI Sentinel</Product>
-    <Company>OpenAPI Sentinel</Company>
-    <Authors>OpenAPI Sentinel</Authors>
-    <Copyright>Copyright (c) OpenAPI Sentinel</Copyright>
-    <PackageProjectUrl>https://openapi-sentinel.example</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/owner/openapi-sentinel</RepositoryUrl>
+    <Company>Kim (kok751014)</Company>
+    <Authors>Kim (kok751014)</Authors>
+    <Copyright>Copyright 2026 Kim (kok751014)</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/kok751014/openapi-sentinel</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/kok751014/openapi-sentinel</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>false</IncludeSymbols>
     <Version Condition="'$(SentinelVersion)' != ''">$(SentinelVersion)</Version>

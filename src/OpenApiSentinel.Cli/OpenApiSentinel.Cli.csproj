@@ -20,4 +20,22 @@
     <InternalsVisibleTo Include="OpenApiSentinel.Cli.Tests" />
   </ItemGroup>
 
+  <!-- License and notices travel with every published binary, the tool package and the Docker image. -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE;..\..\NOTICE;..\..\THIRD-PARTY-NOTICES.md"
+          Link="%(Filename)%(Extension)" Pack="true" PackagePath="\" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Self-contained publishes bundle the .NET runtime; ship its license and third-party notices too. -->
+  <Target Name="PublishRuntimeLicenseNotices" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <_SentinelRuntimePack Include="@(ResolvedRuntimePack)" Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
+      <ResolvedFileToPublish Include="@(_SentinelRuntimePack->'%(PackageDirectory)/LICENSE.TXT')"
+                             RelativePath="licenses/dotnet-runtime-LICENSE.TXT" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="@(_SentinelRuntimePack->'%(PackageDirectory)/THIRD-PARTY-NOTICES.TXT')"
+                             RelativePath="licenses/dotnet-runtime-THIRD-PARTY-NOTICES.TXT" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
 </Project>

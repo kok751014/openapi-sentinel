@@ -15,10 +15,12 @@ WORKDIR /src
 
 COPY Directory.Build.props ./
 COPY OpenApiSentinel.slnx ./
+COPY LICENSE NOTICE THIRD-PARTY-NOTICES.md ./
 COPY src/OpenApiSentinel.Core src/OpenApiSentinel.Core
 COPY src/OpenApiSentinel.OpenApi src/OpenApiSentinel.OpenApi
 COPY src/OpenApiSentinel.Rules src/OpenApiSentinel.Rules
 COPY src/OpenApiSentinel.Reporting src/OpenApiSentinel.Reporting
+COPY src/OpenApiSentinel.Bruno src/OpenApiSentinel.Bruno
 COPY src/OpenApiSentinel.Cli src/OpenApiSentinel.Cli
 
 RUN case "$TARGETARCH" in \
@@ -34,6 +36,10 @@ RUN case "$TARGETARCH" in \
     mv /app/publish/OpenApiSentinel.Cli /app/publish/openapi-sentinel
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS runtime
+
+LABEL org.opencontainers.image.title="OpenAPI Sentinel" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/kok751014/openapi-sentinel"
 
 WORKDIR /workspace
 

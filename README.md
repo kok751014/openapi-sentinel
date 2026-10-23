@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kok751014/openapi-sentinel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/release-v1.3.1-blue)](https://github.com/kok751014/openapi-sentinel/releases/tag/v1.3.1)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **Catch breaking API contract changes before they reach production.**
 
@@ -412,26 +413,25 @@ Current distribution work that is intentionally separate from the GitHub Release
 - [GitHub Actions](docs/github-actions.md)
 - [Azure DevOps](docs/azure-devops.md)
 - [GitLab](docs/gitlab.md)
-- [Commercial positioning](docs/commercial/product-positioning.md)
-- [Community / Pro feature matrix](docs/commercial/feature-matrix.md)
+- [Product positioning](docs/commercial/product-positioning.md)
+- [Feature matrix](docs/commercial/feature-matrix.md)
 - [Engineering report](docs/engineering-report.md)
 - [Architecture decisions](docs/DECISIONS.md)
+- [Contributing](CONTRIBUTING.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.md)
 
 ---
 
-## Commercial direction
+## Open source
 
-OpenAPI Sentinel is designed so correctness and core compatibility analysis remain trustworthy
-regardless of distribution or future commercial packaging.
+OpenAPI Sentinel is open source under the [Apache License 2.0](LICENSE). Everything in this
+repository is part of the open-source project: the compatibility engine, the full rule catalog,
+every report format (console, JSON, Markdown, PR summary, HTML, SARIF, JUnit, changelog),
+baselines, suppressions and Bruno collection sync. There are no license keys, gated features or
+phone-home checks.
 
-The repository includes product-positioning and Community/Pro boundary documentation to keep
-commercial features separate from the correctness of the compatibility engine.
-
-See:
-
-- [Product positioning](docs/commercial/product-positioning.md)
-- [Community / Pro feature matrix](docs/commercial/feature-matrix.md)
+Any future commercial add-ons would be separate and additive; they would not relicense or remove
+capabilities from the open-source project. See the [feature matrix](docs/commercial/feature-matrix.md).
 
 ---
 
@@ -458,11 +458,20 @@ The generated packages are written under `dist/1.0.1/`.
 
 ---
 
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the build, test
+and pull-request workflow.
+
+---
+
 ## License
 
-See [LICENSE](LICENSE).
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for the
+copyright notice. Earlier releases (v0.9.0–v1.3.1), originally published with draft terms, are
+also made available under the Apache License 2.0.
 
-Third-party dependency notices are documented in
+Third-party components bundled in release artifacts, and their licenses, are documented in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ---

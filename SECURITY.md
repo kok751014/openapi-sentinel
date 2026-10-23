@@ -8,7 +8,8 @@ OpenAPI Sentinel treats specification files as untrusted input. See
 
 | Version | Supported |
 |---------|-----------|
-| 0.9.x   | ✅ |
+| 1.3.x   | ✅ |
+| < 1.3   | ❌ |
 
 ## Reporting a vulnerability
 

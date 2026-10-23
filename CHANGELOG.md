@@ -1,5 +1,34 @@
 # Changelog
 
+All notable changes to OpenAPI Sentinel are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com/); versioning follows
+[SemVer](https://semver.org/). Release artifacts are produced from the tagged commit by
+`build/release.sh` (see docs/commercial/release-checklist.md).
+
+## [Unreleased]
+
+### Changed
+
+- OpenAPI Sentinel is now licensed under the Apache License 2.0, replacing the draft proprietary
+  terms. Earlier releases (v0.9.0–v1.3.1) are also made available under Apache-2.0.
+- HTML, SARIF, JUnit and changelog reporting are documented as part of the open-source edition;
+  the Community/Pro feature matrix no longer lists implemented features as Pro-only.
+
+### Packaging
+
+- Release archives, the .NET tool package and the Docker image now ship `LICENSE`, `NOTICE` and
+  `THIRD-PARTY-NOTICES.md`; self-contained archives and the Docker image also include the .NET
+  runtime license and third-party notices under `licenses/`.
+- NuGet metadata declares `Apache-2.0` and points to the GitHub repository; the Docker image
+  carries OCI license/source labels.
+- THIRD-PARTY-NOTICES.md now covers the embedded OpenCollection schema and the bundled .NET runtime,
+  with full license texts.
+
+### Fixed
+
+- Docker image build: the Dockerfile now copies `src/OpenApiSentinel.Bruno`, which the CLI has
+  referenced since v1.1.0; the image previously failed to compile.
+
 ## [1.3.1] - 2026-08-28
 
 ### Fixed
@@ -40,13 +69,6 @@
 ### Compatibility
 
 - Comparison engine, policy evaluation, JSON/Markdown/SARIF/JUnit outputs, baselines and rule semantics remain unchanged.
-
-All notable changes to OpenAPI Sentinel are documented here.
-Format based on [Keep a Changelog](https://keepachangelog.com/); versioning follows
-[SemVer](https://semver.org/). Release artifacts are produced from the tagged commit by
-`build/release.sh` (see docs/commercial/release-checklist.md).
-
-## [Unreleased]
 
 ## [1.2.0] - 2026-08-27
 
